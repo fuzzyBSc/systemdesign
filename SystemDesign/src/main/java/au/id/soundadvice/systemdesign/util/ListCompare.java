@@ -1,16 +1,17 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
-package com.mycompany.util;
+package au.id.soundadvice.systemdesign.util;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
 
 /**
+ * Lexicographically compare two lists
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ * @param <T> List member type
  */
 public class ListCompare<T extends Comparable<T>> implements Comparator<List<T>> {
 

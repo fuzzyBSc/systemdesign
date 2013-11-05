@@ -1,6 +1,9 @@
+/*
+ * Please refer to the LICENSE file for licensing information.
+ */
 package au.id.soundadvice.systemdesign;
 
-import com.mycompany.util.PipeTo;
+import au.id.soundadvice.systemdesign.util.PipeTo;
 import au.id.soundadvice.systemdesign.hierarchy.InvalidHierarchyException;
 import au.id.soundadvice.systemdesign.output.PhysicalSchematic;
 import au.id.soundadvice.systemdesign.input.InputModel;
@@ -86,13 +89,6 @@ public class App {
 						printStream,
 						item, true);
 			}
-//			try (PrintStream printStream = new PrintStream(new PipeTo(
-//					new File(subdir, prefix + "LogicalBreakdownFull.svg"),
-//					Runtime.getRuntime().exec("dot -Tsvg")).start())) {
-//				LogicalBreakdown.write(
-//						printStream,
-//						item, true, true, false);
-//			}
 			try (PrintStream printStream = new PrintStream(new PipeTo(
 					new File(subdir, prefix + "LogicalBreakdownClusteredFull.svg"),
 					Runtime.getRuntime().exec("dot -Tsvg")).start())) {
@@ -107,13 +103,6 @@ public class App {
 						printStream,
 						item, false);
 			}
-//			try (PrintStream printStream = new PrintStream(new PipeTo(
-//					new File(subdir, prefix + "LogicalBreakdown.svg"),
-//					Runtime.getRuntime().exec("dot -Tsvg")).start())) {
-//				LogicalBreakdown.write(
-//						printStream,
-//						item, true, false, false);
-//			}
 			try (PrintStream printStream = new PrintStream(new PipeTo(
 					new File(subdir, prefix + "LogicalBreakdownClustered.svg"),
 					Runtime.getRuntime().exec("dot -Tsvg")).start())) {
@@ -121,13 +110,6 @@ public class App {
 						printStream,
 						item, true, false, true);
 			}
-//			try (PrintStream printStream = new PrintStream(new PipeTo(
-//					new File(subdir, prefix + "LogicalFlowBreakdown.svg"),
-//					Runtime.getRuntime().exec("dot -Tsvg")).start())) {
-//				LogicalBreakdown.write(
-//						printStream,
-//						item, false, true, false);
-//			}
 			try (PrintStream printStream = new PrintStream(new PipeTo(
 					new File(subdir, prefix + "LogicalFlowBreakdownClustered.svg"),
 					Runtime.getRuntime().exec("dot -Tsvg")).start())) {

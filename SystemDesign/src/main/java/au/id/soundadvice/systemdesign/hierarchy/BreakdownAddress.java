@@ -1,10 +1,9 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
 package au.id.soundadvice.systemdesign.hierarchy;
 
-import com.mycompany.util.ListCompare;
+import au.id.soundadvice.systemdesign.util.ListCompare;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,7 +11,7 @@ import java.util.Objects;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class BreakdownAddress implements Comparable<BreakdownAddress> {
 

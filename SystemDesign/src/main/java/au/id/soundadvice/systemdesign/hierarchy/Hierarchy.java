@@ -1,6 +1,5 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
 package au.id.soundadvice.systemdesign.hierarchy;
 
@@ -13,7 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Hierarchy<T extends Hierarchical<T>> implements Comparable<Hierarchy<T>> {
 

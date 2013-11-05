@@ -1,32 +1,45 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
-package com.mycompany.util;
+package au.id.soundadvice.systemdesign.util;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class CopyStream {
 
 	private static final Logger LOG = Logger.getLogger(CopyStream.class.getName());
+	private static final ExecutorService executor = Executors.newCachedThreadPool(
+			new NamedThreads("CopyStream"));
+
 	private final OutputStream to;
 	private final InputStream from;
 
+	/**
+	 * Copies the contents of "from" to "to" in a background thread
+	 *
+	 * @param to Copy to this stream
+	 * @param from Copy from this stream
+	 */
 	public CopyStream(OutputStream to, InputStream from) {
 		this.to = to;
 		this.from = from;
 	}
 
+	/**
+	 * Start the copy process
+	 */
 	public void start() {
-		new Thread(new Run(), "Copy " + from + " to " + to).start();
+		executor.submit(new Run());
 	}
 
 	private class Run implements Runnable {

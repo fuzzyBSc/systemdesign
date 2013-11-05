@@ -1,6 +1,5 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
 package au.id.soundadvice.systemdesign.model;
 
@@ -14,7 +13,7 @@ import java.util.Objects;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class FlowType implements Hierarchical<FlowType> {
 

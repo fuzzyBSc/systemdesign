@@ -1,8 +1,7 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Please refer to the LICENSE file for licensing information.
  */
-package com.mycompany.util;
+package au.id.soundadvice.systemdesign.util;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,7 +10,7 @@ import java.io.OutputStream;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class PipeTo {
 
