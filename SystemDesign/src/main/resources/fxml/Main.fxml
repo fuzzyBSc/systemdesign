@@ -12,7 +12,7 @@
         <URL value="@/styles/main.css" />
     </stylesheets>
    <children>
-      <BorderPane layoutX="-1.0" prefHeight="404.0" prefWidth="600.0">
+      <BorderPane layoutX="-1.0" prefHeight="404.0" prefWidth="600.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="0.0">
          <left>
             <Accordion BorderPane.alignment="CENTER">
               <panes>
@@ -29,9 +29,6 @@
               </panes>
             </Accordion>
          </left>
-         <center>
-            <AnchorPane fx:id="drawing" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
-         </center>
          <bottom>
             <TilePane prefHeight="0.0" prefWidth="600.0" BorderPane.alignment="CENTER">
                <children>
@@ -43,6 +40,22 @@
          <right>
             <AnchorPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
          </right>
+         <center>
+            <StackPane prefHeight="150.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+               <children>
+                  <ScrollPane prefHeight="200.0" prefWidth="200.0">
+                    <content>
+                      <AnchorPane fx:id="physicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
+                    </content>
+                  </ScrollPane>
+                  <ScrollPane prefHeight="200.0" prefWidth="200.0" visible="false">
+                    <content>
+                      <AnchorPane fx:id="logicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
+                    </content>
+                  </ScrollPane>
+               </children>
+            </StackPane>
+         </center>
       </BorderPane>
    </children>
 </AnchorPane>

@@ -26,16 +26,20 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
+import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.fxml.DragHandler.Dragged;
+import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
 import au.id.soundadvice.systemdesign.model.Item;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Pane;
 
 /**
  *
@@ -69,7 +73,7 @@ public class SchematicController {
             }
         }
 
-        void addNode(AnchorPane parent, Item item) {
+        void addNode(Pane parent, Item item) {
             Point2D origin = item.getOrigin();
             Label result = new Label();
             result.setText(item.toString());
@@ -77,7 +81,8 @@ public class SchematicController {
             result.setLayoutY(origin.getY());
             result.getStyleClass().add("schematicItem");
 
-            new DragHandler(parent, result, new MoveItem(item), new GridSnap(10)).start();
+            new DragHandler(parent, result, new MoveItem(item),
+                    new GridSnap(10), MouseButton.PRIMARY).start();
 
             parent.getChildren().add(result);
         }
@@ -94,7 +99,7 @@ public class SchematicController {
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
             state.getUndo().set(
-                    state.getUndo().get().addItem(item.setOrigin(layoutCurrent)));
+                    state.getUndo().get().add(item.setOrigin(layoutCurrent)));
         }
     }
 

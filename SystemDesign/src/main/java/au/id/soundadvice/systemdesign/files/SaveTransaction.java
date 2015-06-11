@@ -39,7 +39,9 @@ import org.apache.commons.io.FileUtils;
 /**
  * A crude two-phase commit. It doesn't guarantee atomicity but will generally
  * achieve it. Importantly failure to write out some files will cause the entire
- * set to be left uncommitted.
+ * set to be left uncommitted avoiding inconsistency in the general case. Use in
+ * conjunction with a configuration management system to ensure that write
+ * contention is negligible.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */

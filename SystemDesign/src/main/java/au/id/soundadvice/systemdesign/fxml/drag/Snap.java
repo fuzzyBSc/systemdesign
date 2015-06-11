@@ -24,65 +24,16 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.schematic;
+package au.id.soundadvice.systemdesign.fxml.drag;
 
-import au.id.soundadvice.systemdesign.model.Item;
-import java.util.Objects;
+import javafx.geometry.Point2D;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class SchematicItemMemento {
+public interface Snap {
 
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 31 * hash + Objects.hashCode(this.item);
-        hash = 31 * hash + this.x;
-        hash = 31 * hash + this.y;
-        return hash;
-    }
+    public Point2D snap(Point2D point, double width, double height);
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final SchematicItemMemento other = (SchematicItemMemento) obj;
-        if (!Objects.equals(this.item, other.item)) {
-            return false;
-        }
-        if (this.x != other.x) {
-            return false;
-        }
-        if (this.y != other.y) {
-            return false;
-        }
-        return true;
-    }
-
-    public Item getItem() {
-        return item;
-    }
-
-    public int getX() {
-        return x;
-    }
-
-    public int getY() {
-        return y;
-    }
-
-    public SchematicItemMemento(Item item, int x, int y) {
-        this.item = item;
-        this.x = x;
-        this.y = y;
-    }
-    private final Item item;
-    private final int x;
-    private final int y;
 }

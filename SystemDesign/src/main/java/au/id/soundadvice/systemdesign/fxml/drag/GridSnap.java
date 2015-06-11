@@ -24,25 +24,40 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.schematic;
+package au.id.soundadvice.systemdesign.fxml.drag;
 
-import au.id.soundadvice.systemdesign.model.Interface;
-import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import javafx.geometry.Point2D;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class SchematicInterfaceMemento {
+public class GridSnap implements Snap {
 
-    public SchematicInterfaceMemento(Interface interace, List<Point2D> nodes) {
-        this.interace = interace;
-        this.nodes = Collections.unmodifiableList(new ArrayList<>(nodes));
+    public GridSnap(int gridSize) {
+        this.gridSize = gridSize;
+        this.next = new NoSnap();
     }
 
-    private final Interface interace;
-    private final List<Point2D> nodes;
+    public GridSnap(int gridSize, Snap next) {
+        this.gridSize = gridSize;
+        this.next = next;
+    }
+
+    private final int gridSize;
+    private final Snap next;
+
+    private double snap(double value) {
+        int gridValue = (int) (value / gridSize);
+        return gridValue * gridSize;
+    }
+
+    @Override
+    public Point2D snap(Point2D point, double width, double height) {
+        point = new Point2D(snap(point.getX()), snap(point.getY()));
+        if (next != null) {
+            point = next.snap(point, width, height);
+        }
+        return point;
+    }
 }

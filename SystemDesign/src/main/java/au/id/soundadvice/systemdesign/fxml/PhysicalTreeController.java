@@ -40,8 +40,7 @@ import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javafx.event.Event;
-import javafx.event.EventHandler;
+import javafx.event.ActionEvent;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
@@ -50,7 +49,6 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.util.Callback;
 import javax.annotation.Nullable;
 
 /**
@@ -116,11 +114,10 @@ public class PhysicalTreeController {
             this.systemOfInterest = functional == null ? null : functional.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
             RelationContext context = allocated.getStore();
-            for (Item item : allocated.getItems()) {
-                if (!item.isExternal()) {
-                    tmpItems.put(item.getIdPath(context), item);
-                }
-            }
+            allocated.getItems().stream().filter(
+                    (item) -> (!item.isExternal())).forEach((item) -> {
+                        tmpItems.put(item.getIdPath(context), item);
+                    });
             this.items = Collections.unmodifiableSortedMap(tmpItems);
         }
     }
@@ -150,19 +147,15 @@ public class PhysicalTreeController {
             } else {
                 root = toNode(state.systemOfInterest);
             }
-            for (Item item : state.items.values()) {
+            state.items.values().stream().forEach((item) -> {
                 root.getChildren().add(toNode(item));
-            }
+            });
             root.setExpanded(true);
             view.setRoot(root);
             view.setShowRoot(state.systemOfInterest != null);
             view.setEditable(true);
-            view.setCellFactory(new Callback<TreeView<Item>, TreeCell<Item>>() {
-                @Override
-                public TreeCell<Item> call(TreeView<Item> p) {
-                    return new ItemTreeCell(editState.getUndo());
-                }
-            });
+            view.setCellFactory(
+                    (TreeView<Item> p) -> new ItemTreeCell(editState.getUndo()));
         }
 
         private TreeItem toNode(Item item) {
@@ -175,23 +168,29 @@ public class PhysicalTreeController {
 
         private final UndoBuffer<AllocatedBaseline> undo;
         private TextField textField;
-        private final ContextMenu addMenu = new ContextMenu();
+        private final ContextMenu contextMenu = new ContextMenu();
 
         public ItemTreeCell(UndoBuffer<AllocatedBaseline> tmpUndo) {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Item");
-            addMenu.getItems().add(addMenuItem);
-            addMenuItem.setOnAction(new EventHandler() {
-                @Override
-                public void handle(Event t) {
-                    AllocatedBaseline baseline = undo.get();
-                    Item item = Item.newItem(
-                            baseline.getIdentity().getUuid(),
-                            baseline.getNextItemId(),
-                            "New Item", "");
-                    TreeItem newItem = new TreeItem<>(item);
-                    getTreeView().getRoot().getChildren().add(newItem);
-                    undo.set(undo.get().addItem(item));
+            contextMenu.getItems().add(addMenuItem);
+            addMenuItem.setOnAction((ActionEvent t) -> {
+                AllocatedBaseline baseline = undo.get();
+                Item item1 = Item.newItem(
+                        baseline.getIdentity().getUuid(),
+                        baseline.getNextItemId(),
+                        "New Item", "");
+                TreeItem newItem = new TreeItem<>(item1);
+                getTreeView().getRoot().getChildren().add(newItem);
+                undo.set(baseline.add(item1));
+            });
+            MenuItem deleteMenuItem = new MenuItem("Delete Item");
+            contextMenu.getItems().add(deleteMenuItem);
+            deleteMenuItem.setOnAction((ActionEvent t) -> {
+                TreeItem<Item> treeItem1 = getTreeItem();
+                Item item1 = treeItem1.getValue();
+                if (treeItem1.isLeaf()) {
+                    undo.set(undo.get().remove(item1.getUuid()));
                 }
             });
         }
@@ -227,7 +226,7 @@ public class PhysicalTreeController {
         @Override
         public void commitEdit(Item item) {
             super.commitEdit(item);
-            undo.set(undo.get().addItem(item));
+            undo.set(undo.get().add(item));
         }
 
         @Override
@@ -247,22 +246,18 @@ public class PhysicalTreeController {
                 } else {
                     setText(getString());
                     setGraphic(getTreeItem().getGraphic());
-                    setContextMenu(addMenu);
+                    setContextMenu(contextMenu);
                 }
             }
         }
 
         private void createTextField() {
             textField = new TextField(getItem().getName());
-            textField.setOnKeyReleased(new EventHandler<KeyEvent>() {
-
-                @Override
-                public void handle(KeyEvent t) {
-                    if (t.getCode() == KeyCode.ENTER) {
-                        commitEdit(getItem().setName(textField.getText()));
-                    } else if (t.getCode() == KeyCode.ESCAPE) {
-                        cancelEdit();
-                    }
+            textField.setOnKeyReleased((KeyEvent t) -> {
+                if (t.getCode() == KeyCode.ENTER) {
+                    commitEdit(getItem().setName(textField.getText()));
+                } else if (t.getCode() == KeyCode.ESCAPE) {
+                    cancelEdit();
                 }
             });
         }

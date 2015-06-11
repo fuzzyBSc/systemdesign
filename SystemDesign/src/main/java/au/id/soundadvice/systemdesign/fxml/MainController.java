@@ -62,7 +62,9 @@ public class MainController implements Initializable {
     @FXML
     private Button downButton;
     @FXML
-    private AnchorPane drawing;
+    private AnchorPane physicalDrawing;
+    @FXML
+    private AnchorPane logicalDrawing;
 
     private PhysicalTreeController physicalTreeController;
     private SchematicController schematicController;
@@ -84,7 +86,7 @@ public class MainController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         physicalTreeController = new PhysicalTreeController(state, physicalTree);
         physicalTreeController.start();
-        schematicController = new SchematicController(state, drawing);
+        schematicController = new SchematicController(state, physicalDrawing);
         schematicController.start();
         LOG.info(physicalTree.toString());
         LOG.info(logicalTree.toString());

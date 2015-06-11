@@ -110,14 +110,14 @@ public class AllocatedBaselineTest {
         Item systemOfInterest = new Item(
                 model.getIdentity().getUuid(), new ItemBean(
                         UUID.randomUUID(), "C1234", "system", "The system", 0, 0, false));
-        model = model.addItem(systemOfInterest);
+        model = model.add(systemOfInterest);
 
         AllocatedBaseline system = model.createChild(systemOfInterest);
 
         Item subsystemOfInterest = new Item(
                 system.getIdentity().getUuid(), new ItemBean(
                         UUID.randomUUID(), "1", "subsystem", "A subsystem", 0, 0, false));
-        system = system.addItem(subsystemOfInterest);
+        system = system.add(subsystemOfInterest);
 
         AllocatedBaseline subsystem = system.createChild(subsystemOfInterest);
         for (int ii = 0; ii < 10; ++ii) {
@@ -125,7 +125,7 @@ public class AllocatedBaselineTest {
                     subsystem.getIdentity().getUuid(), new ItemBean(
                             UUID.randomUUID(), Integer.toString(ii),
                             "subsystem " + ii, "subsystem " + ii, 0, 0, false));
-            subsystem = subsystem.addItem(item);
+            subsystem = subsystem.add(item);
         }
 
         try (SaveTransaction transaction = new SaveTransaction()) {

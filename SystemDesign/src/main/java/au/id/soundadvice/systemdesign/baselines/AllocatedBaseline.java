@@ -250,8 +250,13 @@ public class AllocatedBaseline {
     }
 
     @CheckReturnValue
-    public AllocatedBaseline addItem(Item item) {
+    public AllocatedBaseline add(Relation item) {
         return new AllocatedBaseline(store.put(item));
+    }
+
+    @CheckReturnValue
+    public AllocatedBaseline remove(UUID key) {
+        return new AllocatedBaseline(store.remove(key));
     }
 
     public IDSegment getNextItemId() {

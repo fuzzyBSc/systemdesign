@@ -24,11 +24,13 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.drag;
 
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import static javafx.scene.input.MouseEvent.MOUSE_DRAGGED;
 
@@ -40,6 +42,7 @@ public class DragHandler {
 
     private final StartDrag startDrag = new StartDrag();
     private final Snap snap;
+    private final MouseButton button;
     private DragOperation operation = null;
 
     public void start() {
@@ -52,11 +55,13 @@ public class DragHandler {
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent);
     }
 
-    public DragHandler(Node parent, Node draggable, Dragged dragged, Snap snap) {
+    public DragHandler(
+            Node parent, Node draggable, Dragged dragged, Snap snap, MouseButton button) {
         this.parent = parent;
         this.draggable = draggable;
         this.dragged = dragged;
         this.snap = snap;
+        this.button = button;
     }
 
     private class StartDrag implements EventHandler<MouseEvent> {
@@ -64,13 +69,15 @@ public class DragHandler {
         @Override
         public void handle(MouseEvent event) {
             if (MOUSE_DRAGGED.equals(event.getEventType())) {
-                if (operation == null) {
-                    Point2D layoutStart = new Point2D(
-                            draggable.getLayoutX(), draggable.getLayoutY());
-                    Point2D mouseStart = new Point2D(event.getSceneX(), event.getSceneY());
-                    operation = new DragOperation(layoutStart, mouseStart);
-                } else {
-                    operation.handle(event);
+                if (button.equals(event.getButton())) {
+                    if (operation == null) {
+                        Point2D layoutStart = new Point2D(
+                                draggable.getLayoutX(), draggable.getLayoutY());
+                        Point2D mouseStart = new Point2D(event.getSceneX(), event.getSceneY());
+                        operation = new DragOperation(layoutStart, mouseStart);
+                    } else {
+                        operation.handle(event);
+                    }
                 }
             } else {
                 if (operation != null) {
@@ -104,7 +111,8 @@ public class DragHandler {
                     layoutStart.getX() + event.getSceneX() - mouseStart.getX(),
                     layoutStart.getY() + event.getSceneY() - mouseStart.getY()
             );
-            layoutCurrent = snap.snap(layoutCurrent);
+            Bounds bounds = draggable.getLayoutBounds();
+            layoutCurrent = snap.snap(layoutCurrent, bounds.getWidth(), bounds.getHeight());
             draggable.setLayoutX(layoutCurrent.getX());
             draggable.setLayoutY(layoutCurrent.getY());
         }

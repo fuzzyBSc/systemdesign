@@ -24,7 +24,7 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.drag;
 
 import javafx.geometry.Point2D;
 
@@ -35,7 +35,7 @@ import javafx.geometry.Point2D;
 public class NoSnap implements Snap {
 
     @Override
-    public Point2D snap(Point2D point) {
+    public Point2D snap(Point2D point, double width, double height) {
        return point;
     }
 
