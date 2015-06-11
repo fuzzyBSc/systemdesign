@@ -1,0 +1,14 @@
+/*
+ * Empty Stylesheet file.
+ */
+
+.mainFxmlClass {
+
+}
+
+.schematicItem {
+    -fx-background-color: lightyellow;
+    -fx-background-insets: -5px;
+    -fx-border-color: black;
+    -fx-border-insets: -5px;
+}

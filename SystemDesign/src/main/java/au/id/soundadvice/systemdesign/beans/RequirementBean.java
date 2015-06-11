@@ -24,29 +24,31 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.model;
+package au.id.soundadvice.systemdesign.beans;
 
-import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.FunctionBean;
-import au.id.soundadvice.systemdesign.relation.Reference;
-import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
-import java.util.Map;
+import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
+public class RequirementBean implements Identifiable {
+
+    public RequirementBean(UUID uuid, UUID trace, UUID context, String section, String text) {
+        this.uuid = uuid;
+        this.trace = trace;
+        this.context = context;
+        this.section = section;
+        this.text = text;
+    }
 
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
+        hash = 61 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -58,17 +60,20 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Function other = (Function) obj;
+        final RequirementBean other = (RequirementBean) obj;
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.item, other.item)) {
+        if (!Objects.equals(this.trace, other.trace)) {
             return false;
         }
-        if (!Objects.equals(this.verb, other.verb)) {
+        if (!Objects.equals(this.context, other.context)) {
             return false;
         }
-        if (!Objects.equals(this.noun, other.noun)) {
+        if (!Objects.equals(this.section, other.section)) {
+            return false;
+        }
+        if (!Objects.equals(this.text, other.text)) {
             return false;
         }
         return true;
@@ -79,49 +84,53 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return uuid;
     }
 
-    public Reference<Function, Item> getItem() {
-        return item;
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
-    public String getVerb() {
-        return verb;
+    public UUID getTrace() {
+        return trace;
     }
 
-    public String getNoun() {
-        return noun;
+    public void setTrace(UUID trace) {
+        this.trace = trace;
     }
 
-    public Function(FunctionBean bean) {
-        this.uuid = bean.getUuid();
-        this.item = new Reference<>(this, bean.getItem(), Item.class);
-        this.verb = bean.getVerb();
-        this.noun = bean.getNoun();
+    public UUID getContext() {
+        return context;
     }
 
-    private final UUID uuid;
-    private final Reference<Function, Item> item;
-    private final String verb;
-    private final String noun;
-
-    @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Functional;
+    public void setContext(UUID context) {
+        this.context = context;
     }
 
-    @Override
-    public FunctionBean toBean(RelationContext context) {
-        return new FunctionBean(uuid, item.getUuid(), verb, noun);
+    public String getText() {
+        return text;
     }
 
-    @Override
-    public String getFlowEndName() {
-        return verb + ' ' + noun;
+    public void setText(String text) {
+        this.text = text;
     }
-    private static final ReferenceFinder<Function> finder
-            = new ReferenceFinder<>(Function.class);
 
-    @Override
-    public Collection<Reference<?, ?>> getReferences() {
-        return finder.getReferences(this);
+    public String getSection() {
+        return section;
     }
+
+    public void setSection(String section) {
+        this.section = section;
+    }
+
+    private UUID uuid;
+    /**
+     * The cause of this requirement: Null for a top level requirement, or
+     * otherwise another requirement or hazard.
+     */
+    @Nullable
+    private UUID trace;
+    /**
+     * Either an item (non-functional requirement), a function, or a hazard.
+     */
+    private UUID context;
+    private String section;
+    private String text;
 }

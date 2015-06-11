@@ -27,8 +27,7 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.FlowBean;
-import au.id.soundadvice.systemdesign.beans.FlowDirection;
+import au.id.soundadvice.systemdesign.beans.RequirementBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
@@ -41,12 +40,12 @@ import java.util.UUID;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
+public class Requirement implements BeanFactory<RelationContext, RequirementBean>, Relation {
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 23 * hash + Objects.hashCode(this.uuid);
+        hash = 41 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -58,20 +57,17 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Flow other = (Flow) obj;
+        final Requirement other = (Requirement) obj;
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.left, other.left)) {
+        if (!Objects.equals(this.text, other.text)) {
             return false;
         }
-        if (!Objects.equals(this.right, other.right)) {
+        if (!Objects.equals(this.section, other.section)) {
             return false;
         }
-        if (this.direction != other.direction) {
-            return false;
-        }
-        if (!Objects.equals(this.type, other.type)) {
+        if (!Objects.equals(this.owner, other.owner)) {
             return false;
         }
         return true;
@@ -82,67 +78,42 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return uuid;
     }
 
-    public Reference<Flow, FlowEnd> getLeft() {
-        return left;
+    public String getText() {
+        return text;
     }
 
-    public Reference<Flow, FlowEnd> getRight() {
-        return right;
+    public String getSection() {
+        return section;
     }
 
-    public FlowDirection getDirection() {
-        return direction;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public Flow(FlowBean bean) {
-        this.uuid = bean.getUuid();
-        this.direction = bean.getDirection();
-        this.left = new Reference<>(this, bean.getLeft(), FlowEnd.class);
-        this.right = new Reference<>(this, bean.getRight(), FlowEnd.class);
-        this.type = bean.getType();
+    public Reference<Requirement, RequirementContext> getOwner() {
+        return owner;
     }
 
     private final UUID uuid;
-    private final Reference<Flow, FlowEnd> left;
-    private final Reference<Flow, FlowEnd> right;
-    private final FlowDirection direction;
-    private final String type;
+    private final String text;
+    private final String section;
+    private final Reference<Requirement, RequirementContext> owner;
+
+    public Requirement(RequirementBean bean) {
+        this.uuid = bean.getUuid();
+        this.text = bean.getText();
+        this.section = bean.getSection();
+        this.owner = new Reference<>(this, bean.getContext(), RequirementContext.class);
+    }
 
     @Override
-    public FlowBean toBean(RelationContext context) {
-        StringBuilder builder = new StringBuilder();
-        FlowEnd leftEnd = left.getTarget(context);
-        FlowEnd rightEnd = right.getTarget(context);
-        switch (direction) {
-            case Normal:
-                builder.append(leftEnd.getFlowEndName());
-                builder.append(" --").append(type).append("-> ");
-                builder.append(rightEnd.getFlowEndName());
-                break;
-            case Reverse:
-                builder.append(rightEnd.getFlowEndName());
-                builder.append(" --").append(type).append("-> ");
-                builder.append(leftEnd.getFlowEndName());
-                break;
-            case Bidirectional:
-                builder.append(leftEnd.getFlowEndName());
-                builder.append(" <-").append(type).append("-> ");
-                builder.append(rightEnd.getFlowEndName());
-                break;
-            default:
-                throw new AssertionError(direction.name());
+    public RequirementBean toBean(RelationContext context) {
+        return new RequirementBean(
+                uuid,
+                null,
+                owner.getUuid(),
+                section, text);
 
-        }
-
-        return new FlowBean(
-                uuid, direction, left.getUuid(), right.getUuid(), type, builder.toString());
     }
-    private static final ReferenceFinder<Flow> finder
-            = new ReferenceFinder<>(Flow.class);
+
+    private static final ReferenceFinder<Requirement> finder
+            = new ReferenceFinder<>(Requirement.class);
 
     @Override
     public Collection<Reference<?, ?>> getReferences() {

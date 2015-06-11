@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.InterfaceBean;
+import au.id.soundadvice.systemdesign.beans.HazardBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
@@ -40,12 +40,12 @@ import java.util.UUID;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Interface implements RequirementContext, BeanFactory<RelationContext, InterfaceBean>, Relation {
+public class Hazard implements BeanFactory<RelationContext, HazardBean>, Relation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.uuid);
+        int hash = 3;
+        hash = 37 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -57,73 +57,47 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Interface other = (Interface) obj;
+        final Hazard other = (Hazard) obj;
+        if (!Objects.equals(this.description, other.description)) {
+            return false;
+        }
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.left, other.left)) {
-            return false;
-        }
-        if (!Objects.equals(this.right, other.right)) {
+        if (!Objects.equals(this.level, other.level)) {
             return false;
         }
         return true;
     }
 
-    public Interface(InterfaceBean bean) {
-        this.uuid = bean.getUuid();
-        UUID leftItemUuid = bean.getLeftItem();
-        UUID rightItemUuid = bean.getRightItem();
-        // Normalise left/right by UUID
-        if (leftItemUuid.compareTo(rightItemUuid) < 0) {
-            this.left = new Reference<>(this, leftItemUuid, Item.class);
-            this.right = new Reference<>(this, rightItemUuid, Item.class);
-        } else {
-            this.left = new Reference<>(this, rightItemUuid, Item.class);
-            this.right = new Reference<>(this, leftItemUuid, Item.class);
-        }
+    public String getDescription() {
+        return description;
     }
 
-    @Override
     public UUID getUuid() {
         return uuid;
     }
 
-    public Reference<Interface, Item> getLeft() {
-        return left;
+    public String getLevel() {
+        return level;
     }
 
-    public Reference<Interface, Item> getRight() {
-        return right;
-    }
-
-    public String getDescription(RelationContext context) {
-        Item leftItem = this.left.getTarget(context);
-        Item rightItem = this.right.getTarget(context);
-        if (leftItem.getIdPath(context).compareTo(rightItem.getIdPath(context)) < 0) {
-            return leftItem.toString() + ":" + rightItem.toString();
-        } else {
-            return rightItem.toString() + ":" + leftItem.toString();
-        }
-    }
-
+    private final String description;
     private final UUID uuid;
-    private final Reference<Interface, Item> left;
-    private final Reference<Interface, Item> right;
+    private final String level;
 
-    @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Interface;
+    public Hazard(HazardBean bean) {
+        this.uuid = bean.getUuid();
+        this.description = bean.getDescription();
+        this.level = bean.getLevel();
     }
 
     @Override
-    public InterfaceBean toBean(RelationContext context) {
-        return new InterfaceBean(
-                uuid, null, left.getUuid(), right.getUuid(), getDescription(context));
+    public HazardBean toBean(RelationContext context) {
+        return new HazardBean(uuid, level, description);
     }
-
-    private static final ReferenceFinder<Interface> finder
-            = new ReferenceFinder<>(Interface.class);
+    private static final ReferenceFinder<Hazard> finder
+            = new ReferenceFinder<>(Hazard.class);
 
     @Override
     public Collection<Reference<?, ?>> getReferences() {

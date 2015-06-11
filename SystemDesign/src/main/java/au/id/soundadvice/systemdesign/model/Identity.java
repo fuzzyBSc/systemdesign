@@ -27,51 +27,29 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.FunctionBean;
+import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
+public class Identity implements BeanFactory<RelationContext, IdentityBean>, Relation {
 
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
-        return hash;
+    public String toString() {
+        return idPath.toString();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Function other = (Function) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.item, other.item)) {
-            return false;
-        }
-        if (!Objects.equals(this.verb, other.verb)) {
-            return false;
-        }
-        if (!Objects.equals(this.noun, other.noun)) {
-            return false;
-        }
-        return true;
+    public Identity(UUID uuid, IDPath idPath) {
+        this.uuid = uuid;
+        this.idPath = idPath;
     }
 
     @Override
@@ -79,49 +57,32 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return uuid;
     }
 
-    public Reference<Function, Item> getItem() {
-        return item;
+    public IDPath getIdPath() {
+        return idPath;
     }
 
-    public String getVerb() {
-        return verb;
-    }
-
-    public String getNoun() {
-        return noun;
-    }
-
-    public Function(FunctionBean bean) {
+    public Identity(IdentityBean bean) {
         this.uuid = bean.getUuid();
-        this.item = new Reference<>(this, bean.getItem(), Item.class);
-        this.verb = bean.getVerb();
-        this.noun = bean.getNoun();
+        this.idPath = IDPath.valueOf(bean.getId());
     }
 
     private final UUID uuid;
-    private final Reference<Function, Item> item;
-    private final String verb;
-    private final String noun;
+    private final IDPath idPath;
 
     @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Functional;
+    public IdentityBean toBean(RelationContext context) {
+        return new IdentityBean(uuid, idPath.toString());
     }
-
-    @Override
-    public FunctionBean toBean(RelationContext context) {
-        return new FunctionBean(uuid, item.getUuid(), verb, noun);
-    }
-
-    @Override
-    public String getFlowEndName() {
-        return verb + ' ' + noun;
-    }
-    private static final ReferenceFinder<Function> finder
-            = new ReferenceFinder<>(Function.class);
+    private static final ReferenceFinder<Identity> finder
+            = new ReferenceFinder<>(Identity.class);
 
     @Override
     public Collection<Reference<?, ?>> getReferences() {
         return finder.getReferences(this);
+    }
+
+    @CheckReturnValue
+    public Identity setId(IDPath value) {
+        return new Identity(uuid, value);
     }
 }

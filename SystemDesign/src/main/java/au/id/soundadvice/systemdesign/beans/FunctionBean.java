@@ -24,16 +24,9 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.model;
+package au.id.soundadvice.systemdesign.beans;
 
-import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.FunctionBean;
-import au.id.soundadvice.systemdesign.relation.Reference;
-import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
-import java.util.Map;
+import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -41,12 +34,31 @@ import java.util.UUID;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
+public class FunctionBean implements Identifiable {
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public void setItem(UUID item) {
+        this.item = item;
+    }
+
+    public void setVerb(String verb) {
+        this.verb = verb;
+    }
+
+    public void setNoun(String noun) {
+        this.noun = noun;
+    }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
+        int hash = 3;
+        hash = 83 * hash + Objects.hashCode(this.uuid);
+        hash = 83 * hash + Objects.hashCode(this.item);
+        hash = 83 * hash + Objects.hashCode(this.verb);
+        hash = 83 * hash + Objects.hashCode(this.noun);
         return hash;
     }
 
@@ -58,7 +70,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Function other = (Function) obj;
+        final FunctionBean other = (FunctionBean) obj;
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
@@ -79,7 +91,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return uuid;
     }
 
-    public Reference<Function, Item> getItem() {
+    public UUID getItem() {
         return item;
     }
 
@@ -91,37 +103,18 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return noun;
     }
 
-    public Function(FunctionBean bean) {
-        this.uuid = bean.getUuid();
-        this.item = new Reference<>(this, bean.getItem(), Item.class);
-        this.verb = bean.getVerb();
-        this.noun = bean.getNoun();
+    public FunctionBean(UUID uuid, UUID item, String verb, String noun) {
+        this.uuid = uuid;
+        this.item = item;
+        this.verb = verb;
+        this.noun = noun;
     }
 
-    private final UUID uuid;
-    private final Reference<Function, Item> item;
-    private final String verb;
-    private final String noun;
-
-    @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Functional;
+    public FunctionBean() {
     }
 
-    @Override
-    public FunctionBean toBean(RelationContext context) {
-        return new FunctionBean(uuid, item.getUuid(), verb, noun);
-    }
-
-    @Override
-    public String getFlowEndName() {
-        return verb + ' ' + noun;
-    }
-    private static final ReferenceFinder<Function> finder
-            = new ReferenceFinder<>(Function.class);
-
-    @Override
-    public Collection<Reference<?, ?>> getReferences() {
-        return finder.getReferences(this);
-    }
+    private UUID uuid;
+    private UUID item;
+    private String verb;
+    private String noun;
 }

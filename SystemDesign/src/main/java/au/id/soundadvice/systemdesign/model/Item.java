@@ -1,210 +1,189 @@
 /*
- * Please refer to the LICENSE file for licensing information.
+ * This is free and unencumbered software released into the public domain.
+ * 
+ * Anyone is free to copy, modify, publish, use, compile, sell, or
+ * distribute this software, either in source code form or as a compiled
+ * binary, for any purpose, commercial or non-commercial, and by any
+ * means.
+ * 
+ * In jurisdictions that recognize copyright laws, the author or authors
+ * of this software dedicate any and all copyright interest in the
+ * software to the public domain. We make this dedication for the benefit
+ * of the public at large and to the detriment of our heirs and
+ * successors. We intend this dedication to be an overt act of
+ * relinquishment in perpetuity of all present and future rights to this
+ * software under copyright law.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ * 
+ * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.hierarchy.BreakdownAddress;
-import au.id.soundadvice.systemdesign.hierarchy.Hierarchical;
-import au.id.soundadvice.systemdesign.hierarchy.Hierarchy;
-import au.id.soundadvice.systemdesign.hierarchy.InvalidHierarchyException;
-import edu.umd.cs.findbugs.annotations.Nullable;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import au.id.soundadvice.systemdesign.beans.BeanFactory;
+import au.id.soundadvice.systemdesign.beans.ItemBean;
+import au.id.soundadvice.systemdesign.relation.Reference;
+import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
+import au.id.soundadvice.systemdesign.relation.Relation;
+import au.id.soundadvice.systemdesign.relation.RelationContext;
+import javafx.geometry.Point2D;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.UUID;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Item implements Hierarchical<Item>, FlowNode {
+public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, FlowEnd, Relation {
 
-	@Override
-	public BreakdownAddress getAddress() {
-		return itemHierarchy.getAddress();
-	}
+    public IDSegment getShortId() {
+        return shortId;
+    }
 
-	@Override
-	@Nullable
-	public Item getTrace() {
-		return itemHierarchy.getTrace();
-	}
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.uuid);
+        return hash;
+    }
 
-	@Override
-	public void addChild(Item child) throws InvalidHierarchyException {
-		itemHierarchy.addChild(child);
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Item other = (Item) obj;
+        if (!Objects.equals(this.uuid, other.uuid)) {
+            return false;
+        }
+        if (!Objects.equals(this.parent, other.parent)) {
+            return false;
+        }
+        if (!Objects.equals(this.shortId, other.shortId)) {
+            return false;
+        }
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
+        if (!Objects.equals(this.description, other.description)) {
+            return false;
+        }
+        if (this.external != other.external) {
+            return false;
+        }
+        return true;
+    }
 
-	@Override
-	public void removeChild(Item child) {
-		itemHierarchy.removeChild(child);
-	}
+    @Override
+    public String toString() {
+        return shortId + " " + name;
+    }
 
-	@Override
-	public Map<BreakdownAddress, Item> getChildren() {
-		return itemHierarchy.getChildren();
-	}
+    @Override
+    public UUID getUuid() {
+        return uuid;
+    }
 
-	@Override
-	public void bind() throws InvalidHierarchyException {
-		itemHierarchy.bind();
-	}
+    public IDPath getIdPath(RelationContext context) {
+        return parent.getTarget(context).getIdPath().getChild(shortId);
+    }
 
-	@Override
-	public void unbind() {
-		itemHierarchy.unbind();
-	}
+    public String getName() {
+        return name;
+    }
 
-	public Set<Flow> getInFlows() {
-		return inFlows;
-	}
+    public String getDescription() {
+        return description;
+    }
 
-	public Set<Flow> getOutFlows() {
-		return outFlows;
-	}
+    public boolean isExternal() {
+        return external;
+    }
 
-	@Override
-	public String toString() {
-		if (itemHierarchy.getAddress().isContext()) {
-			return "Context";
-		} else {
-			return itemHierarchy + " " + name;
-		}
-	}
+    private final UUID uuid;
+    private final Reference<Item, Identity> parent;
+    private final IDSegment shortId;
+    private final String name;
+    private final String description;
+    private final boolean external;
+    private final Point2D origin;
 
-	public Map<Item, Interface> getExternalInterfaces() {
-		return externalInterfaces;
-	}
+    public Item(UUID parent, ItemBean bean) {
+        this.uuid = bean.getUuid();
+        this.parent = new Reference(this, parent, Identity.class);
+        this.shortId = new IDSegment(bean.getId());
+        this.name = bean.getName();
+        this.description = bean.getDescription();
+        this.external = bean.isExternal();
+        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
+    }
 
-	public Map<InterfaceKey, Interface> getSubInterfaces() {
-		return subInterfaces;
-	}
+    @Override
+    public ItemBean toBean(RelationContext context) {
+        return new ItemBean(
+                uuid, shortId.toString(),
+                name, description,
+                origin.getX(), origin.getY(),
+                external);
+    }
 
-	@Override
-	public String getName() {
-		return name;
-	}
+    @Override
+    public RequirementType getRequirementType() {
+        return RequirementType.NonFunctional;
+    }
 
-	public Set<Function> getFunctions() {
-		return functions;
-	}
+    @Override
+    public String getFlowEndName() {
+        return name;
+    }
+    private static final ReferenceFinder<Item> finder
+            = new ReferenceFinder<>(Item.class);
 
-	public Item() {
-		this.itemHierarchy = new Hierarchy<>(this);
-		this.name = "";
-	}
+    @Override
+    public Collection<Reference<?, ?>> getReferences() {
+        return finder.getReferences(this);
+    }
 
-	public Item(Item context, BreakdownAddress address, String name) {
-		this.itemHierarchy = new Hierarchy<>(context, this, address);
-		this.name = name;
-	}
-	private final Hierarchy<Item> itemHierarchy;
-	/**
-	 * A short descriptive name for this subsystem within the context
-	 */
-	private final String name;
-	/**
-	 * The external interfaces of this item that exist either within our context
-	 * or some ancestor of our context.
-	 */
-	private final ConcurrentMap<Item, Interface> externalInterfaces = new ConcurrentHashMap<>();
-	/**
-	 * The internal interfaces of this item. These are interfaces between this
-	 * item's subsystems.
-	 */
-	private final ConcurrentMap<InterfaceKey, Interface> subInterfaces = new ConcurrentHashMap<>();
-	/**
-	 * The functions this item is responsible for.
-	 */
-	private final Set<Function> functions = Collections.newSetFromMap(new ConcurrentHashMap<Function, Boolean>());
-	/**
-	 * The list of our own subsystems.
-	 */
-	private final Set<Flow> inFlows = Collections.newSetFromMap(new ConcurrentHashMap<Flow, Boolean>());
-	private final Set<Flow> outFlows = Collections.newSetFromMap(new ConcurrentHashMap<Flow, Boolean>());
+    public static Item newItem(UUID parent, IDSegment shortId, String name, String description) {
+        return new Item(
+                UUID.randomUUID(), parent, shortId, name, description, false, Point2D.ZERO);
+    }
 
-	public void addSubInterface(Interface iface) {
-		subInterfaces.put(iface.getKey(), iface);
-	}
+    private Item(
+            UUID uuid, UUID parent, IDSegment shortId, String name, String description, boolean external,
+            Point2D origin) {
+        this.uuid = uuid;
+        this.parent = new Reference(this, parent, Identity.class);
+        this.shortId = shortId;
+        this.name = name;
+        this.description = description;
+        this.external = external;
+        this.origin = origin;
+    }
 
-	public void removeSubInterface(Interface iface) {
-		subInterfaces.remove(iface.getKey(), iface);
-	}
+    @CheckReturnValue
+    public Item setName(String value) {
+        return new Item(uuid, parent.getUuid(), shortId, value, description, external, origin);
+    }
 
-	void addExternalInterface(Interface iface) {
-		if (!iface.getLeft().equals(this)) {
-			externalInterfaces.put(iface.getLeft(), iface);
-		}
-		if (!iface.getRight().equals(this)) {
-			externalInterfaces.put(iface.getRight(), iface);
-		}
-	}
+    @CheckReturnValue
+    public Item setOrigin(Point2D value) {
+        return new Item(uuid, parent.getUuid(), shortId, name, description, external, value);
+    }
 
-	void removeExternalInterface(Interface iface) {
-		if (!iface.getLeft().equals(this)) {
-			externalInterfaces.remove(iface.getLeft(), iface);
-		}
-		if (!iface.getRight().equals(this)) {
-			externalInterfaces.remove(iface.getRight(), iface);
-		}
-	}
+    public Point2D getOrigin() {
+        return origin;
+    }
 
-	public Set<Interface> getSubsystemInterfaces() {
-		Set<Interface> interfaces = new HashSet<>();
-		for (Item subsystem : itemHierarchy.getChildren().values()) {
-			interfaces.addAll(subsystem.getExternalInterfaces().values());
-		}
-		// Prune subinterfaces
-		Set<Interface> subinterfaces = new HashSet<>();
-		for (Interface iface : interfaces) {
-			Interface interfaceTrace = iface.getTrace();
-			if (interfaceTrace != null) {
-				if (interfaces.contains((Interface) interfaceTrace)) {
-					subinterfaces.add(iface);
-				}
-			}
-		}
-		interfaces.removeAll(subinterfaces);
-		return interfaces;
-	}
-
-	@Override
-	public void addInFlow(Flow flow) {
-		this.inFlows.add(flow);
-	}
-
-	@Override
-	public void addOutFlow(Flow flow) {
-		this.outFlows.add(flow);
-	}
-
-	@Override
-	public void removeInFlow(Flow flow) {
-		this.inFlows.remove(flow);
-	}
-
-	@Override
-	public void removeOutFlow(Flow flow) {
-		this.outFlows.remove(flow);
-	}
-
-	@Override
-	public Item getItem() {
-		return this;
-	}
-
-	@Override
-	public boolean isItem() {
-		return true;
-	}
-
-	void addFunction(Function function) {
-		functions.add(function);
-	}
-
-	void removeFunction(Function function) {
-		functions.remove(function);
-	}
 }

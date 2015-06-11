@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.net.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.input.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="600.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="au.id.soundadvice.systemdesign.fxml.MainController">
+    <stylesheets>
+        <URL value="@/styles/main.css" />
+    </stylesheets>
+   <children>
+      <BorderPane layoutX="-1.0" prefHeight="404.0" prefWidth="600.0">
+         <left>
+            <Accordion BorderPane.alignment="CENTER">
+              <panes>
+                <TitledPane animated="false" text="Physical">
+                     <content>
+                        <TreeView id="physicalTree" fx:id="physicalTree" prefHeight="200.0" prefWidth="200.0" />
+                     </content>
+                </TitledPane>
+                <TitledPane animated="false" text="Logical">
+                     <content>
+                        <TreeView fx:id="logicalTree" prefHeight="200.0" prefWidth="200.0" />
+                     </content>
+                </TitledPane>
+              </panes>
+            </Accordion>
+         </left>
+         <center>
+            <AnchorPane fx:id="drawing" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+         </center>
+         <bottom>
+            <TilePane prefHeight="0.0" prefWidth="600.0" BorderPane.alignment="CENTER">
+               <children>
+                  <Button fx:id="upButton" mnemonicParsing="false" text="Up" />
+                  <Button fx:id="downButton" mnemonicParsing="false" text="Down" />
+               </children>
+            </TilePane>
+         </bottom>
+         <right>
+            <AnchorPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+         </right>
+      </BorderPane>
+   </children>
+</AnchorPane>
