@@ -50,6 +50,15 @@ public class DragHandler {
         draggable.setOnMouseReleased(startDrag);
     }
 
+    public void stop() {
+        draggable.setOnMouseDragged(null);
+        draggable.setOnMouseReleased(null);
+        if (operation != null) {
+            operation.cancel();
+            operation = null;
+        }
+    }
+
     public interface Dragged {
 
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent);
@@ -102,6 +111,7 @@ public class DragHandler {
             this.mouseStart = mouseStart;
             this.layoutCurrent = layoutStart;
 
+            draggable.getStyleClass().add("moving");
             parent.setOnMouseMoved(this);
         }
 
@@ -117,8 +127,20 @@ public class DragHandler {
             draggable.setLayoutY(layoutCurrent.getY());
         }
 
+        private void done() {
+            parent.setOnMouseMoved(null);
+            draggable.getStyleClass().remove("moving");
+        }
+
         private void commit() {
+            done();
             dragged.dragged(parent, draggable, layoutCurrent);
+        }
+
+        private void cancel() {
+            done();
+            draggable.setLayoutX(layoutStart.getX());
+            draggable.setLayoutX(layoutStart.getY());
         }
 
     }

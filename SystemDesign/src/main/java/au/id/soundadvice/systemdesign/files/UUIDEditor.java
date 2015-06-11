@@ -18,8 +18,6 @@ import java.util.UUID;
  */
 public class UUIDEditor implements PropertyEditor {
 
-    public UUIDEditor() {
-    }
     UUID value;
 
     @Override
@@ -44,8 +42,11 @@ public class UUIDEditor implements PropertyEditor {
 
     @Override
     public String getJavaInitializationString() {
-        //            UUID tmp = UUID.fromString(value.toString());
-        return "UUID.fromString(\"" + value.toString() + "\")";
+        if (value == null) {
+            return "null";
+        } else {
+            return "UUID.fromString(\"" + value.toString() + "\")";
+        }
     }
 
     @Override
@@ -55,7 +56,11 @@ public class UUIDEditor implements PropertyEditor {
 
     @Override
     public void setAsText(String text) throws IllegalArgumentException {
-        this.value = UUID.fromString(text);
+        try {
+            this.value = text == null ? null : UUID.fromString(text);
+        } catch (IllegalArgumentException ex) {
+            this.value = null;
+        }
     }
 
     @Override
@@ -82,25 +87,5 @@ public class UUIDEditor implements PropertyEditor {
     public void removePropertyChangeListener(PropertyChangeListener listener) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
-    
+
 }
-//    private static class EnumConverter<E extends Enum<E>> implements Converter {
-//
-//        public EnumConverter(Class<E> type) {
-//            this.type = type;
-//        }
-//        private final Class<E> type;
-//
-//        @Override
-//        public <T> T convert(Class<T> type, Object value) {
-//            if (this.type.equals(type)) {
-//                try {
-//                    return (T) Enum.valueOf(this.type, value.toString());
-//                } catch (IllegalArgumentException ex) {
-//                    throw new ConversionException(ex);
-//                }
-//            } else {
-//                throw new ConversionException("Unexpected type " + type);
-//            }
-//        }
-//    }

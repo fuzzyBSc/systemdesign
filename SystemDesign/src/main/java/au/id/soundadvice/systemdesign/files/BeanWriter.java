@@ -97,7 +97,12 @@ public class BeanWriter<T> implements Closeable {
             }
             List<String> csvline = new ArrayList<>(header.size());
             for (Method getter : header.values()) {
-                csvline.add(getter.invoke(instance).toString());
+                Object value = getter.invoke(instance);
+                if (value == null) {
+                    csvline.add("");
+                } else {
+                    csvline.add(value.toString());
+                }
             }
             writer.writeNext(csvline.toArray(new String[0]));
         } catch (IllegalAccessException | InvocationTargetException ex) {

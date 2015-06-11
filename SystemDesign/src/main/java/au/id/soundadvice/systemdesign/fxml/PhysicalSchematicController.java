@@ -26,33 +26,37 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
-import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
+import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
+import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.relation.RelationContext;
+import java.util.UUID;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.shape.Line;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class SchematicController {
+public class PhysicalSchematicController {
 
     private final EditState state;
     private final AnchorPane drawing;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
 
-    SchematicController(EditState state, AnchorPane drawing) {
+    PhysicalSchematicController(EditState state, AnchorPane drawing) {
         this.state = state;
         this.drawing = drawing;
     }
@@ -68,12 +72,27 @@ public class SchematicController {
         public void run() {
             drawing.getChildren().clear();
             AllocatedBaseline baseline = state.getUndo().get();
-            for (Item item : baseline.getItems()) {
+            baseline.getInterfaces().stream().forEach((iface) -> {
+                addNode(drawing, baseline, iface);
+            });
+            baseline.getItems().stream().forEach((item) -> {
                 addNode(drawing, item);
-            }
+            });
         }
 
-        void addNode(Pane parent, Item item) {
+        private void addNode(AnchorPane parent, AllocatedBaseline baseline, Interface iface) {
+            Item left = iface.getLeft().getTarget(baseline.getStore());
+            Item right = iface.getRight().getTarget(baseline.getStore());
+            Line result = new Line(
+                    left.getOrigin().getX(),
+                    left.getOrigin().getY(),
+                    right.getOrigin().getX(),
+                    right.getOrigin().getY());
+            result.getStyleClass().add("schematicInterface");
+            parent.getChildren().add(result);
+        }
+
+        private void addNode(Pane parent, Item item) {
             Point2D origin = item.getOrigin();
             Label result = new Label();
             result.setText(item.toString());
@@ -81,11 +100,36 @@ public class SchematicController {
             result.setLayoutY(origin.getY());
             result.getStyleClass().add("schematicItem");
 
-            new DragHandler(parent, result, new MoveItem(item),
-                    new GridSnap(10), MouseButton.PRIMARY).start();
+//            new DragHandler(parent, result, new MoveItem(item),
+//                    new GridSnap(10), MouseButton.PRIMARY).start();
+            ConnectHandler.register(result, item, new ConnectItems(), MouseButton.PRIMARY);
 
             parent.getChildren().add(result);
         }
+    }
+
+    private class ConnectItems implements Connect {
+
+        @Override
+        public boolean canConnect(UUID sourceId, UUID targetId) {
+            RelationContext store = state.getUndo().get().getStore();
+            Item source = store.get(sourceId, Item.class);
+            Item target = store.get(targetId, Item.class);
+            return source != null && target != null;
+        }
+
+        @Override
+        public void connect(UUID sourceId, UUID targetId) {
+            AllocatedBaseline baseline = state.getUndo().get();
+            Interface newInterface = new Interface(sourceId, targetId);
+            for (Interface existing : baseline.getStore().getReverse(sourceId, Interface.class)) {
+                if (newInterface.isRedundantTo(existing)) {
+                    return;
+                }
+            }
+            state.getUndo().set(baseline.add(newInterface));
+        }
+
     }
 
     private class MoveItem implements Dragged {

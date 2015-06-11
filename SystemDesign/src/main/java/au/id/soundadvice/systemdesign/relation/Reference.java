@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -36,6 +35,11 @@ import javax.annotation.Nullable;
  * @param <T> The type this is a reference to
  */
 public class Reference<F, T extends Relation> {
+
+    @Override
+    public String toString() {
+        return to.toString();
+    }
 
     public F getFrom() {
         return from;

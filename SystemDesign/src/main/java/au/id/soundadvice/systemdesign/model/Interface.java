@@ -70,6 +70,28 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         return true;
     }
 
+    public boolean isRedundantTo(Interface other) {
+        if (!Objects.equals(this.left.getTo(), other.left.getTo())) {
+            return false;
+        }
+        if (!Objects.equals(this.right.getTo(), other.right.getTo())) {
+            return false;
+        }
+        return true;
+    }
+
+    public Interface(UUID left, UUID right) {
+        this.uuid = UUID.randomUUID();
+        // Normalise left/right by UUID
+        if (left.compareTo(right) < 0) {
+            this.left = new Reference<>(this, left, Item.class);
+            this.right = new Reference<>(this, right, Item.class);
+        } else {
+            this.left = new Reference<>(this, right, Item.class);
+            this.right = new Reference<>(this, left, Item.class);
+        }
+    }
+
     public Interface(InterfaceBean bean) {
         this.uuid = bean.getUuid();
         UUID leftItemUuid = bean.getLeftItem();
@@ -100,10 +122,12 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
     public String getDescription(RelationContext context) {
         Item leftItem = this.left.getTarget(context);
         Item rightItem = this.right.getTarget(context);
-        if (leftItem.getIdPath(context).compareTo(rightItem.getIdPath(context)) < 0) {
-            return leftItem.toString() + ":" + rightItem.toString();
+        IDPath leftPath = leftItem.getIdPath(context);
+        IDPath rightPath = rightItem.getIdPath(context);
+        if (leftPath.compareTo(rightPath) < 0) {
+            return leftPath + ":" + rightPath;
         } else {
-            return rightItem.toString() + ":" + leftItem.toString();
+            return rightPath + ":" + leftPath;
         }
     }
 

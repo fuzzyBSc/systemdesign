@@ -67,7 +67,7 @@ public class MainController implements Initializable {
     private AnchorPane logicalDrawing;
 
     private PhysicalTreeController physicalTreeController;
-    private SchematicController schematicController;
+    private PhysicalSchematicController schematicController;
     private final EditState state;
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
@@ -86,7 +86,7 @@ public class MainController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         physicalTreeController = new PhysicalTreeController(state, physicalTree);
         physicalTreeController.start();
-        schematicController = new SchematicController(state, physicalDrawing);
+        schematicController = new PhysicalSchematicController(state, physicalDrawing);
         schematicController.start();
         LOG.info(physicalTree.toString());
         LOG.info(logicalTree.toString());

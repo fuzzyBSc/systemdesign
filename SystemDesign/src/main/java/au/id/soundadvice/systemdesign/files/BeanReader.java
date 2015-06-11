@@ -75,9 +75,6 @@ public class BeanReader<T> implements Closeable {
 
     static {
         PropertyEditorManager.registerEditor(UUID.class, uuidEditorClass);
-//        ConvertUtils.register(new EnumConverter(FlowDirection.class), FlowDirection.class);
-//        ConvertUtils.register(new EnumConverter(DictionaryCategory.class), DictionaryCategory.class);
-//        ConvertUtils.register(new EnumConverter(RequirementType.class), RequirementType.class);
     }
 
     public BeanReader(Class<T> clazz, CSVReader reader) throws IOException {
