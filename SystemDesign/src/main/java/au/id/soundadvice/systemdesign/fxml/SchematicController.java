@@ -77,7 +77,7 @@ public class SchematicController {
             result.setLayoutY(origin.getY());
             result.getStyleClass().add("schematicItem");
 
-            new DragHandler(parent, result, new MoveItem(item)).start();
+            new DragHandler(parent, result, new MoveItem(item), new GridSnap(10)).start();
 
             parent.getChildren().add(result);
         }

@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 
@@ -63,16 +62,12 @@ public class SaveTransaction implements Closeable {
     }
 
     public void commit() throws IOException {
-        Iterator<Job> it = jobs.iterator();
-        while (it.hasNext()) {
-            Job job = it.next();
-            if (FileUtils.contentEquals(job.tempFile.toFile(), job.realFile.toFile())) {
-                // Don't overwrite if identical
-                it.remove();
-            }
-        }
         for (Job job : jobs) {
-            Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);
+            if (FileUtils.contentEquals(job.tempFile.toFile(), job.realFile.toFile())) {
+                // Don't overwrite if identical. Delete temp file in close.
+            } else {
+                Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);
+            }
         }
     }
 

@@ -30,8 +30,6 @@ import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
@@ -90,7 +88,7 @@ public class BeanFile<T extends Identifiable> {
     }
 
     public static <T extends Identifiable> BeanFile<T> newFile(Class<T> clazz, Path path) {
-        return new BeanFile(clazz, path, new ConcurrentSkipListMap<UUID, T>());
+        return new BeanFile(clazz, path, new ConcurrentSkipListMap<>());
     }
 
     public static <T extends Identifiable> BeanFile<T> load(Class<T> clazz, Path path) throws IOException {
@@ -119,21 +117,6 @@ public class BeanFile<T extends Identifiable> {
             for (T bean : entries.values()) {
                 writer.write(bean);
             }
-        }
-    }
-
-    public void saveToTemp() throws IOException {
-        Path directory = path.getParent();
-        Path tempFile = Files.createTempFile(directory, null, null);
-        try {
-            try (BeanWriter<T> writer = BeanWriter.forPath(clazz, tempFile)) {
-                for (T bean : entries.values()) {
-                    writer.write(bean);
-                }
-            }
-            Files.move(tempFile, path, REPLACE_EXISTING, ATOMIC_MOVE);
-        } finally {
-            Files.deleteIfExists(tempFile);
         }
     }
 

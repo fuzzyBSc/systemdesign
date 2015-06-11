@@ -39,6 +39,7 @@ import static javafx.scene.input.MouseEvent.MOUSE_DRAGGED;
 public class DragHandler {
 
     private final StartDrag startDrag = new StartDrag();
+    private final Snap snap;
     private DragOperation operation = null;
 
     public void start() {
@@ -51,10 +52,11 @@ public class DragHandler {
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent);
     }
 
-    public DragHandler(Node parent, Node draggable, Dragged dragged) {
+    public DragHandler(Node parent, Node draggable, Dragged dragged, Snap snap) {
         this.parent = parent;
         this.draggable = draggable;
         this.dragged = dragged;
+        this.snap = snap;
     }
 
     private class StartDrag implements EventHandler<MouseEvent> {
@@ -102,6 +104,7 @@ public class DragHandler {
                     layoutStart.getX() + event.getSceneX() - mouseStart.getX(),
                     layoutStart.getY() + event.getSceneY() - mouseStart.getY()
             );
+            layoutCurrent = snap.snap(layoutCurrent);
             draggable.setLayoutX(layoutCurrent.getX());
             draggable.setLayoutY(layoutCurrent.getY());
         }
