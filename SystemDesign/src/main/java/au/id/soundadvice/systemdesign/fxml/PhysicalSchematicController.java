@@ -28,19 +28,24 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
+import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
+import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
+import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.util.UUID;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
@@ -51,18 +56,18 @@ import javafx.scene.shape.Line;
  */
 public class PhysicalSchematicController {
 
-    private final EditState state;
+    private final UndoBuffer<UndoState> undo;
     private final AnchorPane drawing;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
 
-    PhysicalSchematicController(EditState state, AnchorPane drawing) {
-        this.state = state;
+    PhysicalSchematicController(EditState edit, AnchorPane drawing) {
+        this.undo = edit.getUndo();
         this.drawing = drawing;
     }
 
     void start() {
-        state.subscribe(onChange);
+        undo.getChanged().subscribe(onChange);
         onChange.run();
     }
 
@@ -71,7 +76,7 @@ public class PhysicalSchematicController {
         @Override
         public void run() {
             drawing.getChildren().clear();
-            AllocatedBaseline baseline = state.getUndo().get();
+            AllocatedBaseline baseline = undo.get().getAllocated();
             baseline.getInterfaces().stream().forEach((iface) -> {
                 addNode(drawing, baseline, iface);
             });
@@ -100,9 +105,14 @@ public class PhysicalSchematicController {
             result.setLayoutY(origin.getY());
             result.getStyleClass().add("schematicItem");
 
-//            new DragHandler(parent, result, new MoveItem(item),
-//                    new GridSnap(10), MouseButton.PRIMARY).start();
-            ConnectHandler.register(result, item, new ConnectItems(), MouseButton.PRIMARY);
+            new DragHandler(parent, result, new MoveItem(item),
+                    new GridSnap(10), (MouseEvent event)
+                    -> MouseButton.PRIMARY.equals(event.getButton())
+                    && !event.isControlDown()).start();
+            ConnectHandler.register(result, item, new ConnectItems(),
+                    (MouseEvent event)
+                    -> MouseButton.PRIMARY.equals(event.getButton())
+                    && event.isControlDown());
 
             parent.getChildren().add(result);
         }
@@ -112,7 +122,7 @@ public class PhysicalSchematicController {
 
         @Override
         public boolean canConnect(UUID sourceId, UUID targetId) {
-            RelationContext store = state.getUndo().get().getStore();
+            RelationContext store = undo.get().getAllocated().getStore();
             Item source = store.get(sourceId, Item.class);
             Item target = store.get(targetId, Item.class);
             return source != null && target != null;
@@ -120,14 +130,15 @@ public class PhysicalSchematicController {
 
         @Override
         public void connect(UUID sourceId, UUID targetId) {
-            AllocatedBaseline baseline = state.getUndo().get();
+            UndoState state = undo.get();
+            AllocatedBaseline baseline = state.getAllocated();
             Interface newInterface = new Interface(sourceId, targetId);
             for (Interface existing : baseline.getStore().getReverse(sourceId, Interface.class)) {
                 if (newInterface.isRedundantTo(existing)) {
                     return;
                 }
             }
-            state.getUndo().set(baseline.add(newInterface));
+            undo.set(state.setAllocated(baseline.add(newInterface)));
         }
 
     }
@@ -142,8 +153,8 @@ public class PhysicalSchematicController {
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            state.getUndo().set(
-                    state.getUndo().get().add(item.setOrigin(layoutCurrent)));
+            UndoState state = undo.get();
+            undo.set(state.setAllocated(state.getAllocated().add(item.setOrigin(layoutCurrent))));
         }
     }
 

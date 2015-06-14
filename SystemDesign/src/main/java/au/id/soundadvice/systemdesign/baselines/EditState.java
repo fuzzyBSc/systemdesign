@@ -45,11 +45,7 @@ public class EditState {
         return currentDirectory.get();
     }
 
-    public FunctionalBaseline getFunctionalBaseline() {
-        return functionalBaseline.get();
-    }
-
-    public UndoBuffer<AllocatedBaseline> getUndo() {
+    public UndoBuffer<UndoState> getUndo() {
         return undo;
     }
 
@@ -67,10 +63,9 @@ public class EditState {
             UndoState undo,
             boolean alreadySaved) {
         this.currentDirectory = new AtomicReference<>(currentDirectory);
-        this.functionalBaseline = new AtomicReference<>(undo.getFunctionalBaseline());
-        this.undo = new UndoBuffer<>(executor, undo.getAllocatedBaseline());
+        this.undo = new UndoBuffer<>(executor, undo);
         if (alreadySaved) {
-            this.savedState = new AtomicReference<>(undo.getAllocatedBaseline());
+            this.savedState = new AtomicReference<>(undo);
         } else {
             this.savedState = new AtomicReference<>();
         }
@@ -112,9 +107,8 @@ public class EditState {
     private void loadImpl(Directory dir) throws IOException {
         UndoState state = UndoState.load(dir);
         currentDirectory.set(dir);
-        functionalBaseline.set(state.getFunctionalBaseline());
-        undo.reset(state.getAllocatedBaseline());
-        savedState.set(state.getAllocatedBaseline());
+        undo.reset(state);
+        savedState.set(state);
     }
 
     public boolean saveNeeded() {
@@ -129,19 +123,18 @@ public class EditState {
         if (dir == null) {
             throw new IOException("Cannot load from null directory");
         }
-        AllocatedBaseline baseline = undo.get();
+        UndoState state = undo.get();
         try (SaveTransaction transaction = new SaveTransaction()) {
-            baseline.saveTo(transaction, dir);
+            state.saveTo(transaction, dir);
             transaction.commit();
         }
-        savedState.set(baseline);
+        savedState.set(state);
     }
 
     private final AtomicReference<Directory> currentDirectory;
     private final Stack<Directory> lastChild = new Stack<>();
-    private final AtomicReference<FunctionalBaseline> functionalBaseline;
-    private final UndoBuffer<AllocatedBaseline> undo;
-    private final AtomicReference<AllocatedBaseline> savedState;
+    private final UndoBuffer<UndoState> undo;
+    private final AtomicReference<UndoState> savedState;
 
     public void subscribe(Runnable subscriber) {
         undo.getChanged().subscribe(subscriber);

@@ -30,6 +30,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
 /**
@@ -60,25 +61,35 @@ public class UndoState {
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        if (functionalBaseline != null) {
-            functionalBaseline.saveTo(transaction, directory.getParent());
+        if (functional != null) {
+            functional.saveTo(transaction, directory.getParent());
         }
-        allocatedBaseline.saveTo(transaction, directory);
+        allocated.saveTo(transaction, directory);
     }
 
     @Nullable
-    public FunctionalBaseline getFunctionalBaseline() {
-        return functionalBaseline;
+    public FunctionalBaseline getFunctional() {
+        return functional;
     }
 
-    public AllocatedBaseline getAllocatedBaseline() {
-        return allocatedBaseline;
+    public AllocatedBaseline getAllocated() {
+        return allocated;
     }
 
-    private UndoState(FunctionalBaseline functionalBaseline, AllocatedBaseline allocatedBaseline) {
-        this.functionalBaseline = functionalBaseline;
-        this.allocatedBaseline = allocatedBaseline;
+    private UndoState(FunctionalBaseline functional, AllocatedBaseline allocated) {
+        this.functional = functional;
+        this.allocated = allocated;
     }
-    private final FunctionalBaseline functionalBaseline;
-    private final AllocatedBaseline allocatedBaseline;
+    private final FunctionalBaseline functional;
+    private final AllocatedBaseline allocated;
+
+    @CheckReturnValue
+    public UndoState setFunctional(FunctionalBaseline value) {
+        return new UndoState(value, allocated);
+    }
+
+    @CheckReturnValue
+    public UndoState setAllocated(AllocatedBaseline value) {
+        return new UndoState(functional, value);
+    }
 }

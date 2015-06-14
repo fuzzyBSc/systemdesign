@@ -36,8 +36,6 @@ import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.event.Event;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -68,12 +66,12 @@ public class MainController implements Initializable {
 
     private PhysicalTreeController physicalTreeController;
     private PhysicalSchematicController schematicController;
-    private final EditState state;
+    private final EditState edit;
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
 
-    public MainController(EditState state) {
-        this.state = state;
+    public MainController(EditState edit) {
+        this.edit = edit;
     }
 
     /**
@@ -84,39 +82,31 @@ public class MainController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        physicalTreeController = new PhysicalTreeController(state, physicalTree);
+        physicalTreeController = new PhysicalTreeController(edit, physicalTree);
         physicalTreeController.start();
-        schematicController = new PhysicalSchematicController(state, physicalDrawing);
+        schematicController = new PhysicalSchematicController(edit, physicalDrawing);
         schematicController.start();
         LOG.info(physicalTree.toString());
         LOG.info(logicalTree.toString());
 
-        upButton.setOnAction(new EventHandler() {
-
-            @Override
-            public void handle(Event event) {
-                try {
-                    state.save();
-                    state.loadParent();
-                } catch (IOException ex) {
-                    Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        upButton.setOnAction((ActionEvent) -> {
+            try {
+                edit.save();
+                edit.loadParent();
+            } catch (IOException ex) {
+                Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
-        downButton.setOnAction(new EventHandler() {
-
-            @Override
-            public void handle(Event event) {
-                try {
-                    state.save();
-                    state.loadLastChild();
-                } catch (IOException ex) {
-                    Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        downButton.setOnAction((ActionEvent) -> {
+            try {
+                edit.save();
+                edit.loadLastChild();
+            } catch (IOException ex) {
+                Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
 
-        state.subscribe(buttonDisable);
+        edit.subscribe(buttonDisable);
         buttonDisable.run();
     }
 
@@ -124,9 +114,9 @@ public class MainController implements Initializable {
 
         @Override
         public void run() {
-            Directory dir = state.getCurrentDirectory();
+            Directory dir = edit.getCurrentDirectory();
             upButton.setDisable(dir == null || !dir.getParent().hasIdentity());
-            downButton.setDisable(!state.hasLastChild());
+            downButton.setDisable(!edit.hasLastChild());
         }
     }
 

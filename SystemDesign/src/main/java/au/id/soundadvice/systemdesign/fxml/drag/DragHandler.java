@@ -30,7 +30,6 @@ import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import static javafx.scene.input.MouseEvent.MOUSE_DRAGGED;
 
@@ -42,7 +41,7 @@ public class DragHandler {
 
     private final StartDrag startDrag = new StartDrag();
     private final Snap snap;
-    private final MouseButton button;
+    private final MouseFilter filter;
     private DragOperation operation = null;
 
     public void start() {
@@ -65,12 +64,12 @@ public class DragHandler {
     }
 
     public DragHandler(
-            Node parent, Node draggable, Dragged dragged, Snap snap, MouseButton button) {
+            Node parent, Node draggable, Dragged dragged, Snap snap, MouseFilter filter) {
         this.parent = parent;
         this.draggable = draggable;
         this.dragged = dragged;
         this.snap = snap;
-        this.button = button;
+        this.filter = filter;
     }
 
     private class StartDrag implements EventHandler<MouseEvent> {
@@ -78,7 +77,7 @@ public class DragHandler {
         @Override
         public void handle(MouseEvent event) {
             if (MOUSE_DRAGGED.equals(event.getEventType())) {
-                if (button.equals(event.getButton())) {
+                if (filter.matches(event)) {
                     if (operation == null) {
                         Point2D layoutStart = new Point2D(
                                 draggable.getLayoutX(), draggable.getLayoutY());
@@ -87,12 +86,14 @@ public class DragHandler {
                     } else {
                         operation.handle(event);
                     }
+                    event.consume();
                 }
             } else {
                 if (operation != null) {
                     operation.handle(event);
                     operation.commit();
                     operation = null;
+                    event.consume();
                 }
             }
         }

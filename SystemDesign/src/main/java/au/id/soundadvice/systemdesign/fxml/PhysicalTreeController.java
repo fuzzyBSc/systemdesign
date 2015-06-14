@@ -28,8 +28,9 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
+import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -57,20 +58,20 @@ import javax.annotation.Nullable;
  */
 public class PhysicalTreeController {
 
-    public PhysicalTreeController(EditState state, TreeView<Item> view) {
-        this.editState = state;
+    public PhysicalTreeController(EditState edit, TreeView<Item> view) {
+        this.edit = edit;
         this.view = view;
-        this.changed = new SingleRunnable<>(editState.getExecutor(), new Changed());
+        this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
         this.updateView = new SingleRunnable<>(JFXExecutor.instance(), new UpdateView());
     }
 
     public void start() {
-        editState.subscribe(changed);
+        edit.subscribe(changed);
         changed.run();
     }
 
     public void stop() {
-        editState.unsubscribe(changed);
+        edit.unsubscribe(changed);
     }
 
     private static class TreeState {
@@ -110,7 +111,9 @@ public class PhysicalTreeController {
         private final Item systemOfInterest;
         private final SortedMap<IDPath, Item> items;
 
-        private TreeState(FunctionalBaseline functional, AllocatedBaseline allocated) {
+        private TreeState(UndoState state) {
+            FunctionalBaseline functional = state.getFunctional();
+            AllocatedBaseline allocated = state.getAllocated();
             this.systemOfInterest = functional == null ? null : functional.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
             RelationContext context = allocated.getStore();
@@ -126,8 +129,7 @@ public class PhysicalTreeController {
 
         @Override
         public void run() {
-            TreeState newState = new TreeState(
-                    editState.getFunctionalBaseline(), editState.getUndo().get());
+            TreeState newState = new TreeState(edit.getUndo().get());
             TreeState oldState = treeState.getAndSet(newState);
             if (!newState.equals(oldState)) {
                 updateView.run();
@@ -155,7 +157,7 @@ public class PhysicalTreeController {
             view.setShowRoot(state.systemOfInterest != null);
             view.setEditable(true);
             view.setCellFactory(
-                    (TreeView<Item> p) -> new ItemTreeCell(editState.getUndo()));
+                    (TreeView<Item> p) -> new ItemTreeCell(edit.getUndo()));
         }
 
         private TreeItem toNode(Item item) {
@@ -166,31 +168,35 @@ public class PhysicalTreeController {
 
     private final class ItemTreeCell extends TreeCell<Item> {
 
-        private final UndoBuffer<AllocatedBaseline> undo;
+        private final UndoBuffer<UndoState> undo;
         private TextField textField;
         private final ContextMenu contextMenu = new ContextMenu();
 
-        public ItemTreeCell(UndoBuffer<AllocatedBaseline> tmpUndo) {
+        public ItemTreeCell(UndoBuffer<UndoState> tmpUndo) {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
             addMenuItem.setOnAction((ActionEvent t) -> {
-                AllocatedBaseline baseline = undo.get();
+                UndoState state = undo.get();
+                AllocatedBaseline baseline = state.getAllocated();
                 Item item1 = Item.newItem(
                         baseline.getIdentity().getUuid(),
                         baseline.getNextItemId(),
                         "New Item", "");
                 TreeItem newItem = new TreeItem<>(item1);
                 getTreeView().getRoot().getChildren().add(newItem);
-                undo.set(baseline.add(item1));
+                undo.set(state.setAllocated(baseline.add(item1)));
             });
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction((ActionEvent t) -> {
+                UndoState state = undo.get();
+                AllocatedBaseline baseline = state.getAllocated();
                 TreeItem<Item> treeItem1 = getTreeItem();
                 Item item1 = treeItem1.getValue();
                 if (treeItem1.isLeaf()) {
-                    undo.set(undo.get().remove(item1.getUuid()));
+                    undo.set(state.setAllocated(
+                            state.getAllocated().remove(item1.getUuid())));
                 }
             });
         }
@@ -225,8 +231,10 @@ public class PhysicalTreeController {
 
         @Override
         public void commitEdit(Item item) {
+            UndoState state = undo.get();
             super.commitEdit(item);
-            undo.set(undo.get().add(item));
+            undo.set(state.setAllocated(
+                    state.getAllocated().add(item)));
         }
 
         @Override
@@ -266,7 +274,7 @@ public class PhysicalTreeController {
             return getItem() == null ? "" : getItem().toString();
         }
     }
-    private final EditState editState;
+    private final EditState edit;
     private final TreeView<Item> view;
     private final AtomicReference<TreeState> treeState = new AtomicReference<>();
     private final SingleRunnable<Changed> changed;

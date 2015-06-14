@@ -33,7 +33,6 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javax.annotation.Nullable;
@@ -68,17 +67,19 @@ public class ConnectHandler {
     }
 
     public static void register(
-            Node target, Identifiable identifiable, Connect connect, MouseButton button) {
+            Node target, Identifiable identifiable, Connect connect, MouseFilter filter) {
         target.setOnDragDetected((MouseEvent event) -> {
-            // Start dragging
-            Dragboard db = target.startDragAndDrop(TransferMode.LINK);
-            ClipboardContent content = new ClipboardContent();
-            content.put(DataFormat.PLAIN_TEXT, identifiable.toString());
-            content.put(DataFormat.URL, uuidPrefix + identifiable.getUuid());
-            db.setContent(content);
-            target.getStyleClass().add("dragSource");
+            if (filter.matches(event)) {
+                // Start dragging
+                Dragboard db = target.startDragAndDrop(TransferMode.LINK);
+                ClipboardContent content = new ClipboardContent();
+                content.put(DataFormat.PLAIN_TEXT, identifiable.toString());
+                content.put(DataFormat.URL, uuidPrefix + identifiable.getUuid());
+                db.setContent(content);
+                target.getStyleClass().add("dragSource");
 
-            event.consume();
+                event.consume();
+            }
         });
         target.setOnDragOver((DragEvent event) -> {
             // Decide whether or not to accept the drop

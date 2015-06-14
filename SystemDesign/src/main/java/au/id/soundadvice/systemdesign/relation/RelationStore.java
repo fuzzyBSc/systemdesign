@@ -250,8 +250,13 @@ public class RelationStore implements RelationContext {
             // Nothing to remove
             return;
         }
+        List<Relation> list = map.get(relation.getClass());
+        if (list == null) {
+            // Nothing to remove
+            return;
+        }
         map = new HashMap<>(map);
-        List<Relation> list = new ArrayList<>(map.get(relation.getClass()));
+        list = new ArrayList<>(list);
         list.remove(relation);
         if (list.isEmpty()) {
             map.remove(relation.getClass());
