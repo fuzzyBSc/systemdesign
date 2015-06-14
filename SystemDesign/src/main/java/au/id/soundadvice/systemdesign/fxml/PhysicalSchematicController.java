@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
@@ -40,13 +41,15 @@ import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import java.io.IOException;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 
@@ -56,12 +59,16 @@ import javafx.scene.shape.Line;
  */
 public class PhysicalSchematicController {
 
+    private static final Logger LOG = Logger.getLogger(PhysicalSchematicController.class.getName());
+
+    private final EditState edit;
     private final UndoBuffer<UndoState> undo;
-    private final AnchorPane drawing;
+    private final Pane drawing;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
 
-    PhysicalSchematicController(EditState edit, AnchorPane drawing) {
+    PhysicalSchematicController(EditState edit, Pane drawing) {
+        this.edit = edit;
         this.undo = edit.getUndo();
         this.drawing = drawing;
     }
@@ -85,7 +92,7 @@ public class PhysicalSchematicController {
             });
         }
 
-        private void addNode(AnchorPane parent, AllocatedBaseline baseline, Interface iface) {
+        private void addNode(Pane parent, AllocatedBaseline baseline, Interface iface) {
             Item left = iface.getLeft().getTarget(baseline.getStore());
             Item right = iface.getRight().getTarget(baseline.getStore());
             Line result = new Line(
@@ -105,6 +112,27 @@ public class PhysicalSchematicController {
             result.setLayoutY(origin.getY());
             result.getStyleClass().add("schematicItem");
 
+            if (!item.isExternal()) {
+                result.setOnMouseClicked((MouseEvent ev) -> {
+                    if (ev.getClickCount() > 1) {
+                        try {
+                            // Navigate down
+                            edit.save();
+                            Directory dir = edit.getCurrentDirectory().getChild(item.getUuid());
+                            if (dir == null) {
+                                edit.newChild(
+                                        item.asIdentity(undo.get().getAllocated().getStore()),
+                                        item.toString());
+                            } else {
+                                edit.load(dir);
+                            }
+                        } catch (IOException ex) {
+                            LOG.log(Level.SEVERE, null, ex);
+                        }
+                        ev.consume();
+                    }
+                });
+            }
             new DragHandler(parent, result, new MoveItem(item),
                     new GridSnap(10), (MouseEvent event)
                     -> MouseButton.PRIMARY.equals(event.getButton())
@@ -133,12 +161,10 @@ public class PhysicalSchematicController {
             UndoState state = undo.get();
             AllocatedBaseline baseline = state.getAllocated();
             Interface newInterface = new Interface(sourceId, targetId);
-            for (Interface existing : baseline.getStore().getReverse(sourceId, Interface.class)) {
-                if (newInterface.isRedundantTo(existing)) {
-                    return;
-                }
+            if (baseline.getStore().getReverse(sourceId, Interface.class).parallelStream()
+                    .noneMatch((existing) -> newInterface.isRedundantTo(existing))) {
+                undo.set(state.setAllocated(baseline.add(newInterface)));
             }
-            undo.set(state.setAllocated(baseline.add(newInterface)));
         }
 
     }

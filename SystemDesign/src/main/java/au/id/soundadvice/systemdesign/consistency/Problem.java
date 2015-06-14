@@ -24,48 +24,37 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.baselines;
+package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
-import java.io.IOException;
-import javax.annotation.CheckReturnValue;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FunctionalBaseline {
+public class Problem {
 
-    public Item getSystemOfInterest() {
-        return systemOfInterest;
+    @Override
+    public String toString() {
+        return description + ": " + solutions;
     }
 
-    public AllocatedBaseline getContext() {
-        return context;
+    public String getDescription() {
+        return description;
     }
 
-    public FunctionalBaseline(Item systemOfInterest, AllocatedBaseline context) {
-        this.systemOfInterest = systemOfInterest;
-        this.context = context;
-
-//        Map<String, Function> systemFunctions = new HashMap<>();
-    }
-    private final Item systemOfInterest;
-    private final AllocatedBaseline context;
-
-    void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        context.saveTo(transaction, directory);
+    public List<Solution> getSolutions() {
+        return solutions;
     }
 
-    public RelationStore getStore() {
-        return context.getStore();
+    private final String description;
+    private final List<Solution> solutions;
+
+    Problem(String description, List<? extends Solution> solutions) {
+        this.description = description;
+        this.solutions = Collections.unmodifiableList(new ArrayList<>(solutions));
     }
 
-    @CheckReturnValue
-    public FunctionalBaseline setContext(AllocatedBaseline value) {
-        return new FunctionalBaseline(systemOfInterest, value);
-    }
 }

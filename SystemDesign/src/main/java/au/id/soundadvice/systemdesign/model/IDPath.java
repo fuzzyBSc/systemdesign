@@ -73,14 +73,6 @@ public class IDPath implements Comparable<IDPath> {
         }
     }
 
-    public String getShortId() {
-        if (segments.isEmpty()) {
-            return "";
-        } else {
-            return segments.get(segments.size() - 1).toString();
-        }
-    }
-
     @Override
     public String toString() {
         return dotted;
@@ -158,6 +150,20 @@ public class IDPath implements Comparable<IDPath> {
             childSegments.addAll(segments);
             childSegments.add(childSegment);
             return new IDPath(childSegments, dotted + "." + childSegment);
+        }
+    }
+
+    public IDPath getChild(IDPath childSegments) {
+        if (childSegments.isEmpty()) {
+            return this;
+        } else if (this.isEmpty()) {
+            return childSegments;
+        } else {
+            List<IDSegment> newSegments = new ArrayList<>(
+                    segments.size() + childSegments.segments.size());
+            newSegments.addAll(segments);
+            newSegments.addAll(childSegments.segments);
+            return new IDPath(newSegments, dotted + "." + childSegments.dotted);
         }
     }
 

@@ -28,8 +28,10 @@ package au.id.soundadvice.systemdesign.baselines;
 
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
+import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.EmptyStackException;
 import java.util.Stack;
 import java.util.concurrent.Executor;
@@ -69,6 +71,15 @@ public class EditState {
         } else {
             this.savedState = new AtomicReference<>();
         }
+    }
+
+    public void newChild(Identity id, String name) throws IOException {
+        Directory dir = new Directory(currentDirectory.get().getPath().resolve(name));
+        UndoState state = UndoState.newChild(id, dir);
+        currentDirectory.set(dir);
+        undo.reset(state);
+        savedState.set(state);
+        lastChild.clear();
     }
 
     public void loadParent() throws IOException {

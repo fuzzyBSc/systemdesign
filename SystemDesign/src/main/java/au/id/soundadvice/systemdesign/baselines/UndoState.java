@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.baselines;
 
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
+import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
 import javax.annotation.CheckReturnValue;
@@ -40,7 +41,24 @@ import javax.annotation.Nullable;
 public class UndoState {
 
     public static UndoState createNew() {
-        return new UndoState(null, AllocatedBaseline.createModel());
+        return new UndoState(null, AllocatedBaseline.create(Identity.create()));
+    }
+
+    static UndoState newChild(Identity identity, Directory directory) throws IOException {
+        Directory functionalDirectory = directory.getParent();
+        if (functionalDirectory.hasIdentity()) {
+            // Subsystem design - load functional baseline as well
+            AllocatedBaseline functionalBaseline = AllocatedBaseline.load(functionalDirectory);
+            AllocatedBaseline allocatedBaseline = AllocatedBaseline.create(identity);
+            Item systemOfInterest = functionalBaseline.getStore().get(
+                    allocatedBaseline.getIdentity().getUuid(), Item.class);
+            return new UndoState(
+                    new FunctionalBaseline(systemOfInterest, functionalBaseline),
+                    allocatedBaseline);
+        } else {
+            // Top-level design
+            return new UndoState(null, AllocatedBaseline.create(identity));
+        }
     }
 
     public static UndoState load(Directory directory) throws IOException {

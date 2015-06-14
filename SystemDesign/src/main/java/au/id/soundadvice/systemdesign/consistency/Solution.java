@@ -24,48 +24,17 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.baselines;
+package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
-import java.io.IOException;
-import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.baselines.UndoState;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FunctionalBaseline {
+public interface Solution {
 
-    public Item getSystemOfInterest() {
-        return systemOfInterest;
-    }
+    String getDescription();
 
-    public AllocatedBaseline getContext() {
-        return context;
-    }
-
-    public FunctionalBaseline(Item systemOfInterest, AllocatedBaseline context) {
-        this.systemOfInterest = systemOfInterest;
-        this.context = context;
-
-//        Map<String, Function> systemFunctions = new HashMap<>();
-    }
-    private final Item systemOfInterest;
-    private final AllocatedBaseline context;
-
-    void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        context.saveTo(transaction, directory);
-    }
-
-    public RelationStore getStore() {
-        return context.getStore();
-    }
-
-    @CheckReturnValue
-    public FunctionalBaseline setContext(AllocatedBaseline value) {
-        return new FunctionalBaseline(systemOfInterest, value);
-    }
+    UndoState solve(UndoState current);
 }

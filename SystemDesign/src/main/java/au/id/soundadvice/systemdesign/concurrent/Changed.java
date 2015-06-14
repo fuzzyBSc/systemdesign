@@ -51,9 +51,13 @@ public class Changed implements ChangeSubscribable {
     }
 
     public void changed() {
-        for (Runnable subscriber : subscribers) {
+        /*
+         * Hrmm.. possible to remove executor completely in favour of
+         * parallelStream one day?
+         */
+        subscribers.parallelStream().forEach((subscriber) -> {
             executor.execute(subscriber);
-        }
+        });
     }
 
     private final Executor executor;

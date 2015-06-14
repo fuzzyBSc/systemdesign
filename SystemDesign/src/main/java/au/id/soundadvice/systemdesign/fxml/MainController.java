@@ -29,7 +29,9 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.consistency.ExternalItemMismatch;
 import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
 import java.net.URL;
@@ -40,7 +42,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.TreeView;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Pane;
 
 /**
  * FXML Controller class
@@ -54,21 +56,25 @@ public class MainController implements Initializable {
     @FXML
     private TreeView<Item> physicalTree;
     @FXML
-    private TreeView logicalTree;
+    private TreeView<Function> logicalTree;
     @FXML
     private Button upButton;
     @FXML
     private Button downButton;
     @FXML
-    private AnchorPane physicalDrawing;
+    private Pane physicalDrawing;
     @FXML
-    private AnchorPane logicalDrawing;
+    private Pane logicalDrawing;
+    @FXML
+    private Pane suggestions;
 
-    private PhysicalTreeController physicalTreeController;
-    private PhysicalSchematicController schematicController;
     private final EditState edit;
+
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
+    private PhysicalTreeController physicalTreeController;
+    private PhysicalSchematicController schematicController;
+    private SuggestionsController suggestionsController;
 
     public MainController(EditState edit) {
         this.edit = edit;
@@ -86,6 +92,9 @@ public class MainController implements Initializable {
         physicalTreeController.start();
         schematicController = new PhysicalSchematicController(edit, physicalDrawing);
         schematicController.start();
+        suggestionsController = new SuggestionsController(
+                edit, suggestions, new ExternalItemMismatch());
+        suggestionsController.start();
         LOG.info(physicalTree.toString());
         LOG.info(logicalTree.toString());
 

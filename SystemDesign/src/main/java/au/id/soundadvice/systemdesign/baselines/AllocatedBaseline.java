@@ -122,13 +122,7 @@ public class AllocatedBaseline {
         return store.getByClass(Requirement.class);
     }
 
-    public static AllocatedBaseline createModel() {
-        return create(UUID.randomUUID(), IDPath.empty());
-    }
-
-    public static AllocatedBaseline create(
-            UUID uuid, IDPath idPath) {
-        Identity identity = new Identity(uuid, idPath);
+    public static AllocatedBaseline create(Identity identity) {
         return new AllocatedBaseline(RelationStore.empty().put(identity));
     }
 

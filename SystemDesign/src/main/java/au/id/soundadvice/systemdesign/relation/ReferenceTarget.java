@@ -32,6 +32,7 @@ import java.util.UUID;
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ * @param <T> The type of the expected target
  */
 public class ReferenceTarget<T> {
 

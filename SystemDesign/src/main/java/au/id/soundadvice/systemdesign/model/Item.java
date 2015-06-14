@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
+import au.id.soundadvice.systemdesign.relation.RelationStore;
 import javafx.geometry.Point2D;
 import java.util.Collection;
 import java.util.Objects;
@@ -44,14 +45,10 @@ import javax.annotation.CheckReturnValue;
  */
 public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, FlowEnd, Relation {
 
-    public IDSegment getShortId() {
-        return shortId;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
+        hash = 67 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -70,7 +67,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         if (!Objects.equals(this.parent, other.parent)) {
             return false;
         }
-        if (!Objects.equals(this.shortId, other.shortId)) {
+        if (!Objects.equals(this.id, other.id)) {
             return false;
         }
         if (!Objects.equals(this.name, other.name)) {
@@ -82,12 +79,31 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         if (this.external != other.external) {
             return false;
         }
+        if (!Objects.equals(this.origin, other.origin)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isConsistent(Item other) {
+        if (!Objects.equals(this.uuid, other.uuid)) {
+            return false;
+        }
+        if (!Objects.equals(this.id, other.id)) {
+            return false;
+        }
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
+        if (!Objects.equals(this.description, other.description)) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public String toString() {
-        return shortId + " " + name;
+        return id + " " + name;
     }
 
     @Override
@@ -96,7 +112,15 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     public IDPath getIdPath(RelationContext context) {
-        return parent.getTarget(context).getIdPath().getChild(shortId);
+        if (external) {
+            return id;
+        } else {
+            return parent.getTarget(context).getIdPath().getChild(id);
+        }
+    }
+
+    public String getDisplayName() {
+        return this.toString();
     }
 
     public String getName() {
@@ -113,7 +137,11 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
 
     private final UUID uuid;
     private final Reference<Item, Identity> parent;
-    private final IDSegment shortId;
+    /**
+     * Path identifier. If external is true this is a full path. Otherwise it is
+     * a single path segment that is relative to the current allocated baseline.
+     */
+    private final IDPath id;
     private final String name;
     private final String description;
     private final boolean external;
@@ -122,7 +150,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     public Item(UUID parent, ItemBean bean) {
         this.uuid = bean.getUuid();
         this.parent = new Reference(this, parent, Identity.class);
-        this.shortId = new IDSegment(bean.getId());
+        this.id = IDPath.valueOf(bean.getId());
         this.name = bean.getName();
         this.description = bean.getDescription();
         this.external = bean.isExternal();
@@ -132,7 +160,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     @Override
     public ItemBean toBean(RelationContext context) {
         return new ItemBean(
-                uuid, shortId.toString(),
+                uuid, id.toString(),
                 name, description,
                 origin.getX(), origin.getY(),
                 external);
@@ -156,16 +184,17 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     public static Item newItem(UUID parent, IDSegment shortId, String name, String description) {
+        IDPath id = IDPath.empty().getChild(shortId);
         return new Item(
-                UUID.randomUUID(), parent, shortId, name, description, false, Point2D.ZERO);
+                UUID.randomUUID(), parent, id, name, description, false, Point2D.ZERO);
     }
 
     private Item(
-            UUID uuid, UUID parent, IDSegment shortId, String name, String description, boolean external,
+            UUID uuid, UUID parent, IDPath id, String name, String description, boolean external,
             Point2D origin) {
         this.uuid = uuid;
         this.parent = new Reference(this, parent, Identity.class);
-        this.shortId = shortId;
+        this.id = id;
         this.name = name;
         this.description = description;
         this.external = external;
@@ -174,16 +203,37 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
 
     @CheckReturnValue
     public Item setName(String value) {
-        return new Item(uuid, parent.getUuid(), shortId, value, description, external, origin);
+        return new Item(uuid, parent.getUuid(), id, value, description, external, origin);
     }
 
     @CheckReturnValue
     public Item setOrigin(Point2D value) {
-        return new Item(uuid, parent.getUuid(), shortId, name, description, external, value);
+        return new Item(uuid, parent.getUuid(), id, name, description, external, value);
     }
 
     public Point2D getOrigin() {
         return origin;
     }
 
+    public Identity asIdentity(RelationStore context) {
+        return new Identity(uuid, getIdPath(context));
+    }
+
+    public Item asExternal(RelationStore context) {
+        if (external) {
+            return this;
+        } else {
+            return new Item(uuid, parent.getUuid(), getIdPath(context), name, description, true, origin);
+        }
+    }
+
+    public IDPath getShortId() {
+        return id;
+    }
+
+    @CheckReturnValue
+    public Item makeConsistent(Item allocated) {
+        return new Item(
+                uuid, parent.getUuid(), id, allocated.getName(), allocated.getDescription(), external, origin);
+    }
 }

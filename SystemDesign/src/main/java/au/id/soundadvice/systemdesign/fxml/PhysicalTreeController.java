@@ -117,10 +117,8 @@ public class PhysicalTreeController {
             this.systemOfInterest = functional == null ? null : functional.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
             RelationContext context = allocated.getStore();
-            allocated.getItems().stream().filter(
-                    (item) -> (!item.isExternal())).forEach((item) -> {
-                        tmpItems.put(item.getIdPath(context), item);
-                    });
+            allocated.getItems().stream()
+                    .forEach((item) -> tmpItems.put(item.getIdPath(context), item));
             this.items = Collections.unmodifiableSortedMap(tmpItems);
         }
     }
@@ -143,18 +141,25 @@ public class PhysicalTreeController {
         @Override
         public void run() {
             TreeState state = treeState.get();
-            TreeItem root;
+            TreeItem root = new TreeItem();
+            root.setExpanded(true);
+            TreeItem systemOfInterest;
             if (state.systemOfInterest == null) {
-                root = new TreeItem();
+                systemOfInterest = root;
             } else {
-                root = toNode(state.systemOfInterest);
+                systemOfInterest = toNode(state.systemOfInterest);
+                systemOfInterest.setExpanded(true);
+                root.getChildren().add(systemOfInterest);
             }
             state.items.values().stream().forEach((item) -> {
-                root.getChildren().add(toNode(item));
+                if (item.isExternal()) {
+                    root.getChildren().add(toNode(item));
+                } else {
+                    systemOfInterest.getChildren().add(toNode(item));
+                }
             });
-            root.setExpanded(true);
             view.setRoot(root);
-            view.setShowRoot(state.systemOfInterest != null);
+            view.setShowRoot(false);
             view.setEditable(true);
             view.setCellFactory(
                     (TreeView<Item> p) -> new ItemTreeCell(edit.getUndo()));

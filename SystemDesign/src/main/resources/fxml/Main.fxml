@@ -37,9 +37,6 @@
                </children>
             </TilePane>
          </bottom>
-         <right>
-            <AnchorPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
-         </right>
          <center>
             <StackPane prefHeight="150.0" prefWidth="200.0" BorderPane.alignment="CENTER">
                <children>
@@ -56,6 +53,9 @@
                </children>
             </StackPane>
          </center>
+         <right>
+            <VBox fx:id="suggestions" prefHeight="375.0" prefWidth="214.0" BorderPane.alignment="CENTER" />
+         </right>
       </BorderPane>
    </children>
 </AnchorPane>

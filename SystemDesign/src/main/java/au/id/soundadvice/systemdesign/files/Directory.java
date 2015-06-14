@@ -147,13 +147,8 @@ public class Directory {
     }
 
     public DirectoryStream<Path> getChildren() throws IOException {
-        return Files.newDirectoryStream(root, new DirectoryStream.Filter<Path>() {
-
-            @Override
-            public boolean accept(Path entry) throws IOException {
-                return Directory.hasIdentity(entry);
-            }
-        });
+        return Files.newDirectoryStream(
+                root, (Path entry) -> Directory.hasIdentity(entry));
     }
 
     public Directory getParent() {

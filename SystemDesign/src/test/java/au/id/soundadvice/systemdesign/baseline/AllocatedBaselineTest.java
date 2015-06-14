@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.FileUtils;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
+import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -105,7 +106,7 @@ public class AllocatedBaselineTest {
         FileUtils.recursiveDelete(repo);
         Files.createDirectories(subsystemDirectory.getPath());
 
-        AllocatedBaseline model = AllocatedBaseline.createModel();
+        AllocatedBaseline model = AllocatedBaseline.create(Identity.create());
 
         Item systemOfInterest = new Item(
                 model.getIdentity().getUuid(), new ItemBean(

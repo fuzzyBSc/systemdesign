@@ -72,29 +72,32 @@ public class RelationStore implements RelationContext {
         Map<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> unfixedReverse = new HashMap<>();
         for (Relation relation : input) {
             tmpRelations.put(relation.getUuid(), relation);
-            for (Reference<?, ?> reference : relation.getReferences()) {
-                ReferenceTarget<?> lookup = reference.getTo();
+            relation.getReferences().stream().map((reference) -> reference.getTo()).map((lookup) -> {
                 Map<Class<?>, List<Relation>> map = unfixedReverse.get(lookup);
                 if (map == null) {
                     map = new HashMap<>();
                     unfixedReverse.put(lookup, map);
                 }
+                return map;
+            }).map((map) -> {
                 List<Relation> list = map.get(relation.getClass());
                 if (list == null) {
                     list = new ArrayList<>();
                     map.put(relation.getClass(), list);
                 }
+                return list;
+            }).forEach((list) -> {
                 list.add(relation);
-            }
+            });
         }
 
         Map<UUID, Map<Class<?>, List<Relation>>> fixedReverse = new HashMap<>();
-        for (Map.Entry<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> entry : unfixedReverse.entrySet()) {
+        unfixedReverse.entrySet().stream().forEach((entry) -> {
             UUID key = entry.getKey().getKey();
             if (entry.getKey().getType().isInstance(tmpRelations.get(key))) {
                 fixedReverse.put(key, entry.getValue());
             }
-        }
+        });
 
         Map<Class<?>, List<Relation>> tmpByClass = collateClasses(tmpRelations);
 
@@ -109,7 +112,7 @@ public class RelationStore implements RelationContext {
 
     private static Map<Class<?>, List<Relation>> collateClasses(Map<UUID, Relation> relations) {
         Map<Class<?>, List<Relation>> result = new HashMap<>();
-        for (Relation relation : relations.values()) {
+        relations.values().stream().forEach((relation) -> {
             Class<? extends Relation> type = relation.getClass();
             List<Relation> list = result.get(type);
             if (list == null) {
@@ -117,7 +120,7 @@ public class RelationStore implements RelationContext {
                 result.put(type, list);
             }
             list.add(relation);
-        }
+        });
         return result;
     }
 
@@ -180,6 +183,18 @@ public class RelationStore implements RelationContext {
         if (value.equals(oldValue)) {
             return this;
         } else {
+            // Check referential integrity
+            boolean referencesOK = value.getReferences().parallelStream()
+                    .map((reference) -> reference.getTo())
+                    .allMatch((to) -> {
+                        Object target = relations.get(to.getKey());
+                        return to.getType().isInstance(target);
+                    });
+            if (!referencesOK) {
+                // Leave store as it was - don't add the new relation
+                return this;
+            }
+
             Map<UUID, Relation> tmpRelations = new HashMap<>(relations);
             Map<Class<?>, List<Relation>> tmpByClass = new HashMap<>(byClass);
             Map<UUID, Map<Class<?>, List<Relation>>> tmpReverse = new HashMap<>(reverseRelations);
@@ -197,24 +212,29 @@ public class RelationStore implements RelationContext {
             }
             tmpRelations.put(key, value);
             addByClass(value, tmpByClass);
-            for (Reference<?, ?> reference : value.getReferences()) {
-                ReferenceTarget<?> lookup = reference.getTo();
-                Map<Class<?>, List<Relation>> map = tmpReverse.get(lookup.getKey());
-                if (map == null) {
-                    map = new HashMap<>();
-                } else {
-                    map = new HashMap<>(map);
-                }
-                tmpReverse.put(lookup.getKey(), map);
-                List<Relation> list = map.get(tmpReverse.getClass());
-                if (list == null) {
-                    list = new ArrayList<>();
-                } else {
-                    list = new ArrayList<>(list);
-                }
-                map.put(value.getClass(), list);
-                list.add(value);
-            }
+            value.getReferences().stream()
+                    .map((reference) -> reference.getTo())
+                    .map((lookup) -> {
+                        Map<Class<?>, List<Relation>> map = tmpReverse.get(lookup.getKey());
+                        if (map == null) {
+                            map = new HashMap<>();
+                        } else {
+                            map = new HashMap<>(map);
+                        }
+                        tmpReverse.put(lookup.getKey(), map);
+                        return map;
+                    }).map((map) -> {
+                        List<Relation> list = map.get(tmpReverse.getClass());
+                        if (list == null) {
+                            list = new ArrayList<>();
+                        } else {
+                            list = new ArrayList<>(list);
+                        }
+                        map.put(value.getClass(), list);
+                        return list;
+                    }).forEach((list) -> {
+                        list.add(value);
+                    });
             return new RelationStore(
                     Collections.unmodifiableMap(tmpRelations),
                     Collections.unmodifiableMap(tmpByClass),
@@ -274,18 +294,18 @@ public class RelationStore implements RelationContext {
             Map<UUID, Relation> relations,
             Map<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> reverse) {
         Deque<UUID> toDelete = new ArrayDeque<>();
-        for (Map.Entry<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> map : reverse.entrySet()) {
+        reverse.entrySet().stream().forEach((map) -> {
             UUID key = map.getKey().getKey();
             Class<?> type = map.getKey().getType();
             Relation target = relations.get(key);
             if (!type.isInstance(target)) {
-                for (Map.Entry<Class<?>, List<Relation>> list : map.getValue().entrySet()) {
-                    for (Relation source : list.getValue()) {
+                map.getValue().entrySet().stream().forEach((list) -> {
+                    list.getValue().stream().forEach((source) -> {
                         toDelete.add(source.getUuid());
-                    }
-                }
+                    });
+                });
             }
-        }
+        });
         return toDelete;
     }
 
@@ -302,18 +322,17 @@ public class RelationStore implements RelationContext {
                 continue;
             }
             removeByClass(relation, byClass);
-            for (Reference<?, ?> reference : relation.getReferences()) {
-                // Remove this relation from the reverse references maps
-                ReferenceTarget<?> lookup = reference.getTo();
-                removeReverse(lookup.getKey(), relation, reverse);
-            }
+            relation.getReferences().stream()
+                    .map((reference) -> reference.getTo()).forEach((lookup) -> {
+                        removeReverse(lookup.getKey(), relation, reverse);
+                    });
             Map<Class<?>, List<Relation>> references = reverse.remove(key);
             if (references != null) {
-                for (List<Relation> entry : references.values()) {
-                    for (Relation source : entry) {
+                references.values().stream().forEach((entry) -> {
+                    entry.stream().forEach((source) -> {
                         toDelete.push(source.getUuid());
-                    }
-                }
+                    });
+                });
             }
         }
     }

@@ -55,7 +55,7 @@ public class ItemBean implements Identifiable {
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.idSegment, other.idSegment)) {
+        if (!Objects.equals(this.id, other.id)) {
             return false;
         }
         if (!Objects.equals(this.name, other.name)) {
@@ -97,7 +97,7 @@ public class ItemBean implements Identifiable {
     }
 
     public void setId(String id) {
-        this.idSegment = id;
+        this.id = id;
     }
 
     public void setName(String name) {
@@ -118,7 +118,7 @@ public class ItemBean implements Identifiable {
     }
 
     public String getId() {
-        return idSegment;
+        return id;
     }
 
     public String getName() {
@@ -134,12 +134,12 @@ public class ItemBean implements Identifiable {
     }
 
     public ItemBean(
-            UUID uuid, String idSegment,
+            UUID uuid, String id,
             String name, String description,
             double originX, double originY,
             boolean external) {
         this.uuid = uuid;
-        this.idSegment = idSegment;
+        this.id = id;
         this.name = name;
         this.description = description;
         this.originX = originX;
@@ -151,7 +151,7 @@ public class ItemBean implements Identifiable {
     }
 
     private UUID uuid;
-    private String idSegment;
+    private String id;
     private String name;
     private String description;
     private boolean external;

@@ -42,6 +42,10 @@ import javax.annotation.CheckReturnValue;
  */
 public class Identity implements BeanFactory<RelationContext, IdentityBean>, Relation {
 
+    public static Identity create() {
+        return new Identity(UUID.randomUUID(), IDPath.empty());
+    }
+
     @Override
     public String toString() {
         return idPath.toString();
