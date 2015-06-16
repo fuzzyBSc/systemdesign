@@ -29,7 +29,7 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.consistency.ExternalItemMismatch;
+import au.id.soundadvice.systemdesign.consistency.AllProblems;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -105,7 +105,7 @@ public class MainController implements Initializable {
         schematicController = new PhysicalSchematicController(edit, physicalDrawing);
         schematicController.start();
         suggestionsController = new SuggestionsController(
-                edit, suggestions, new ExternalItemMismatch());
+                edit, suggestions, new AllProblems());
         suggestionsController.start();
 
         upButton.setOnAction(event -> {

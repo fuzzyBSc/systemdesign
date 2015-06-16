@@ -27,9 +27,11 @@
 package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.relation.Relation;
+import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 
 /**
  *
@@ -88,26 +90,29 @@ public class SingleRelationSolution implements Solution {
     }
 
     @Override
-    public UndoState solve(UndoState current) {
+    public void solve(EditState edit) {
+        UndoBuffer<UndoState> undo = edit.getUndo();
+        UndoState state = undo.get();
         if (modifyParent) {
-            FunctionalBaseline functional = current.getFunctional();
+            FunctionalBaseline functional = state.getFunctional();
             if (functional == null) {
-                return current;
+                // Don't modify the edit state
+                return;
             }
             AllocatedBaseline baseline = functional.getContext();
             if (insert) {
-                return current.setFunctional(
-                        functional.setContext(baseline.add(relation)));
+                undo.set(state.setFunctional(
+                        functional.setContext(baseline.add(relation))));
             } else {
-                return current.setFunctional(
-                        functional.setContext(baseline.remove(relation.getUuid())));
+                undo.set(state.setFunctional(
+                        functional.setContext(baseline.remove(relation.getUuid()))));
             }
         } else {
-            AllocatedBaseline baseline = current.getAllocated();
+            AllocatedBaseline baseline = state.getAllocated();
             if (insert) {
-                return current.setAllocated(baseline.add(relation));
+                undo.set(state.setAllocated(baseline.add(relation)));
             } else {
-                return current.setAllocated(baseline.remove(relation.getUuid()));
+                undo.set(state.setAllocated(baseline.remove(relation.getUuid())));
             }
         }
     }

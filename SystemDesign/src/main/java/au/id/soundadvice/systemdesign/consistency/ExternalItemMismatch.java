@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
+import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Interface;
@@ -46,7 +47,8 @@ import java.util.stream.Collectors;
 public class ExternalItemMismatch implements ProblemFactory {
 
     @Override
-    public Collection<Problem> getProblems(UndoState state) {
+    public Collection<Problem> getProblems(EditState edit) {
+        UndoState state = edit.getUndo().get();
         FunctionalBaseline functional = state.getFunctional();
         if (functional == null) {
             return Collections.emptyList();

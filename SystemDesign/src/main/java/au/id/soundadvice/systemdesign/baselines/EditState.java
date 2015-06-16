@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.baselines;
 
+import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
@@ -33,6 +34,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.EmptyStackException;
 import java.util.Stack;
 import java.util.concurrent.Executor;
@@ -75,11 +77,13 @@ public class EditState {
             boolean alreadySaved) {
         this.currentDirectory = new AtomicReference<>(currentDirectory);
         this.undo = new UndoBuffer<>(executor, undo);
+        this.changed = new Changed(executor);
         if (alreadySaved) {
             this.savedState = new AtomicReference<>(undo);
         } else {
             this.savedState = new AtomicReference<>();
         }
+        this.undo.getChanged().subscribe(() -> this.changed.changed());
     }
 
     public void loadParent() throws IOException {
@@ -175,13 +179,21 @@ public class EditState {
     private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;
     private final AtomicReference<UndoState> savedState;
+    private final Changed changed;
 
     public void subscribe(Runnable subscriber) {
-        undo.getChanged().subscribe(subscriber);
+        changed.subscribe(subscriber);
     }
 
     public void unsubscribe(Runnable subscriber) {
-        undo.getChanged().unsubscribe(subscriber);
+        changed.unsubscribe(subscriber);
     }
 
+    public void rename(Path from, Path to) throws IOException {
+        if (currentDirectory.get().getPath().equals(from)) {
+            Files.move(from, to);
+            currentDirectory.set(new Directory(to));
+            changed.changed();
+        }
+    }
 }

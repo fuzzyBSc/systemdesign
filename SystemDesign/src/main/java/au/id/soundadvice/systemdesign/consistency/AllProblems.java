@@ -26,36 +26,26 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import java.util.ArrayList;
+import au.id.soundadvice.systemdesign.baselines.EditState;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Problem {
+public class AllProblems implements ProblemFactory {
+
+    private final List<ProblemFactory> factories = Arrays.asList(
+            new DirectoryNameMismatch(),
+            new ExternalItemMismatch());
 
     @Override
-    public String toString() {
-        return description + ": " + solutions;
+    public Collection<Problem> getProblems(EditState state) {
+        return factories.parallelStream()
+                .flatMap(factory -> factory.getProblems(state).parallelStream())
+                .collect(Collectors.toList());
     }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public List<Solution> getSolutions() {
-        return solutions;
-    }
-
-    private final String description;
-    private final List<Solution> solutions;
-
-    Problem(String description, Collection<? extends Solution> solutions) {
-        this.description = description;
-        this.solutions = Collections.unmodifiableList(new ArrayList<>(solutions));
-    }
-
 }

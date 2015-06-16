@@ -27,12 +27,10 @@
 package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -52,18 +50,18 @@ public class SuggestionsController {
 
     public SuggestionsController(EditState edit, Pane parent, ProblemFactory factory) {
         this.parent = parent;
-        this.undo = edit.getUndo();
+        this.edit = edit;
         this.onChange = new SingleRunnable(edit.getExecutor(), new OnChange());
         this.factory = factory;
     }
 
     public void start() {
-        undo.getChanged().subscribe(onChange);
+        edit.subscribe(onChange);
         onChange.run();
     }
 
     private final Pane parent;
-    private final UndoBuffer<UndoState> undo;
+    private final EditState edit;
     private final ProblemFactory factory;
     private final SingleRunnable<OnChange> onChange;
     private final AtomicReference<Collection<Problem>> problems = new AtomicReference<>();
@@ -74,7 +72,7 @@ public class SuggestionsController {
 
         @Override
         public void run() {
-            problems.set(factory.getProblems(undo.get()));
+            problems.set(factory.getProblems(edit));
             updateDisplay.run();
         }
 
@@ -107,7 +105,7 @@ public class SuggestionsController {
                 .map((solution) -> {
                     Button button = new Button(solution.getDescription());
                     button.setOnAction((ActionEvent e) -> {
-                        undo.set(solution.solve(undo.get()));
+                        solution.solve(edit);
                     });
                     return button;
                 })

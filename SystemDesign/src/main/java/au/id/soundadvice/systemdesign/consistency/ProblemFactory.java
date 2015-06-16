@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.baselines.EditState;
 import java.util.Collection;
 
 /**
@@ -35,6 +35,6 @@ import java.util.Collection;
  */
 public interface ProblemFactory {
 
-    public Collection<Problem> getProblems(UndoState state);
+    public Collection<Problem> getProblems(EditState state);
 
 }

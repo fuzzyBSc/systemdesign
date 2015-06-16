@@ -132,8 +132,11 @@ public class SaveHelper {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("System Designs");
         File selectedDirectory = chooser.showDialog(owner);
-        Directory dir = new Directory(Paths.get(selectedDirectory.getPath()));
-        return tryLoad(edit, dir);
+        if (selectedDirectory == null) {
+            return false;
+        } else {
+            Directory dir = new Directory(Paths.get(selectedDirectory.getPath()));
+            return tryLoad(edit, dir);
+        }
     }
-
 }

@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.baselines.EditState;
 
 /**
  *
@@ -36,5 +36,5 @@ public interface Solution {
 
     String getDescription();
 
-    UndoState solve(UndoState current);
+    void solve(EditState edit);
 }
