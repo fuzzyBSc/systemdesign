@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
 
@@ -50,8 +51,6 @@ import javafx.scene.layout.Pane;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class MainController implements Initializable {
-
-    private static final Logger LOG = Logger.getLogger(MainController.class.getName());
 
     @FXML
     private TreeView<Item> physicalTree;
@@ -67,6 +66,16 @@ public class MainController implements Initializable {
     private Pane logicalDrawing;
     @FXML
     private Pane suggestions;
+    @FXML
+    private MenuItem newMenuItem;
+    @FXML
+    private MenuItem openMenuItem;
+    @FXML
+    private MenuItem saveMenuItem;
+    @FXML
+    private MenuItem undoMenuItem;
+    @FXML
+    private MenuItem redoMenuItem;
 
     private final EditState edit;
 
@@ -99,21 +108,43 @@ public class MainController implements Initializable {
                 edit, suggestions, new ExternalItemMismatch());
         suggestionsController.start();
 
-        upButton.setOnAction((ActionEvent) -> {
+        upButton.setOnAction(event -> {
             try {
-                edit.save();
-                edit.loadParent();
+                if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before navigating?")) {
+                    edit.loadParent();
+                }
             } catch (IOException ex) {
                 Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
-        downButton.setOnAction((ActionEvent) -> {
+        downButton.setOnAction(event -> {
             try {
-                edit.save();
-                edit.loadLastChild();
+                if (SaveHelper.checkSave(downButton.getScene().getWindow(), edit, "Save before navigating?")) {
+                    edit.loadLastChild();
+                }
             } catch (IOException ex) {
                 Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
             }
+        });
+
+        newMenuItem.setOnAction(event -> {
+            if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before closing?")) {
+                edit.clear();
+            }
+        });
+        openMenuItem.setOnAction(event -> {
+            if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before closing?")) {
+                SaveHelper.tryLoadChooser(upButton.getScene().getWindow(), edit);
+            }
+        });
+        saveMenuItem.setOnAction(event -> {
+            SaveHelper.trySave(upButton.getScene().getWindow(), edit);
+        });
+        undoMenuItem.setOnAction(event -> {
+            edit.getUndo().undo();
+        });
+        redoMenuItem.setOnAction(event -> {
+            edit.getUndo().redo();
         });
 
         edit.subscribe(buttonDisable);
@@ -124,8 +155,10 @@ public class MainController implements Initializable {
 
         @Override
         public void run() {
+            undoMenuItem.setDisable(!edit.getUndo().canUndo());
+            redoMenuItem.setDisable(!edit.getUndo().canRedo());
             Directory dir = edit.getCurrentDirectory();
-            upButton.setDisable(dir == null || !dir.getParent().hasIdentity());
+            upButton.setDisable(dir == null || dir.getParent().getIdentity() == null);
             downButton.setDisable(!edit.hasLastChild());
         }
     }

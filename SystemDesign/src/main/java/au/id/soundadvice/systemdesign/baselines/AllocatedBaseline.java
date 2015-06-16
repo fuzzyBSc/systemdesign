@@ -127,17 +127,9 @@ public class AllocatedBaseline {
         return new AllocatedBaseline(RelationStore.empty().put(identity));
     }
 
-    public AllocatedBaseline createChild(Item item) {
-        Identity childIdentity = new Identity(
-                item.getUuid(), item.getIdPath(store));
-        return new AllocatedBaseline(RelationStore.empty().put(childIdentity));
-    }
-
     public static AllocatedBaseline load(Directory directory) throws IOException {
-        Identity identity;
-        if (directory.hasIdentity()) {
-            identity = new Identity(directory.getIdentity());
-        } else {
+        Identity identity = directory.getIdentity();
+        if (identity == null) {
             throw new IOException("No Item found in directory");
         }
 

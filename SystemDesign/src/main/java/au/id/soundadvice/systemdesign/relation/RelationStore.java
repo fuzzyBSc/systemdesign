@@ -144,7 +144,7 @@ public class RelationStore implements RelationContext {
             return this;
         } else {
             RelationStore tmp;
-            if (oldValue != null && value.getClass().equals(oldValue.getClass())) {
+            if (oldValue != null && !value.getClass().equals(oldValue.getClass())) {
                 // Remove first
                 tmp = this.remove(oldValue.getUuid());
             } else {

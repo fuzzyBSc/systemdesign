@@ -27,12 +27,14 @@
 package au.id.soundadvice.systemdesign.files;
 
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
+import au.id.soundadvice.systemdesign.model.Identity;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
-import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.annotation.Nullable;
 
 /**
@@ -42,6 +44,8 @@ import javax.annotation.Nullable;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Directory {
+
+    private static final Logger LOG = Logger.getLogger(Directory.class.getName());
 
     @Override
     public String toString() {
@@ -74,24 +78,28 @@ public class Directory {
         return identityFile;
     }
 
-    public static boolean hasIdentity(Path root) {
-        return Files.exists(root.resolve("identity.csv"));
+    @Nullable
+    public static Identity getIdentity(Path path) {
+        if (Files.isDirectory(path)) {
+            path = path.resolve("identity.csv");
+        }
+        if (Files.exists(path)) {
+            try (BeanReader<IdentityBean> reader = BeanReader.forPath(IdentityBean.class, path)) {
+                // Only read the first entry
+                IdentityBean bean = reader.read();
+                return bean == null ? null : new Identity(bean);
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+                return null;
+            }
+        } else {
+            // A nonexistent file is treated as empty
+            return null;
+        }
     }
 
-    public boolean hasIdentity() {
-        return Files.exists(identityFile);
-    }
-
-    public static IdentityBean getIdentity(Path root) throws IOException {
-        BeanFile<IdentityBean> beanFile = BeanFile.load(IdentityBean.class, root.resolve("identity.csv"));
-        // Only one entry should be present
-        return beanFile.getEntries().values().iterator().next();
-    }
-
-    public IdentityBean getIdentity() throws IOException {
-        BeanFile<IdentityBean> beanFile = BeanFile.load(IdentityBean.class, identityFile);
-        // Only one entry should be present
-        return beanFile.getEntries().values().iterator().next();
+    public Identity getIdentity() {
+        return getIdentity(identityFile);
     }
 
     public Path getPath() {
@@ -131,11 +139,11 @@ public class Directory {
         Directory last = root;
         Path projectRoot = null;
         while (projectRoot == null) {
-            if (current.hasIdentity()) {
+            if (current.getIdentity() == null) {
+                projectRoot = last.getPath();
+            } else {
                 // Keep looping
                 last = current;
-            } else {
-                projectRoot = last.getPath();
             }
         }
         return projectRoot.resolve("dictionary.csv");
@@ -148,7 +156,7 @@ public class Directory {
 
     public DirectoryStream<Path> getChildren() throws IOException {
         return Files.newDirectoryStream(
-                root, (Path entry) -> Directory.hasIdentity(entry));
+                root, path -> Directory.getIdentity(path) != null);
     }
 
     public Directory getParent() {
@@ -157,37 +165,16 @@ public class Directory {
 
     @Nullable
     private static Directory getChild(Directory parent, UUID uuid) throws IOException {
-        IOException ex = null;
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(parent.root)) {
             for (Path path : stream) {
-                if (Directory.hasIdentity(path)) {
-                    try {
-                        IdentityBean identity = Directory.getIdentity(path);
-                        if (uuid.equals(identity.getUuid())) {
-                            return new Directory(path);
-                        }
-                    } catch (IOException ex2) {
-                        if (ex == null) {
-                            ex = ex2;
-                        } else {
-                            ex.addSuppressed(ex2);
-                        }
+                if (Files.isDirectory(path)) {
+                    Identity identity = Directory.getIdentity(path);
+                    if (identity != null && uuid.equals(identity.getUuid())) {
+                        return new Directory(path);
                     }
                 }
             }
-        } catch (NotDirectoryException ex2) {
-            // Fall through to end without recording this exception
-        } catch (IOException ex2) {
-            if (ex == null) {
-                ex = ex2;
-            } else {
-                ex.addSuppressed(ex2);
-            }
-        }
-        if (ex == null) {
             return null;
-        } else {
-            throw ex;
         }
     }
 

@@ -27,14 +27,11 @@
 package au.id.soundadvice.systemdesign;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.fxml.MainController;
+import au.id.soundadvice.systemdesign.fxml.SaveHelper;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import javafx.application.Application;
-import javafx.event.Event;
-import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -49,20 +46,16 @@ public class SystemDesign extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        final EditState editState = EditState.init(Executors.newCachedThreadPool());
-        editState.load(new Directory(Paths.get("/tmp/repo/model/system/subsystem")));
+        EditState edit = EditState.init(Executors.newCachedThreadPool());
 
-        Callback<Class<?>, Object> controllerFactory = new Callback<Class<?>, Object>() {
-            @Override
-            public Object call(Class<?> param) {
-                if (param.equals(MainController.class)) {
-                    return new MainController(editState);
-                } else {
-                    try {
-                        return param.newInstance();
-                    } catch (InstantiationException | IllegalAccessException ex) {
-                        throw new AssertionError(ex);
-                    }
+        Callback<Class<?>, Object> controllerFactory = (Class<?> param) -> {
+            if (param.equals(MainController.class)) {
+                return new MainController(edit);
+            } else {
+                try {
+                    return param.newInstance();
+                } catch (InstantiationException | IllegalAccessException ex) {
+                    throw new AssertionError(ex);
                 }
             }
         };
@@ -71,13 +64,7 @@ public class SystemDesign extends Application {
                 getClass().getResource("/fxml/Main.fxml"),
                 null, null, controllerFactory);
 
-        stage.setOnCloseRequest(new EventHandler() {
-
-            @Override
-            public void handle(Event event) {
-                System.exit(0);
-            }
-        });
+        stage.setOnCloseRequest(event -> SaveHelper.tryExit(stage, edit));
 
         Scene scene = new Scene(root);
         stage.setTitle("System Design");

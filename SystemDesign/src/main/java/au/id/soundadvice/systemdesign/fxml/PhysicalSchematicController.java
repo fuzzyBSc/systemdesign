@@ -31,7 +31,6 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
@@ -44,13 +43,12 @@ import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javafx.event.ActionEvent;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -64,8 +62,6 @@ import javafx.scene.shape.Line;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class PhysicalSchematicController {
-
-    private static final Logger LOG = Logger.getLogger(PhysicalSchematicController.class.getName());
 
     private final EditState edit;
     private final UndoBuffer<UndoState> undo;
@@ -142,19 +138,19 @@ public class PhysicalSchematicController {
             if (!item.isExternal()) {
                 result.setOnMouseClicked((MouseEvent ev) -> {
                     if (ev.getClickCount() > 1) {
-                        try {
-                            // Navigate down
-                            edit.save();
-                            Directory dir = edit.getCurrentDirectory().getChild(item.getUuid());
-                            if (dir == null) {
-                                edit.newChild(
-                                        item.asIdentity(undo.get().getAllocated().getStore()),
-                                        item.toString());
-                            } else {
-                                edit.load(dir);
+                        // Navigate down
+                        if (SaveHelper.checkSave(parent.getScene().getWindow(), edit, "Save before navigating?")) {
+                            try {
+                                UndoState state = undo.get();
+                                edit.loadChild(item.asIdentity(state.getAllocated().getStore()));
+                            } catch (IOException ex) {
+                                Alert alert = new Alert(Alert.AlertType.ERROR);
+                                alert.setTitle("Load Failed");
+                                alert.setHeaderText("Load Failed");
+                                alert.setContentText(ex.toString());
+
+                                alert.showAndWait();
                             }
-                        } catch (IOException ex) {
-                            LOG.log(Level.SEVERE, null, ex);
                         }
                         ev.consume();
                     }
@@ -164,7 +160,11 @@ public class PhysicalSchematicController {
                 contextMenu.getItems().add(addMenuItem);
                 addMenuItem.setOnAction((ActionEvent t) -> {
                     UndoState state = undo.get();
-                    Function function = Function.create(item.getUuid(), "New Function");
+                    String name = baseline.getStore()
+                            .getReverse(item.getUuid(), Function.class).parallelStream()
+                            .map(Function::getName)
+                            .collect(new UniqueName("New Function"));
+                    Function function = Function.create(item.getUuid(), name);
                     undo.set(state.setAllocated(baseline.add(function)));
                 });
                 result.setContextMenu(contextMenu);

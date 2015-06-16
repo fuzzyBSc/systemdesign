@@ -202,16 +202,6 @@ public class LogicalTreeController {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Function");
             contextMenu.getItems().add(addMenuItem);
-//            addMenuItem.setOnAction((ActionEvent t) -> {
-//                UndoState state = undo.get();
-//                AllocatedBaseline baseline = state.getAllocated();
-//                Function item1 = Function.create(
-//                        baseline.getNextItemId(),
-//                        "New Item", "");
-//                TreeItem newItem = new TreeItem<>(item1);
-//                getTreeView().getRoot().getChildren().add(newItem);
-//                undo.set(state.setAllocated(baseline.add(item1)));
-//            });
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction((ActionEvent t) -> {

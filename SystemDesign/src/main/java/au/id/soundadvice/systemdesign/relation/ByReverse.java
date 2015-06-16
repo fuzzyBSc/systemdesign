@@ -192,6 +192,10 @@ public class ByReverse<E extends Relation> {
                         list.add(source.getUuid());
                     });
                 });
+        if (toDeleteByTarget.isEmpty()) {
+            // There were no references
+            return this;
+        }
         Map<UUID, ByClass<E>> map = new HashMap<>(relations);
         toDeleteByTarget.entrySet().stream()
                 .forEach(entry -> {

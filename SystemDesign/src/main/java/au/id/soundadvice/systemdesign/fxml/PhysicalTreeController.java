@@ -66,12 +66,33 @@ public class PhysicalTreeController {
     }
 
     public void start() {
+        addContextMenu();
         edit.subscribe(changed);
         changed.run();
     }
 
     public void stop() {
         edit.unsubscribe(changed);
+    }
+
+    public void addContextMenu() {
+        ContextMenu contextMenu = new ContextMenu();
+        UndoBuffer<UndoState> undo = edit.getUndo();
+        MenuItem addMenuItem = new MenuItem("Add Item");
+        contextMenu.getItems().add(addMenuItem);
+        addMenuItem.setOnAction((ActionEvent t) -> {
+            UndoState state = undo.get();
+            AllocatedBaseline baseline = state.getAllocated();
+            String name = baseline.getItems().parallelStream()
+                    .map(Item::getName)
+                    .collect(new UniqueName("New Item"));
+            Item item1 = Item.newItem(
+                    baseline.getIdentity().getUuid(),
+                    baseline.getNextItemId(),
+                    name, "");
+            undo.set(state.setAllocated(baseline.add(item1)));
+        });
+        view.setContextMenu(contextMenu);
     }
 
     private static class TreeState {
@@ -184,10 +205,13 @@ public class PhysicalTreeController {
             addMenuItem.setOnAction((ActionEvent t) -> {
                 UndoState state = undo.get();
                 AllocatedBaseline baseline = state.getAllocated();
+                String name = baseline.getItems().parallelStream()
+                        .map(Item::getName)
+                        .collect(new UniqueName("New Item"));
                 Item item1 = Item.newItem(
                         baseline.getIdentity().getUuid(),
                         baseline.getNextItemId(),
-                        "New Item", "");
+                        name, "");
                 TreeItem newItem = new TreeItem<>(item1);
                 getTreeView().getRoot().getChildren().add(newItem);
                 undo.set(state.setAllocated(baseline.add(item1)));

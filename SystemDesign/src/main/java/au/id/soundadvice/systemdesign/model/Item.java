@@ -45,6 +45,8 @@ import javax.annotation.CheckReturnValue;
  */
 public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, FlowEnd, Relation {
 
+    private static Point2D defaultOrigin = new Point2D(200, 200);
+
     @Override
     public int hashCode() {
         int hash = 7;
@@ -183,7 +185,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     public static Item newItem(UUID parent, IDSegment shortId, String name, String description) {
         IDPath id = IDPath.empty().getChild(shortId);
         return new Item(
-                UUID.randomUUID(), parent, id, name, description, false, Point2D.ZERO);
+                UUID.randomUUID(), parent, id, name, description, false, defaultOrigin);
     }
 
     private Item(

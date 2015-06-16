@@ -44,26 +44,12 @@ public class UndoState {
         return new UndoState(null, AllocatedBaseline.create(Identity.create()));
     }
 
-    static UndoState newChild(Identity identity, Directory directory) throws IOException {
-        Directory functionalDirectory = directory.getParent();
-        if (functionalDirectory.hasIdentity()) {
-            // Subsystem design - load functional baseline as well
-            AllocatedBaseline functionalBaseline = AllocatedBaseline.load(functionalDirectory);
-            AllocatedBaseline allocatedBaseline = AllocatedBaseline.create(identity);
-            Item systemOfInterest = functionalBaseline.getStore().get(
-                    allocatedBaseline.getIdentity().getUuid(), Item.class);
-            return new UndoState(
-                    new FunctionalBaseline(systemOfInterest, functionalBaseline),
-                    allocatedBaseline);
-        } else {
-            // Top-level design
-            return new UndoState(null, AllocatedBaseline.create(identity));
-        }
-    }
-
     public static UndoState load(Directory directory) throws IOException {
         Directory functionalDirectory = directory.getParent();
-        if (functionalDirectory.hasIdentity()) {
+        if (functionalDirectory.getIdentity() == null) {
+            // Top-level design
+            return new UndoState(null, AllocatedBaseline.load(directory));
+        } else {
             // Subsystem design - load functional baseline as well
             AllocatedBaseline functionalBaseline = AllocatedBaseline.load(functionalDirectory);
             AllocatedBaseline allocatedBaseline = AllocatedBaseline.load(directory);
@@ -72,9 +58,6 @@ public class UndoState {
             return new UndoState(
                     new FunctionalBaseline(systemOfInterest, functionalBaseline),
                     allocatedBaseline);
-        } else {
-            // Top-level design
-            return new UndoState(null, AllocatedBaseline.load(directory));
         }
     }
 

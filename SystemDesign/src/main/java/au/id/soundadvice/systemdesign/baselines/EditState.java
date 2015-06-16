@@ -29,9 +29,10 @@ package au.id.soundadvice.systemdesign.baselines;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
+import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.EmptyStackException;
 import java.util.Stack;
 import java.util.concurrent.Executor;
@@ -56,7 +57,15 @@ public class EditState {
     }
 
     public static EditState init(Executor executor) {
-        return new EditState(executor, null, UndoState.createNew(), false);
+        return new EditState(executor, null, UndoState.createNew(), true);
+    }
+
+    public void clear() {
+        UndoState state = UndoState.createNew();
+        this.currentDirectory.set(null);
+        this.lastChild.clear();
+        this.undo.reset(state);
+        this.savedState.set(state);
     }
 
     private EditState(
@@ -73,35 +82,54 @@ public class EditState {
         }
     }
 
-    public void newChild(Identity id, String name) throws IOException {
-        Directory dir = new Directory(currentDirectory.get().getPath().resolve(name));
-        UndoState state = UndoState.newChild(id, dir);
-        currentDirectory.set(dir);
-        undo.reset(state);
-        savedState.set(state);
-        lastChild.clear();
-    }
-
     public void loadParent() throws IOException {
         Directory dir = currentDirectory.get();
         if (dir == null) {
             throw new IOException("Cannot load from null directory");
         }
+        UndoState state = undo.get();
         loadImpl(dir.getParent());
-        lastChild.push(dir);
+        lastChild.push(state.getAllocated().getIdentity());
     }
 
     public boolean hasLastChild() {
         return !lastChild.isEmpty();
     }
 
+    public void loadChild(Identity child) throws IOException {
+        Directory parentDir = currentDirectory.get();
+        if (currentDirectory == null) {
+            throw new IOException("Parent is not saved yet");
+        }
+        Directory childDir = parentDir.getChild(child.getUuid());
+        if (childDir == null) {
+            // Synthesise a child baseline, since none has been saved yet
+            String prefix = child.getIdPath().toString();
+            int count = 0;
+            do {
+                // Avoid name collisions
+                String name = count == 0 ? prefix : prefix + "_" + count;
+                childDir = new Directory(parentDir.getPath().resolve(name));
+            } while (Files.isDirectory(childDir.getPath()));
+            UndoState state = undo.get();
+            Item systemOfInterest = state.getAllocated().getStore().get(
+                    child.getUuid(), Item.class);
+            state = state.setFunctional(new FunctionalBaseline(
+                    systemOfInterest, state.getAllocated()));
+            state = state.setAllocated(AllocatedBaseline.create(child));
+            currentDirectory.set(childDir);
+            undo.reset(state);
+            savedState.set(state);
+        } else {
+            loadImpl(childDir);
+        }
+    }
+
     public void loadLastChild() throws IOException {
         try {
-            Directory dir = lastChild.pop();
-            if (dir == null) {
-                throw new IOException("Cannot load from null directory");
-            }
-            loadImpl(dir);
+            Identity child = lastChild.peek();
+            loadChild(child);
+            lastChild.pop();
         } catch (EmptyStackException ex) {
             throw new IOException(ex);
         }
@@ -109,7 +137,7 @@ public class EditState {
 
     public void load(Directory dir) throws IOException {
         if (dir == null) {
-            throw new IOException("Cannot save to null directory");
+            throw new IOException("Cannot load from null directory");
         }
         loadImpl(dir);
         lastChild.clear();
@@ -139,11 +167,12 @@ public class EditState {
             state.saveTo(transaction, dir);
             transaction.commit();
         }
+        currentDirectory.set(dir);
         savedState.set(state);
     }
 
     private final AtomicReference<Directory> currentDirectory;
-    private final Stack<Directory> lastChild = new Stack<>();
+    private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;
     private final AtomicReference<UndoState> savedState;
 
