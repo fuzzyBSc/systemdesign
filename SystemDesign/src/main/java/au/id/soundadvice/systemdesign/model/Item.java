@@ -119,10 +119,6 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         }
     }
 
-    public String getDisplayName() {
-        return this.toString();
-    }
-
     public String getName() {
         return name;
     }
@@ -172,9 +168,10 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     @Override
-    public String getFlowEndName() {
-        return name;
+    public String getDisplayName() {
+        return this.toString();
     }
+
     private static final ReferenceFinder<Item> finder
             = new ReferenceFinder<>(Item.class);
 

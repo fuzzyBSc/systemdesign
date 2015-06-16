@@ -34,6 +34,6 @@ import au.id.soundadvice.systemdesign.relation.Relation;
  */
 public interface FlowEnd extends Relation {
 
-    public String getFlowEndName();
+    public String getDisplayName();
 
 }

@@ -26,16 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -68,295 +65,127 @@ public class RelationStore implements RelationContext {
     }
 
     public static RelationStore valueOf(Collection<? extends Relation> input) {
-        Map<UUID, Relation> tmpRelations = new HashMap<>();
-        Map<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> unfixedReverse = new HashMap<>();
-        for (Relation relation : input) {
-            tmpRelations.put(relation.getUuid(), relation);
-            relation.getReferences().stream().map((reference) -> reference.getTo()).map((lookup) -> {
-                Map<Class<?>, List<Relation>> map = unfixedReverse.get(lookup);
-                if (map == null) {
-                    map = new HashMap<>();
-                    unfixedReverse.put(lookup, map);
-                }
-                return map;
-            }).map((map) -> {
-                List<Relation> list = map.get(relation.getClass());
-                if (list == null) {
-                    list = new ArrayList<>();
-                    map.put(relation.getClass(), list);
-                }
-                return list;
-            }).forEach((list) -> {
-                list.add(relation);
-            });
+        ByUUID<Relation> byUUID = ByUUID.valueOf(input);
+        ByClass<Relation> byClass = ByClass.valueOf(input);
+        ByReverse.Loader<Relation> reverseLoader = new ByReverse.Loader<>(byUUID);
+        ByReverse<Relation> byReverse = reverseLoader.build();
+
+        // Delete any items needed to establish referential integrity
+        Collection<Relation> toDelete = reverseLoader.getToDelete();
+        if (!toDelete.isEmpty()) {
+            List<UUID> toDeleteAsUUIDs = toDelete.parallelStream()
+                    .map(Relation::getUuid)
+                    .collect(Collectors.toList());
+            byUUID = byUUID.removeAll(toDeleteAsUUIDs);
+            byClass = byClass.removeAll(toDeleteAsUUIDs);
+            byReverse = byReverse.removeAll(toDelete);
         }
 
-        Map<UUID, Map<Class<?>, List<Relation>>> fixedReverse = new HashMap<>();
-        unfixedReverse.entrySet().stream().forEach((entry) -> {
-            UUID key = entry.getKey().getKey();
-            if (entry.getKey().getType().isInstance(tmpRelations.get(key))) {
-                fixedReverse.put(key, entry.getValue());
-            }
-        });
-
-        Map<Class<?>, List<Relation>> tmpByClass = collateClasses(tmpRelations);
-
-        Deque<UUID> toDelete = getDanglingRelations(tmpRelations, unfixedReverse);
-        cascadingDelete(toDelete, tmpRelations, tmpByClass, fixedReverse);
-
         return new RelationStore(
-                Collections.unmodifiableMap(tmpRelations),
-                Collections.unmodifiableMap(tmpByClass),
-                Collections.unmodifiableMap(fixedReverse));
-    }
-
-    private static Map<Class<?>, List<Relation>> collateClasses(Map<UUID, Relation> relations) {
-        Map<Class<?>, List<Relation>> result = new HashMap<>();
-        relations.values().stream().forEach((relation) -> {
-            Class<? extends Relation> type = relation.getClass();
-            List<Relation> list = result.get(type);
-            if (list == null) {
-                list = new ArrayList<>();
-                result.put(type, list);
-            }
-            list.add(relation);
-        });
-        return result;
+                byUUID,
+                byClass,
+                byReverse);
     }
 
     private static final RelationStore empty = new RelationStore(
-            Collections.<UUID, Relation>emptyMap(),
-            Collections.<Class<?>, List<Relation>>emptyMap(),
-            Collections.<UUID, Map<Class<?>, List<Relation>>>emptyMap());
+            ByUUID.empty(),
+            ByClass.empty(),
+            ByReverse.empty());
 
     public static RelationStore empty() {
         return empty;
     }
 
-    private final Map<UUID, Relation> relations;
-    private final Map<Class<?>, List<Relation>> byClass;
-    private final Map<UUID, Map<Class<?>, List<Relation>>> reverseRelations;
+    private final ByUUID<Relation> relations;
+    private final ByClass<Relation> byClass;
+    private final ByReverse<Relation> reverseReferences;
 
     private RelationStore(
-            Map<UUID, Relation> relations,
-            Map<Class<?>, List<Relation>> byClass,
-            Map<UUID, Map<Class<?>, List<Relation>>> reverseRelations) {
+            ByUUID<Relation> relations,
+            ByClass<Relation> byClass,
+            ByReverse<Relation> reverseRelations) {
         this.relations = relations;
         this.byClass = byClass;
-        this.reverseRelations = reverseRelations;
+        this.reverseReferences = reverseRelations;
     }
 
     @Override
     public <T extends Relation> T get(UUID key, Class<T> type) {
-        Object result = relations.get(key);
+        Relation result = relations.get(key);
         return type.cast(result);
     }
 
-    public <T extends Relation> List<T> getByClass(Class<T> type) {
-        List<Relation> result = byClass.get(type);
-        if (result == null) {
-            return Collections.emptyList();
-        } else {
-            return (List<T>) result;
-        }
+    public <T extends Relation> Collection<T> getByClass(Class<T> type) {
+        return byClass.get(type);
     }
 
     @Override
     public <F extends Relation> Collection<? extends F> getReverse(UUID key, Class<F> fromType) {
-        Map<Class<?>, List<Relation>> map = reverseRelations.get(key);
-        if (map == null) {
-            return Collections.emptyList();
-        } else {
-            List<? extends Relation> list = map.get(fromType);
-            if (list == null) {
-                return Collections.emptyList();
-            } else {
-                return (List<F>) list;
-            }
-        }
+        return reverseReferences.get(key, fromType);
     }
 
     @CheckReturnValue
     public RelationStore put(Relation value) {
+        // Check referential integrity
+        boolean referencesOK = value.getReferences().parallelStream()
+                .map((reference) -> reference.getTo())
+                .allMatch((to) -> {
+                    Object target = relations.get(to.getUuid());
+                    return to.getType().isInstance(target);
+                });
+        if (!referencesOK) {
+            // Leave store as it was - don't add the new relation
+            return this;
+        }
+
         UUID key = value.getUuid();
         Relation oldValue = relations.get(key);
         if (value.equals(oldValue)) {
             return this;
         } else {
-            // Check referential integrity
-            boolean referencesOK = value.getReferences().parallelStream()
-                    .map((reference) -> reference.getTo())
-                    .allMatch((to) -> {
-                        Object target = relations.get(to.getKey());
-                        return to.getType().isInstance(target);
-                    });
-            if (!referencesOK) {
-                // Leave store as it was - don't add the new relation
-                return this;
+            RelationStore tmp;
+            if (oldValue != null && value.getClass().equals(oldValue.getClass())) {
+                // Remove first
+                tmp = this.remove(oldValue.getUuid());
+            } else {
+                tmp = this;
             }
-
-            Map<UUID, Relation> tmpRelations = new HashMap<>(relations);
-            Map<Class<?>, List<Relation>> tmpByClass = new HashMap<>(byClass);
-            Map<UUID, Map<Class<?>, List<Relation>>> tmpReverse = new HashMap<>(reverseRelations);
-            if (oldValue != null) {
-                // Remove old presence before inserting new
-                if (value.getClass().equals(oldValue.getClass())) {
-                    removeByClass(oldValue, tmpByClass);
-                    removeReverse(key, oldValue, tmpReverse);
-                } else {
-                    // This is a completely different object
-                    Deque<UUID> toDelete = new ArrayDeque<>();
-                    toDelete.add(key);
-                    cascadingDelete(toDelete, tmpRelations, tmpByClass, tmpReverse);
-                }
-            }
-            tmpRelations.put(key, value);
-            addByClass(value, tmpByClass);
-            value.getReferences().stream()
-                    .map((reference) -> reference.getTo())
-                    .map((lookup) -> {
-                        Map<Class<?>, List<Relation>> map = tmpReverse.get(lookup.getKey());
-                        if (map == null) {
-                            map = new HashMap<>();
-                        } else {
-                            map = new HashMap<>(map);
-                        }
-                        tmpReverse.put(lookup.getKey(), map);
-                        return map;
-                    }).map((map) -> {
-                        List<Relation> list = map.get(tmpReverse.getClass());
-                        if (list == null) {
-                            list = new ArrayList<>();
-                        } else {
-                            list = new ArrayList<>(list);
-                        }
-                        map.put(value.getClass(), list);
-                        return list;
-                    }).forEach((list) -> {
-                        list.add(value);
-                    });
+            ByUUID<Relation> tmpRelations = tmp.relations.put(value);
+            ByClass<Relation> tmpByClass = tmp.byClass.put(value);
+            ByReverse<Relation> tmpReverseRelations
+                    = tmp.reverseReferences.replace(oldValue, value);
             return new RelationStore(
-                    Collections.unmodifiableMap(tmpRelations),
-                    Collections.unmodifiableMap(tmpByClass),
-                    Collections.unmodifiableMap(tmpReverse));
+                    tmpRelations, tmpByClass, tmpReverseRelations);
         }
     }
 
     @CheckReturnValue
     public RelationStore remove(UUID key) {
-        Relation relation = relations.get(key);
-        if (relation == null) {
+        Relation oldValue = relations.get(key);
+        if (oldValue == null) {
             return this;
         } else {
-            Map<UUID, Relation> tmpRelations = new HashMap<>(relations);
-            Map<Class<?>, List<Relation>> tmpByClass = new HashMap<>(byClass);
-            Map<UUID, Map<Class<?>, List<Relation>>> tmpReverse = new HashMap<>(reverseRelations);
-            Deque<UUID> toDelete = new ArrayDeque<>();
-            toDelete.add(key);
-            cascadingDelete(toDelete, tmpRelations, tmpByClass, tmpReverse);
+            Set<Relation> toDelete = new HashSet<>();
+            toDelete.add(oldValue);
+            reverseReferences.cascade(toDelete);
+            List<UUID> toDeleteAsUUIDs = toDelete.parallelStream()
+                    .map(Relation::getUuid)
+                    .collect(Collectors.toList());
+
+            ByUUID<Relation> tmpRelations = relations.removeAll(toDeleteAsUUIDs);
+            ByClass<Relation> tmpByClass = byClass.removeAll(toDeleteAsUUIDs);
+            ByReverse<Relation> tmpReverseRelations
+                    = reverseReferences.removeAll(toDelete);
             return new RelationStore(
-                    Collections.unmodifiableMap(tmpRelations),
-                    Collections.unmodifiableMap(tmpByClass),
-                    Collections.unmodifiableMap(tmpReverse));
+                    tmpRelations, tmpByClass, tmpReverseRelations);
         }
     }
 
-    private static void removeReverse(
-            UUID key,
-            Relation relation,
-            Map<UUID, Map<Class<?>, List<Relation>>> reverse) {
-        Map<Class<?>, List<Relation>> map = reverse.get(key);
-        if (map == null) {
-            // Nothing to remove
-            return;
-        }
-        List<Relation> list = map.get(relation.getClass());
-        if (list == null) {
-            // Nothing to remove
-            return;
-        }
-        map = new HashMap<>(map);
-        list = new ArrayList<>(list);
-        list.remove(relation);
-        if (list.isEmpty()) {
-            map.remove(relation.getClass());
-        } else {
-            map.put(relation.getClass(), list);
-        }
-        if (map.isEmpty()) {
-            reverse.remove(key);
-        } else {
-            reverse.put(key, map);
-        }
+    public int size() {
+        return relations.size();
     }
 
-    private static Deque<UUID> getDanglingRelations(
-            Map<UUID, Relation> relations,
-            Map<ReferenceTarget<?>, Map<Class<?>, List<Relation>>> reverse) {
-        Deque<UUID> toDelete = new ArrayDeque<>();
-        reverse.entrySet().stream().forEach((map) -> {
-            UUID key = map.getKey().getKey();
-            Class<?> type = map.getKey().getType();
-            Relation target = relations.get(key);
-            if (!type.isInstance(target)) {
-                map.getValue().entrySet().stream().forEach((list) -> {
-                    list.getValue().stream().forEach((source) -> {
-                        toDelete.add(source.getUuid());
-                    });
-                });
-            }
-        });
-        return toDelete;
-    }
-
-    private static void cascadingDelete(
-            Deque<UUID> toDelete,
-            Map<UUID, Relation> relations,
-            Map<Class<?>, List<Relation>> byClass,
-            Map<UUID, Map<Class<?>, List<Relation>>> reverse) {
-        while (!toDelete.isEmpty()) {
-            UUID key = toDelete.pop();
-            Relation relation = relations.remove(key);
-            if (relation == null) {
-                // Already removed
-                continue;
-            }
-            removeByClass(relation, byClass);
-            relation.getReferences().stream()
-                    .map((reference) -> reference.getTo()).forEach((lookup) -> {
-                        removeReverse(lookup.getKey(), relation, reverse);
-                    });
-            Map<Class<?>, List<Relation>> references = reverse.remove(key);
-            if (references != null) {
-                references.values().stream().forEach((entry) -> {
-                    entry.stream().forEach((source) -> {
-                        toDelete.push(source.getUuid());
-                    });
-                });
-            }
-        }
-    }
-
-    private static void removeByClass(
-            Relation relation, Map<Class<?>, List<Relation>> byClass) {
-        List<Relation> byClassList = new ArrayList<>(byClass.get(relation.getClass()));
-        byClassList.remove(relation);
-        if (byClassList.isEmpty()) {
-            byClass.remove(relation.getClass());
-        } else {
-            byClass.put(relation.getClass(), byClassList);
-        }
-    }
-
-    private static void addByClass(
-            Relation relation, Map<Class<?>, List<Relation>> byClass) {
-        List<Relation> byClassList = byClass.get(relation.getClass());
-        if (byClassList == null) {
-            byClassList = new ArrayList<>();
-        } else {
-            byClassList = new ArrayList<>(byClassList);
-        }
-        byClassList.add(relation);
-        byClass.put(relation.getClass(), byClassList);
+    public boolean isEmpty() {
+        return relations.isEmpty();
     }
 }

@@ -73,6 +73,7 @@ public class MainController implements Initializable {
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
     private PhysicalTreeController physicalTreeController;
+    private LogicalTreeController logicalTreeController;
     private PhysicalSchematicController schematicController;
     private SuggestionsController suggestionsController;
 
@@ -90,13 +91,13 @@ public class MainController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         physicalTreeController = new PhysicalTreeController(edit, physicalTree);
         physicalTreeController.start();
+        logicalTreeController = new LogicalTreeController(edit, logicalTree);
+        logicalTreeController.start();
         schematicController = new PhysicalSchematicController(edit, physicalDrawing);
         schematicController.start();
         suggestionsController = new SuggestionsController(
                 edit, suggestions, new ExternalItemMismatch());
         suggestionsController.start();
-        LOG.info(physicalTree.toString());
-        LOG.info(logicalTree.toString());
 
         upButton.setOnAction((ActionEvent) -> {
             try {

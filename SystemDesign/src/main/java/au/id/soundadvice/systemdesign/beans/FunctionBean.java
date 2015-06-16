@@ -36,29 +36,10 @@ import java.util.UUID;
  */
 public class FunctionBean implements Identifiable {
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
-
-    public void setItem(UUID item) {
-        this.item = item;
-    }
-
-    public void setVerb(String verb) {
-        this.verb = verb;
-    }
-
-    public void setNoun(String noun) {
-        this.noun = noun;
-    }
-
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 83 * hash + Objects.hashCode(this.uuid);
-        hash = 83 * hash + Objects.hashCode(this.item);
-        hash = 83 * hash + Objects.hashCode(this.verb);
-        hash = 83 * hash + Objects.hashCode(this.noun);
+        hash = 97 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -77,13 +58,33 @@ public class FunctionBean implements Identifiable {
         if (!Objects.equals(this.item, other.item)) {
             return false;
         }
-        if (!Objects.equals(this.verb, other.verb)) {
+        if (!Objects.equals(this.trace, other.trace)) {
             return false;
         }
-        if (!Objects.equals(this.noun, other.noun)) {
+        if (!Objects.equals(this.name, other.name)) {
             return false;
         }
         return true;
+    }
+
+    public UUID getTrace() {
+        return trace;
+    }
+
+    public void setTrace(UUID trace) {
+        this.trace = trace;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public void setItem(UUID item) {
+        this.item = item;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     @Override
@@ -95,19 +96,15 @@ public class FunctionBean implements Identifiable {
         return item;
     }
 
-    public String getVerb() {
-        return verb;
+    public String getName() {
+        return name;
     }
 
-    public String getNoun() {
-        return noun;
-    }
-
-    public FunctionBean(UUID uuid, UUID item, String verb, String noun) {
+    public FunctionBean(UUID uuid, UUID item, UUID trace, String name) {
         this.uuid = uuid;
         this.item = item;
-        this.verb = verb;
-        this.noun = noun;
+        this.trace = trace;
+        this.name = name;
     }
 
     public FunctionBean() {
@@ -115,6 +112,7 @@ public class FunctionBean implements Identifiable {
 
     private UUID uuid;
     private UUID item;
-    private String verb;
-    private String noun;
+    private UUID trace;
+    private String name;
+
 }

@@ -12,3 +12,7 @@
     -fx-border-color: black;
     -fx-border-insets: -5px;
 }
+
+.suggestion {
+    -fx-border-color: black;
+}

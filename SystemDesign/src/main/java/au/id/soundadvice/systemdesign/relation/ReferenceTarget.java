@@ -67,7 +67,7 @@ public class ReferenceTarget<T> {
         return true;
     }
 
-    public UUID getKey() {
+    public UUID getUuid() {
         return key;
     }
 

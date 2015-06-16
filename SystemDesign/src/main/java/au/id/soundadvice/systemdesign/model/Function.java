@@ -33,15 +33,25 @@ import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.CheckReturnValue;
+import javax.annotation.Nullable;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
+
+    @Override
+    public String toString() {
+        return getDisplayName();
+    }
+
+    public static Function create(UUID item, String name) {
+        return new Function(UUID.randomUUID(), item, null, name);
+    }
 
     @Override
     public int hashCode() {
@@ -65,10 +75,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (!Objects.equals(this.item, other.item)) {
             return false;
         }
-        if (!Objects.equals(this.verb, other.verb)) {
-            return false;
-        }
-        if (!Objects.equals(this.noun, other.noun)) {
+        if (!Objects.equals(this.name, other.name)) {
             return false;
         }
         return true;
@@ -83,25 +90,34 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return item;
     }
 
-    public String getVerb() {
-        return verb;
+    @Nullable
+    public UUID getTrace() {
+        return this.trace;
     }
 
-    public String getNoun() {
-        return noun;
+    public String getName() {
+        return name;
     }
 
     public Function(FunctionBean bean) {
         this.uuid = bean.getUuid();
+        this.trace = bean.getTrace();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
-        this.verb = bean.getVerb();
-        this.noun = bean.getNoun();
+        this.name = bean.getName();
+    }
+
+    public Function(UUID uuid, UUID item, @Nullable UUID trace, String name) {
+        this.uuid = uuid;
+        this.item = new Reference<>(this, item, Item.class);
+        this.trace = trace;
+        this.name = name;
     }
 
     private final UUID uuid;
     private final Reference<Function, Item> item;
-    private final String verb;
-    private final String noun;
+    @Nullable
+    private final UUID trace;
+    private final String name;
 
     @Override
     public RequirementType getRequirementType() {
@@ -110,12 +126,12 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @Override
     public FunctionBean toBean(RelationContext context) {
-        return new FunctionBean(uuid, item.getUuid(), verb, noun);
+        return new FunctionBean(uuid, item.getUuid(), trace, name);
     }
 
     @Override
-    public String getFlowEndName() {
-        return verb + ' ' + noun;
+    public String getDisplayName() {
+        return name;
     }
     private static final ReferenceFinder<Function> finder
             = new ReferenceFinder<>(Function.class);
@@ -123,5 +139,10 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     @Override
     public Collection<Reference<?, ?>> getReferences() {
         return finder.getReferences(this);
+    }
+
+    @CheckReturnValue
+    public Function setName(String value) {
+        return new Function(uuid, item.getUuid(), trace, value);
     }
 }

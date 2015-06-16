@@ -37,6 +37,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
+import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
@@ -45,9 +46,14 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import javafx.event.ActionEvent;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -88,7 +94,7 @@ public class PhysicalSchematicController {
                 addNode(drawing, baseline, iface);
             });
             baseline.getItems().stream().forEach((item) -> {
-                addNode(drawing, item);
+                addNode(drawing, baseline, item);
             });
         }
 
@@ -104,13 +110,34 @@ public class PhysicalSchematicController {
             parent.getChildren().add(result);
         }
 
-        private void addNode(Pane parent, Item item) {
-            Point2D origin = item.getOrigin();
+        private void addNode(Pane parent, AllocatedBaseline baseline, Item item) {
             Label result = new Label();
-            result.setText(item.toString());
-            result.setLayoutX(origin.getX());
-            result.setLayoutY(origin.getY());
+            StringBuilder builder = new StringBuilder();
+            builder.append(item);
+            String functions = baseline.getStore().getReverse(item.getUuid(), Function.class).stream()
+                    .map((function) -> function.getDisplayName())
+                    .sorted()
+                    .collect(Collectors.joining("\n+"));
+            if (!functions.isEmpty()) {
+                builder.append("\n+");
+                builder.append(functions);
+            }
+            result.setText(builder.toString());
             result.getStyleClass().add("schematicItem");
+
+            result.boundsInLocalProperty().addListener((event) -> {
+                Point2D origin = item.getOrigin();
+
+                /*
+                 * Calculate position only once result has been added to parent
+                 * in order to obtain bounds
+                 */
+                Bounds local = result.getBoundsInLocal();
+                double width = local.getWidth();
+                double height = local.getHeight();
+                result.setLayoutX(origin.getX() - width / 2);
+                result.setLayoutY(origin.getY() - height / 2);
+            });
 
             if (!item.isExternal()) {
                 result.setOnMouseClicked((MouseEvent ev) -> {
@@ -132,6 +159,15 @@ public class PhysicalSchematicController {
                         ev.consume();
                     }
                 });
+                ContextMenu contextMenu = new ContextMenu();
+                MenuItem addMenuItem = new MenuItem("Add Function");
+                contextMenu.getItems().add(addMenuItem);
+                addMenuItem.setOnAction((ActionEvent t) -> {
+                    UndoState state = undo.get();
+                    Function function = Function.create(item.getUuid(), "New Function");
+                    undo.set(state.setAllocated(baseline.add(function)));
+                });
+                result.setContextMenu(contextMenu);
             }
             new DragHandler(parent, result, new MoveItem(item),
                     new GridSnap(10), (MouseEvent event)
@@ -179,6 +215,13 @@ public class PhysicalSchematicController {
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
+            Bounds local = draggable.getBoundsInLocal();
+            double width = local.getWidth();
+            double height = local.getHeight();
+            // Set origin to the mid-point of the object
+            layoutCurrent = new Point2D(
+                    layoutCurrent.getX() + width / 2,
+                    layoutCurrent.getY() + height / 2);
             UndoState state = undo.get();
             undo.set(state.setAllocated(state.getAllocated().add(item.setOrigin(layoutCurrent))));
         }

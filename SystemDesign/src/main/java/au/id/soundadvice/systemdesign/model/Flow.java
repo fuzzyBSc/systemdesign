@@ -119,19 +119,19 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         FlowEnd rightEnd = right.getTarget(context);
         switch (direction) {
             case Normal:
-                builder.append(leftEnd.getFlowEndName());
+                builder.append(leftEnd.getDisplayName());
                 builder.append(" --").append(type).append("-> ");
-                builder.append(rightEnd.getFlowEndName());
+                builder.append(rightEnd.getDisplayName());
                 break;
             case Reverse:
-                builder.append(rightEnd.getFlowEndName());
+                builder.append(rightEnd.getDisplayName());
                 builder.append(" --").append(type).append("-> ");
-                builder.append(leftEnd.getFlowEndName());
+                builder.append(leftEnd.getDisplayName());
                 break;
             case Bidirectional:
-                builder.append(leftEnd.getFlowEndName());
+                builder.append(leftEnd.getDisplayName());
                 builder.append(" <-").append(type).append("-> ");
-                builder.append(rightEnd.getFlowEndName());
+                builder.append(rightEnd.getDisplayName());
                 break;
             default:
                 throw new AssertionError(direction.name());

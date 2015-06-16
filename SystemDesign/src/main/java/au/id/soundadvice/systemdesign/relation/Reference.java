@@ -50,7 +50,7 @@ public class Reference<F, T extends Relation> {
     }
 
     public UUID getUuid() {
-        return to.getKey();
+        return to.getUuid();
     }
 
     public Reference(F from, UUID to, Class<T> toType) {
@@ -64,7 +64,7 @@ public class Reference<F, T extends Relation> {
     }
 
     public T getTarget(RelationContext context) {
-        return context.get(to.getKey(), to.getType());
+        return context.get(to.getUuid(), to.getType());
     }
 
     private final F from;

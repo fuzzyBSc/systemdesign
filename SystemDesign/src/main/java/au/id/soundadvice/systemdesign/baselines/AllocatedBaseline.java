@@ -52,6 +52,7 @@ import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -98,27 +99,27 @@ public class AllocatedBaseline {
         return store;
     }
 
-    public List<Item> getItems() {
+    public Collection<Item> getItems() {
         return store.getByClass(Item.class);
     }
 
-    public List<Interface> getInterfaces() {
+    public Collection<Interface> getInterfaces() {
         return store.getByClass(Interface.class);
     }
 
-    public List<Function> getFunctions() {
+    public Collection<Function> getFunctions() {
         return store.getByClass(Function.class);
     }
 
-    public List<Flow> getFlows() {
+    public Collection<Flow> getFlows() {
         return store.getByClass(Flow.class);
     }
 
-    public List<Hazard> getHazards() {
+    public Collection<Hazard> getHazards() {
         return store.getByClass(Hazard.class);
     }
 
-    public List<Requirement> getRequirements() {
+    public Collection<Requirement> getRequirements() {
         return store.getByClass(Requirement.class);
     }
 
@@ -220,15 +221,17 @@ public class AllocatedBaseline {
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        Files.createDirectories(directory.getPath());
-        RelationContext context = store;
-        BeanFile.saveModel(transaction, context, directory.getIdentityFile(), IdentityBean.class, store.getByClass(Identity.class));
-        BeanFile.saveModel(transaction, context, directory.getItems(), ItemBean.class, store.getByClass(Item.class));
-        BeanFile.saveModel(transaction, context, directory.getInterfaces(), InterfaceBean.class, store.getByClass(Interface.class));
-        BeanFile.saveModel(transaction, context, directory.getFunctions(), FunctionBean.class, store.getByClass(Function.class));
-        BeanFile.saveModel(transaction, context, directory.getFlows(), FlowBean.class, store.getByClass(Flow.class));
-        BeanFile.saveModel(transaction, context, directory.getHazards(), HazardBean.class, store.getByClass(Hazard.class));
-        BeanFile.saveModel(transaction, context, directory.getRequirements(), RequirementBean.class, store.getByClass(Requirement.class));
+        if (store.size() > 1 || Files.isDirectory(directory.getPath())) {
+            Files.createDirectories(directory.getPath());
+            RelationContext context = store;
+            BeanFile.saveModel(transaction, context, directory.getIdentityFile(), IdentityBean.class, store.getByClass(Identity.class));
+            BeanFile.saveModel(transaction, context, directory.getItems(), ItemBean.class, store.getByClass(Item.class));
+            BeanFile.saveModel(transaction, context, directory.getInterfaces(), InterfaceBean.class, store.getByClass(Interface.class));
+            BeanFile.saveModel(transaction, context, directory.getFunctions(), FunctionBean.class, store.getByClass(Function.class));
+            BeanFile.saveModel(transaction, context, directory.getFlows(), FlowBean.class, store.getByClass(Flow.class));
+            BeanFile.saveModel(transaction, context, directory.getHazards(), HazardBean.class, store.getByClass(Hazard.class));
+            BeanFile.saveModel(transaction, context, directory.getRequirements(), RequirementBean.class, store.getByClass(Requirement.class));
+        }
     }
 
     private final RelationStore store;

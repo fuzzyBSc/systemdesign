@@ -60,10 +60,10 @@ public class ReferenceFinderTest {
                 to.getUuid(), FromRelation.class);
         assertEquals(1, reverse.size());
         assertSame(from, reverse.iterator().next());
-        List<ToRelation> toByClass = store.getByClass(ToRelation.class);
+        Collection<ToRelation> toByClass = store.getByClass(ToRelation.class);
         assertEquals(1, toByClass.size());
         assertSame(to, toByClass.iterator().next());
-        List<FromRelation> fromByClass = store.getByClass(FromRelation.class);
+        Collection<FromRelation> fromByClass = store.getByClass(FromRelation.class);
         assertEquals(1, fromByClass.size());
         assertSame(from, fromByClass.iterator().next());
     }

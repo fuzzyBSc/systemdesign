@@ -95,6 +95,7 @@ public class SuggestionsController {
 
     private Node toNode(Problem problem) {
         Pane container = new VBox();
+        container.getStyleClass().add("suggestion");
 
         Label description = new Label(problem.getDescription());
         container.getChildren().add(description);
