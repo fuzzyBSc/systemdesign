@@ -114,6 +114,7 @@ public class EditState {
                 // Avoid name collisions
                 String name = count == 0 ? prefix : prefix + "_" + count;
                 childDir = new Directory(parentDir.getPath().resolve(name));
+                ++count;
             } while (Files.isDirectory(childDir.getPath()));
             UndoState state = undo.get();
             Item systemOfInterest = state.getAllocated().getStore().get(
