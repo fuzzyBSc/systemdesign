@@ -52,9 +52,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
-import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
@@ -204,8 +201,11 @@ public class LogicalTreeController {
             view.setRoot(root);
             view.setShowRoot(false);
             view.setEditable(true);
-            view.setCellFactory(
-                    (TreeView<Function> p) -> new FunctionTreeCell(edit.getUndo()));
+            view.setCellFactory(view -> {
+                FunctionTreeCell cell = new FunctionTreeCell(edit.getUndo());
+                cell.start();
+                return cell;
+            });
         }
     }
 
@@ -219,48 +219,26 @@ public class LogicalTreeController {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Function");
             contextMenu.getItems().add(addMenuItem);
-            addMenuItem.setOnAction(event -> {
-                Function relation = getItem();
-                FunctionalBaseline functional = undo.get().getFunctional();
-                if (functional != null && functional.hasRelation(relation)) {
-                    functionCreator.addToParent();
-                } else {
-                    functionCreator.addToChild();
-                }
-            });
+            addMenuItem.setOnAction(event -> functionCreator.add(getItem()));
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> {
-                UndoState state = undo.get();
-                TreeItem<Function> treeItem1 = getTreeItem();
-                Function relation = treeItem1.getValue();
-                if (treeItem1.isLeaf()) {
-                    undo.set(state.setAllocated(
-                            state.getAllocated().remove(relation.getUuid())));
-                } else {
-                    FunctionalBaseline functional = state.getFunctional();
-                    if (functional != null) {
-                        undo.set(state.setFunctional(functional.remove(relation.getUuid())));
-                    }
-                }
-            });
-            this.itemProperty().addListener(value -> this.setEditable(value != null));
+            deleteMenuItem.setOnAction(event -> edit.remove(getItem().getUuid()));
+            this.editableProperty().bind(this.itemProperty().isNotNull());
+        }
 
+        public void start() {
             this.setOnDragDetected(event -> {
                 Function function = getItem();
                 UndoState state = undo.get();
                 if (state.getFunctional() != null
                         && state.getAllocated().hasRelation(function)) {
-                    // Start dragging
-                    Dragboard db = this.startDragAndDrop(TransferMode.MOVE);
-                    ClipboardContent content = new ClipboardContent();
-                    content.put(DataFormat.PLAIN_TEXT, function.toString());
-                    content.put(DataFormat.URL, ConnectHandler.uuidPrefix + function.getUuid());
-                    db.setContent(content);
-                    this.getStyleClass().add("dragSource");
-
+                    ConnectHandler.startDrag(this, function);
                     event.consume();
                 }
+            });
+            this.setOnDragDone(event -> {
+                ConnectHandler.dragDone(this);
+                event.consume();
             });
             this.setOnDragOver(event -> {
                 // Decide whether or not to accept the drop
@@ -308,10 +286,6 @@ public class LogicalTreeController {
                 }
                 event.setDropCompleted(ok);
 
-                event.consume();
-            });
-            this.setOnDragDone(event -> {
-                this.getStyleClass().remove("dragSource");
                 event.consume();
             });
         }

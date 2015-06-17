@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
@@ -104,26 +105,28 @@ public class LogicalTabs {
                         controller.stop();
                     });
 
+            AllocatedBaseline allocated = state.getAllocated();
             if (functional == null) {
-                topLevel.setFunctions(state.getAllocated().getFunctions());
+                topLevel.setFunctions(allocated, allocated.getFunctions());
             } else {
-                Collection<Function> allFunctions = state.getAllocated().getFunctions();
+                Collection<Function> allFunctions = allocated.getFunctions();
                 // Divide up all functions between the various controllers
                 Map<UUID, List<Function>> displayFunctions
                         = allFunctions.parallelStream()
+                        .filter(function -> function.getTrace() != null)
                         .collect(Collectors.groupingBy(Function::getTrace));
                 displayFunctions.entrySet().stream()
                         .forEach(entry -> {
                             // Update each controller with its subset
                             LogicalSchematicController controller = controllers.get(entry.getKey());
-                            controller.setFunctions(entry.getValue());
+                            controller.setFunctions(allocated, entry.getValue());
                         });
                 controllers.entrySet().stream()
                         .filter(entry -> !displayFunctions.containsKey(entry.getKey()))
                         .map(Map.Entry::getValue)
                         .forEach(controller -> {
                             // Clear any controllers whose function list is now empty
-                            controller.setFunctions(Collections.emptyList());
+                            controller.setFunctions(allocated, Collections.emptyList());
                         });
             }
         }

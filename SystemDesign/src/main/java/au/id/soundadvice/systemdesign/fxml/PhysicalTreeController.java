@@ -33,20 +33,17 @@ import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.model.IDPath;
-import au.id.soundadvice.systemdesign.model.IDSegment;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.util.Collections;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -65,6 +62,7 @@ public class PhysicalTreeController {
         this.view = view;
         this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
         this.updateView = new SingleRunnable<>(JFXExecutor.instance(), new UpdateView());
+        this.interactions = new Interactions(edit);
     }
 
     public void start() {
@@ -79,21 +77,9 @@ public class PhysicalTreeController {
 
     public void addContextMenu() {
         ContextMenu contextMenu = new ContextMenu();
-        UndoBuffer<UndoState> undo = edit.getUndo();
         MenuItem addMenuItem = new MenuItem("Add Item");
         contextMenu.getItems().add(addMenuItem);
-        addMenuItem.setOnAction(event -> {
-            UndoState state = undo.get();
-            AllocatedBaseline baseline = state.getAllocated();
-            String name = baseline.getItems().parallelStream()
-                    .map(Item::getName)
-                    .collect(new UniqueName("New Item"));
-            Item item1 = Item.newItem(
-                    baseline.getIdentity().getUuid(),
-                    baseline.getNextItemId(),
-                    name, "");
-            undo.set(state.setAllocated(baseline.add(item1)));
-        });
+        addMenuItem.setOnAction(event -> interactions.addItem());
         view.setContextMenu(contextMenu);
     }
 
@@ -204,62 +190,13 @@ public class PhysicalTreeController {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
-            addMenuItem.setOnAction(event -> {
-                UndoState state = undo.get();
-                AllocatedBaseline baseline = state.getAllocated();
-                String name = baseline.getItems().parallelStream()
-                        .map(Item::getName)
-                        .collect(new UniqueName("New Item"));
-                Item item1 = Item.newItem(
-                        baseline.getIdentity().getUuid(),
-                        baseline.getNextItemId(),
-                        name, "");
-                TreeItem newItem = new TreeItem<>(item1);
-                getTreeView().getRoot().getChildren().add(newItem);
-                undo.set(state.setAllocated(baseline.add(item1)));
-            });
+            addMenuItem.setOnAction(event -> interactions.addItem());
             MenuItem renameMenuItem = new MenuItem("Renumber");
             contextMenu.getItems().add(renameMenuItem);
-            renameMenuItem.setOnAction(event -> {
-                TreeItem<Item> treeItem1 = getTreeItem();
-                Item item1 = treeItem1.getValue();
-
-                if (item1.isExternal()) {
-                    return;
-                }
-
-                TextInputDialog dialog = new TextInputDialog(
-                        item1.getShortId().toString());
-                dialog.setTitle("Enter new number for item");
-                dialog.setHeaderText("Enter new number for item");
-
-                Optional<String> result = dialog.showAndWait();
-                if (result.isPresent()) {
-                    IDPath path = IDPath.valueOf(
-                            Collections.singletonList(new IDSegment(result.get())));
-                    UndoState state = undo.get();
-                    AllocatedBaseline allocated = state.getAllocated();
-                    boolean isUnique = allocated.getItems().parallelStream()
-                            .map(Item::getShortId)
-                            .noneMatch((existing) -> path.equals(existing));
-                    if (isUnique) {
-                        item1 = item1.setShortId(path);
-                        treeItem1.setValue(item1);
-                        undo.set(state.setAllocated(allocated.add(item1)));
-                    }
-                }
-            });
+            renameMenuItem.setOnAction(event -> interactions.renumber(getItem()));
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> {
-                UndoState state = undo.get();
-                TreeItem<Item> treeItem1 = getTreeItem();
-                Item item1 = treeItem1.getValue();
-                if (treeItem1.isLeaf()) {
-                    undo.set(state.setAllocated(
-                            state.getAllocated().remove(item1.getUuid())));
-                }
-            });
+            deleteMenuItem.setOnAction(event -> edit.remove(getItem().getUuid()));
         }
 
         @Override
@@ -340,4 +277,5 @@ public class PhysicalTreeController {
     private final AtomicReference<TreeState> treeState = new AtomicReference<>();
     private final SingleRunnable<Changed> changed;
     private final SingleRunnable<UpdateView> updateView;
+    private final Interactions interactions;
 }

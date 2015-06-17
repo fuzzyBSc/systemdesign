@@ -39,6 +39,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.TreeItem;
 import javax.annotation.Nullable;
 
 /**
@@ -53,6 +54,15 @@ public class FunctionCreator {
 
     private final EditState edit;
     private final AtomicReference<UUID> mostRecentItem = new AtomicReference<>();
+
+    void add(Function nearby) {
+        FunctionalBaseline functional = edit.getUndo().get().getFunctional();
+        if (functional != null && functional.hasRelation(nearby)) {
+            addToParent();
+        } else {
+            addToChild();
+        }
+    }
 
     void addToParent() {
         UndoBuffer<UndoState> undo = edit.getUndo();

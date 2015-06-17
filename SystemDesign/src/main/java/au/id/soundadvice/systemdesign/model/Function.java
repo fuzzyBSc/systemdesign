@@ -46,20 +46,9 @@ import javax.annotation.Nullable;
 public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
 
     @Override
-    public String toString() {
-        return getDisplayName();
-    }
-
-    private static Point2D defaultOrigin = new Point2D(200, 200);
-
-    public static Function create(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, null, name, defaultOrigin);
-    }
-
-    @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
+        int hash = 3;
+        hash = 83 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -78,10 +67,27 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (!Objects.equals(this.item, other.item)) {
             return false;
         }
+        if (!Objects.equals(this.trace, other.trace)) {
+            return false;
+        }
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
+        if (!Objects.equals(this.origin, other.origin)) {
+            return false;
+        }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return getDisplayName();
+    }
+
+    private static Point2D defaultOrigin = new Point2D(200, 200);
+
+    public static Function create(UUID item, String name) {
+        return new Function(UUID.randomUUID(), item, null, name, defaultOrigin);
     }
 
     @Override

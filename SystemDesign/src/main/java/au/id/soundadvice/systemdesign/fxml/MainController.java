@@ -64,8 +64,6 @@ public class MainController implements Initializable {
     @FXML
     private Pane physicalDrawing;
     @FXML
-    private Pane logicalDrawing;
-    @FXML
     private Pane suggestions;
     @FXML
     private MenuItem newMenuItem;

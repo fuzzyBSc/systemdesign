@@ -64,18 +64,25 @@ public class ConnectHandler {
         }
     }
 
+    public static void startDrag(Node node, Identifiable identifiable) {
+        // Start dragging
+        Dragboard db = node.startDragAndDrop(TransferMode.LINK, TransferMode.MOVE);
+        ClipboardContent content = new ClipboardContent();
+        content.put(DataFormat.PLAIN_TEXT, identifiable.toString());
+        content.put(DataFormat.URL, uuidPrefix + identifiable.getUuid());
+        db.setContent(content);
+        node.getStyleClass().add("dragSource");
+    }
+
+    public static void dragDone(Node node) {
+        node.getStyleClass().remove("dragSource");
+    }
+
     public static void register(
             Node target, Identifiable identifiable, Connect connect, MouseFilter filter) {
         target.setOnDragDetected(event -> {
             if (filter.matches(event)) {
-                // Start dragging
-                Dragboard db = target.startDragAndDrop(TransferMode.LINK);
-                ClipboardContent content = new ClipboardContent();
-                content.put(DataFormat.PLAIN_TEXT, identifiable.toString());
-                content.put(DataFormat.URL, uuidPrefix + identifiable.getUuid());
-                db.setContent(content);
-                target.getStyleClass().add("dragSource");
-
+                startDrag(target, identifiable);
                 event.consume();
             }
         });
@@ -119,7 +126,7 @@ public class ConnectHandler {
             event.consume();
         });
         target.setOnDragDone(event -> {
-            target.getStyleClass().remove("dragSource");
+            dragDone(target);
             event.consume();
         });
     }

@@ -30,6 +30,7 @@ import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.concurrent.ChangeSubscribable;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 /**
@@ -87,12 +88,18 @@ public class UndoBuffer<T> {
     }
 
     public void set(T state) {
+        boolean differs;
         synchronized (mustLock) {
-            mustLock.undoBuffer.push(mustLock.currentState);
-            mustLock.redoBuffer.clear();
-            mustLock.currentState = state;
+            differs = !Objects.equals(state, mustLock.currentState);
+            if (differs) {
+                mustLock.undoBuffer.push(mustLock.currentState);
+                mustLock.redoBuffer.clear();
+                mustLock.currentState = state;
+            }
         }
-        changed.changed();
+        if (differs) {
+            changed.changed();
+        }
     }
 
     public void clearAndSet(T state) {

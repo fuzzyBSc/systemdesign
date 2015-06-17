@@ -35,10 +35,12 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
@@ -46,6 +48,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.shape.Ellipse;
 import javax.annotation.Nullable;
 
 /**
@@ -53,6 +56,8 @@ import javax.annotation.Nullable;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 class LogicalSchematicController {
+
+    private static final double root2 = Math.sqrt(2);
 
     private final EditState edit;
     private final Tab tab;
@@ -85,20 +90,51 @@ class LogicalSchematicController {
         }
     }
 
-    public void setFunctions(Collection<Function> functions) {
+    private Node toNode(Function function, Item item) {
+        Label label = new Label(
+                function.getDisplayName() + '\n'
+                + '(' + item.getDisplayName() + ')');
+        label.getStyleClass().add("text");
+
+        Ellipse ellipse = new Ellipse();
+        ellipse.getStyleClass().add("outline");
+
+        ellipse.setCenterX(0);
+        ellipse.setCenterY(0);
+
+        int insets = 5;
+
+        label.boundsInLocalProperty().addListener((observable, oldValue, newValue) -> {
+            double halfWidth = newValue.getWidth() / 2;
+            double halfHeight = newValue.getHeight() / 2;
+            label.setLayoutX(-halfWidth);
+            label.setLayoutY(-halfHeight);
+            // Calculate the relevant radii of the ellipse while maintaining
+            // aspect ratio.
+            // Thanks: http://stackoverflow.com/questions/433371/ellipse-bounding-a-rectangle
+            ellipse.setRadiusX((halfWidth + insets) * root2);
+            ellipse.setRadiusY((halfHeight + insets) * root2);
+        });
+
+        Group group = new Group(ellipse, label);
+        group.getStyleClass().add("schematicFunction");
+        group.setLayoutX(function.getOrigin().getX());
+        group.setLayoutY(function.getOrigin().getY());
+
+        return group;
+    }
+
+    public void setFunctions(AllocatedBaseline baseline, Collection<Function> functions) {
         Pane pane = new AnchorPane();
         functions.forEach(function -> {
-            Label label = new Label(function.getDisplayName());
-            Point2D origin = function.getOrigin();
-            label.setLayoutX(origin.getX());
-            label.setLayoutY(origin.getY());
-            label.getStyleClass().add("schematicFunction");
-            pane.getChildren().add(label);
+            Item item = function.getItem().getTarget(baseline.getStore());
+            Node node = toNode(function, item);
 
-            new DragHandler(pane, label, new Move(function),
+            new DragHandler(pane, node, new Move(function),
                     new GridSnap(10),
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
+            pane.getChildren().add(node);
         });
         tab.setContent(pane);
     }

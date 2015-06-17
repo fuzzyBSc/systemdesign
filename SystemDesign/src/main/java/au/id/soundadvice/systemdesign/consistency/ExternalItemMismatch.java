@@ -85,7 +85,8 @@ public class ExternalItemMismatch implements ProblemFactory {
                         return new Problem(
                                 name + " differs between baselines", Arrays.asList(
                                         new SingleRelationSolution[]{
-                                            SingleRelationSolution.addToChild("Flow down", parentExternal),
+                                            SingleRelationSolution.addToChild("Flow down",
+                                                    allocatedExternal.makeConsistent(parentExternal)),
                                             SingleRelationSolution.addToParent("Flow up",
                                                     parentExternal.makeConsistent(allocatedExternal))}));
                     } else {

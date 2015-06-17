@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
+import java.util.Objects;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
@@ -39,6 +40,32 @@ import javax.annotation.Nullable;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class UndoState {
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 17 * hash + Objects.hashCode(this.functional);
+        hash = 17 * hash + Objects.hashCode(this.allocated);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final UndoState other = (UndoState) obj;
+        if (!Objects.equals(this.functional, other.functional)) {
+            return false;
+        }
+        if (!Objects.equals(this.allocated, other.allocated)) {
+            return false;
+        }
+        return true;
+    }
 
     public static UndoState createNew() {
         return new UndoState(null, AllocatedBaseline.create(Identity.create()));

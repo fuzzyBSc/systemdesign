@@ -27,16 +27,15 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -46,6 +45,28 @@ import javax.annotation.CheckReturnValue;
  * @param <E> The identifiable type to store
  */
 public class ByUUID<E extends Identifiable> {
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 71 * hash + Objects.hashCode(this.relations);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final ByUUID<?> other = (ByUUID<?>) obj;
+        if (!Objects.equals(this.relations, other.relations)) {
+            return false;
+        }
+        return true;
+    }
 
     private static final ByUUID empty = new ByUUID(Collections.emptyMap());
 

@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EmptyStackException;
 import java.util.Stack;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -128,13 +129,19 @@ public class EditState {
         } else {
             loadImpl(childDir);
         }
+        if (!lastChild.isEmpty()) {
+            if (child.equals(lastChild.peek())) {
+                lastChild.pop();
+            } else {
+                lastChild.clear();
+            }
+        }
     }
 
     public void loadLastChild() throws IOException {
         try {
             Identity child = lastChild.peek();
             loadChild(child);
-            lastChild.pop();
         } catch (EmptyStackException ex) {
             throw new IOException(ex);
         }
@@ -208,5 +215,14 @@ public class EditState {
             currentDirectory.set(new Directory(to));
             changed.changed();
         }
+    }
+
+    /**
+     * Remove a relation from the allocated baseline (only).
+     */
+    public void remove(UUID uuid) {
+        UndoState state = undo.get();
+        AllocatedBaseline allocated = state.getAllocated();
+        undo.set(state.setAllocated(allocated.remove(uuid)));
     }
 }

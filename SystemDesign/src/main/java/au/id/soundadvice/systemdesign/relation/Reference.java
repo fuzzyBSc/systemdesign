@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -35,6 +36,28 @@ import java.util.UUID;
  * @param <T> The type this is a reference to
  */
 public class Reference<F, T extends Relation> {
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 37 * hash + Objects.hashCode(this.to);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Reference<?, ?> other = (Reference<?, ?>) obj;
+        if (!Objects.equals(this.to, other.to)) {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public String toString() {

@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 
@@ -40,6 +41,32 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class FunctionalBaseline {
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 67 * hash + Objects.hashCode(this.systemOfInterest);
+        hash = 67 * hash + Objects.hashCode(this.context);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final FunctionalBaseline other = (FunctionalBaseline) obj;
+        if (!Objects.equals(this.systemOfInterest, other.systemOfInterest)) {
+            return false;
+        }
+        if (!Objects.equals(this.context, other.context)) {
+            return false;
+        }
+        return true;
+    }
 
     public Item getSystemOfInterest() {
         return systemOfInterest;
@@ -52,8 +79,6 @@ public class FunctionalBaseline {
     public FunctionalBaseline(Item systemOfInterest, AllocatedBaseline context) {
         this.systemOfInterest = systemOfInterest;
         this.context = context;
-
-//        Map<String, Function> systemFunctions = new HashMap<>();
     }
     private final Item systemOfInterest;
     private final AllocatedBaseline context;

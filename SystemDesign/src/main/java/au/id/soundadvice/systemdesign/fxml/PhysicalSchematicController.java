@@ -42,19 +42,21 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javafx.event.ActionEvent;
-import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Line;
 
 /**
@@ -68,16 +70,61 @@ public class PhysicalSchematicController {
     private final Pane drawing;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
+    private final Interactions interactions;
 
     PhysicalSchematicController(EditState edit, Pane drawing) {
         this.edit = edit;
         this.undo = edit.getUndo();
         this.drawing = drawing;
+        this.interactions = new Interactions(edit);
     }
 
     void start() {
         undo.getChanged().subscribe(onChange);
         onChange.run();
+    }
+
+    private Group toNode(Item item, Collection<? extends Function> functions) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(item);
+        String functionsText = functions.stream()
+                .map((function) -> function.getDisplayName())
+                .sorted()
+                .collect(Collectors.joining("\n+"));
+        if (!functionsText.isEmpty()) {
+            builder.append("\n+");
+            builder.append(functionsText);
+        }
+
+        Label label = new Label(builder.toString());
+        label.getStyleClass().add("text");
+
+        Rectangle rectangle = new Rectangle();
+        rectangle.getStyleClass().add("outline");
+        // Why does this not work from the CSS??
+//        rectangle.getStrokeDashArray().addAll(12d, 2d, 4d, 2d);
+//        rectangle.setStyle("-fx-stroke-dash-array: 12 2 4 2");
+
+        int insets = 5;
+
+        label.boundsInLocalProperty().addListener((observable, oldValue, newValue) -> {
+            double halfWidth = Math.ceil(newValue.getWidth() / 2);
+            double halfHeight = Math.ceil(newValue.getHeight() / 2);
+            label.setLayoutX(-halfWidth);
+            label.setLayoutY(-halfHeight);
+            rectangle.setLayoutX(-halfWidth - insets);
+            rectangle.setLayoutY(-halfHeight - insets);
+            rectangle.setWidth((halfWidth + insets) * 2);
+            rectangle.setHeight((halfHeight + insets) * 2);
+
+        });
+
+        Group group = new Group(rectangle, label);
+        group.getStyleClass().add("schematicFunction");
+        group.setLayoutX(item.getOrigin().getX());
+        group.setLayoutY(item.getOrigin().getY());
+
+        return group;
     }
 
     private class OnChange implements Runnable {
@@ -107,36 +154,13 @@ public class PhysicalSchematicController {
         }
 
         private void addNode(Pane parent, AllocatedBaseline baseline, Item item) {
-            Label result = new Label();
-            StringBuilder builder = new StringBuilder();
-            builder.append(item);
-            String functions = baseline.getStore().getReverse(item.getUuid(), Function.class).stream()
-                    .map((function) -> function.getDisplayName())
-                    .sorted()
-                    .collect(Collectors.joining("\n+"));
-            if (!functions.isEmpty()) {
-                builder.append("\n+");
-                builder.append(functions);
-            }
-            result.setText(builder.toString());
+            Group result = toNode(
+                    item,
+                    baseline.getStore().getReverse(item.getUuid(), Function.class));
             result.getStyleClass().add("schematicItem");
             if (item.isExternal()) {
                 result.getStyleClass().add("external");
             }
-
-            result.boundsInLocalProperty().addListener((event) -> {
-                Point2D origin = item.getOrigin();
-
-                /*
-                 * Calculate position only once result has been added to parent
-                 * in order to obtain bounds
-                 */
-                Bounds local = result.getBoundsInLocal();
-                double width = local.getWidth();
-                double height = local.getHeight();
-                result.setLayoutX(origin.getX() - width / 2);
-                result.setLayoutY(origin.getY() - height / 2);
-            });
 
             if (!item.isExternal()) {
                 result.setOnMouseClicked((MouseEvent ev) -> {
@@ -161,16 +185,10 @@ public class PhysicalSchematicController {
                 ContextMenu contextMenu = new ContextMenu();
                 MenuItem addMenuItem = new MenuItem("Add Function");
                 contextMenu.getItems().add(addMenuItem);
-                addMenuItem.setOnAction((ActionEvent t) -> {
-                    UndoState state = undo.get();
-                    String name = baseline.getStore()
-                            .getReverse(item.getUuid(), Function.class).parallelStream()
-                            .map(Function::getName)
-                            .collect(new UniqueName("New Function"));
-                    Function function = Function.create(item.getUuid(), name);
-                    undo.set(state.setAllocated(baseline.add(function)));
-                });
-                result.setContextMenu(contextMenu);
+                addMenuItem.setOnAction(event -> interactions.addFunctionToItem(item));
+                result.getChildren().stream()
+                        .filter((member) -> (member instanceof Control))
+                        .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
             }
             new DragHandler(parent, result, new MoveItem(item),
                     new GridSnap(10), (MouseEvent event)
@@ -222,13 +240,6 @@ public class PhysicalSchematicController {
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            Bounds local = draggable.getBoundsInLocal();
-            double width = local.getWidth();
-            double height = local.getHeight();
-            // Set origin to the mid-point of the object
-            layoutCurrent = new Point2D(
-                    layoutCurrent.getX() + width / 2,
-                    layoutCurrent.getY() + height / 2);
             UndoState state = undo.get();
             undo.set(state.setAllocated(state.getAllocated().add(item.setOrigin(layoutCurrent))));
         }
