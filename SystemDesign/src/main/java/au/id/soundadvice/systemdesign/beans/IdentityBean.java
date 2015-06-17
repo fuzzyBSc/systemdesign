@@ -35,6 +35,14 @@ import java.util.UUID;
  */
 public class IdentityBean implements Identifiable {
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     @Override
     public String toString() {
         return id;
@@ -60,10 +68,12 @@ public class IdentityBean implements Identifiable {
     public IdentityBean() {
     }
 
-    public IdentityBean(UUID uuid, String id) {
+    public IdentityBean(UUID uuid, String id, String name) {
         this.uuid = uuid;
         this.id = id;
+        this.name = name;
     }
     private UUID uuid;
     private String id;
+    private String name;
 }

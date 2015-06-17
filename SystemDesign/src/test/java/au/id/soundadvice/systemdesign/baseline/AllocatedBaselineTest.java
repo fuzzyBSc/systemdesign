@@ -66,11 +66,11 @@ public class AllocatedBaselineTest {
         Files.createDirectories(subsystemDirectory.getPath());
         try (SaveTransaction transaction = new SaveTransaction()) {
             BeanFile.saveBean(transaction, modelDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), ""));
+                    UUID.randomUUID(), "", "model"));
             BeanFile.saveBean(transaction, systemDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), "C1234"));
+                    UUID.randomUUID(), "C1234", "system"));
             BeanFile.saveBean(transaction, subsystemDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), "C1234.1"));
+                    UUID.randomUUID(), "C1234.1", "subsystem"));
             transaction.commit();
         }
 

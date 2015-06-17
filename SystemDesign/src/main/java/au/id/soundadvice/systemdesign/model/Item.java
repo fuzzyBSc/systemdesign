@@ -215,7 +215,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     public Identity asIdentity(RelationStore context) {
-        return new Identity(uuid, getIdPath(context));
+        return new Identity(uuid, getIdPath(context), name);
     }
 
     public Item asExternal(RelationStore context) {

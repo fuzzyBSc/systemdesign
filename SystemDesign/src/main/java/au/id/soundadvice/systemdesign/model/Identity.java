@@ -46,7 +46,7 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 59 * hash + Objects.hashCode(this.uuid);
+        hash = 43 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -65,21 +65,33 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
         if (!Objects.equals(this.idPath, other.idPath)) {
             return false;
         }
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
         return true;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public static Identity create() {
-        return new Identity(UUID.randomUUID(), IDPath.empty());
+        return new Identity(UUID.randomUUID(), IDPath.empty(), "");
     }
 
     @Override
     public String toString() {
-        return idPath.toString();
+        if ("".equals(name)) {
+            return idPath.toString();
+        } else {
+            return idPath.toString() + " " + name;
+        }
     }
 
-    public Identity(UUID uuid, IDPath idPath) {
+    public Identity(UUID uuid, IDPath idPath, String name) {
         this.uuid = uuid;
         this.idPath = idPath;
+        this.name = name;
     }
 
     @Override
@@ -94,14 +106,16 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
     public Identity(IdentityBean bean) {
         this.uuid = bean.getUuid();
         this.idPath = IDPath.valueOf(bean.getId());
+        this.name = bean.getName();
     }
 
     private final UUID uuid;
     private final IDPath idPath;
+    private final String name;
 
     @Override
     public IdentityBean toBean(RelationContext context) {
-        return new IdentityBean(uuid, idPath.toString());
+        return new IdentityBean(uuid, idPath.toString(), name);
     }
     private static final ReferenceFinder<Identity> finder
             = new ReferenceFinder<>(Identity.class);
@@ -113,6 +127,6 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
 
     @CheckReturnValue
     public Identity setId(IDPath value) {
-        return new Identity(uuid, value);
+        return new Identity(uuid, value, name);
     }
 }
