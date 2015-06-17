@@ -40,7 +40,6 @@ import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Hazard;
-import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.IDSegment;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
@@ -149,7 +148,7 @@ public class AllocatedBaseline {
             }
         }
 
-        if (Files.exists(directory.getItems())) {
+        if (Files.exists(directory.getInterfaces())) {
             try (BeanReader<InterfaceBean> reader = BeanReader.forPath(InterfaceBean.class, directory.getInterfaces())) {
                 for (;;) {
                     InterfaceBean bean = reader.read();
@@ -161,7 +160,7 @@ public class AllocatedBaseline {
             }
         }
 
-        if (Files.exists(directory.getItems())) {
+        if (Files.exists(directory.getFunctions())) {
             try (BeanReader<FunctionBean> reader = BeanReader.forPath(FunctionBean.class, directory.getFunctions())) {
                 for (;;) {
                     FunctionBean bean = reader.read();
@@ -173,7 +172,7 @@ public class AllocatedBaseline {
             }
         }
 
-        if (Files.exists(directory.getItems())) {
+        if (Files.exists(directory.getFlows())) {
             try (BeanReader<FlowBean> reader = BeanReader.forPath(FlowBean.class, directory.getFlows())) {
                 for (;;) {
                     FlowBean bean = reader.read();
@@ -185,7 +184,7 @@ public class AllocatedBaseline {
             }
         }
 
-        if (Files.exists(directory.getItems())) {
+        if (Files.exists(directory.getHazards())) {
             try (BeanReader<HazardBean> reader = BeanReader.forPath(HazardBean.class, directory.getHazards())) {
                 for (;;) {
                     HazardBean bean = reader.read();
@@ -197,7 +196,7 @@ public class AllocatedBaseline {
             }
         }
 
-        if (Files.exists(directory.getItems())) {
+        if (Files.exists(directory.getRequirements())) {
             try (BeanReader<RequirementBean> reader = BeanReader.forPath(RequirementBean.class, directory.getRequirements())) {
                 for (;;) {
                     RequirementBean bean = reader.read();

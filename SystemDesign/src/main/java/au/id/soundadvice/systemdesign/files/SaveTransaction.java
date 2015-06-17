@@ -65,10 +65,14 @@ public class SaveTransaction implements Closeable {
 
     public void commit() throws IOException {
         for (Job job : jobs) {
-            if (FileUtils.contentEquals(job.tempFile.toFile(), job.realFile.toFile())) {
-                // Don't overwrite if identical. Delete temp file in close.
+            if (Files.exists(job.tempFile)) {
+                if (FileUtils.contentEquals(job.tempFile.toFile(), job.realFile.toFile())) {
+                    // Don't overwrite if identical. Delete temp file in close.
+                } else {
+                    Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);
+                }
             } else {
-                Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);
+                Files.deleteIfExists(job.realFile);
             }
         }
     }

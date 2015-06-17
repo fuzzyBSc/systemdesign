@@ -32,9 +32,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 
 /**
  * Model the contents of a single file for loading and storing. The whole file
@@ -53,74 +56,50 @@ public class BeanFile<T extends Identifiable> {
     public static <B extends Identifiable, T extends BeanFactory<C, B>, C> void saveModel(
             SaveTransaction transaction, C context, Path csv,
             Class<B> beanClass, Collection<T> objects) throws IOException {
-        BeanFile<B> file = BeanFile.newFile(beanClass, csv);
-        for (T model : objects) {
-            file.getEntries().put(model.getUuid(), model.toBean(context));
-        }
-        file.save(transaction);
+        ConcurrentNavigableMap<UUID, B> map = objects.parallelStream()
+                .collect(Collectors.toConcurrentMap(
+                                model -> model.getUuid(),
+                                model -> model.toBean(context),
+                                (u, v) -> {
+                                    throw new IllegalStateException(String.format("Duplicate key %s", u));
+                                },
+                                () -> new ConcurrentSkipListMap()
+                        ));
+        save(transaction, csv, map);
     }
 
     public static <B extends Identifiable> void saveBeans(
             SaveTransaction transaction, Path csv,
             Class<B> beanClass, Map<UUID, B> objects) throws IOException {
-        BeanFile<B> file = BeanFile.newFile(beanClass, csv);
-        for (B bean : objects.values()) {
-            file.getEntries().put(bean.getUuid(), bean);
+        if (objects instanceof SortedMap) {
+            save(transaction, csv, (SortedMap<UUID, B>) objects);
+        } else {
+            save(transaction, csv, new TreeMap<>(objects));
         }
-        file.save(transaction);
     }
 
     public static <B extends Identifiable> void saveBean(
             SaveTransaction transaction, Path csv, B bean) throws IOException {
-        BeanFile<B> file = BeanFile.newFile((Class<B>) bean.getClass(), csv);
-        file.getEntries().put(bean.getUuid(), bean);
-        file.save(transaction);
+        SortedMap<UUID, B> map = new TreeMap<>();
+        map.put(bean.getUuid(), bean);
+        save(transaction, csv, map);
     }
 
-    public ConcurrentNavigableMap<UUID, T> getEntries() {
-        return entries;
-    }
-
-    private BeanFile(Class<T> clazz, Path path, ConcurrentNavigableMap<UUID, T> entries) {
-        this.clazz = clazz;
-        this.path = path;
-        this.entries = entries;
-    }
-
-    public static <T extends Identifiable> BeanFile<T> newFile(Class<T> clazz, Path path) {
-        return new BeanFile(clazz, path, new ConcurrentSkipListMap<>());
-    }
-
-    public static <T extends Identifiable> BeanFile<T> load(Class<T> clazz, Path path) throws IOException {
-        ConcurrentNavigableMap<UUID, T> entries = new ConcurrentSkipListMap<>();
-        if (Files.exists(path)) {
-            try (BeanReader<T> reader = BeanReader.forPath(clazz, path)) {
-                for (;;) {
-                    T bean = reader.read();
-                    if (bean == null) {
-                        break;
-                    }
-                    entries.put(bean.getUuid(), bean);
-                }
-            }
-        } else {
-            // A nonexistent file is treated as empty
-        }
-        return new BeanFile(clazz, path, entries);
-    }
-
-    public void save(SaveTransaction transaction) throws IOException {
+    public static <B extends Identifiable> void save(
+            SaveTransaction transaction, Path path, SortedMap<UUID, B> entries) throws IOException {
         Path directory = path.getParent();
         Path tempFile = Files.createTempFile(directory, null, null);
         transaction.addJob(path, tempFile);
-        try (BeanWriter<T> writer = BeanWriter.forPath(clazz, tempFile)) {
-            for (T bean : entries.values()) {
-                writer.write(bean);
+        if (entries.isEmpty()) {
+            // Deleting the temp file will cause the real file to be deleted
+            Files.deleteIfExists(tempFile);
+        } else {
+            Class<B> clazz = (Class<B>) entries.values().iterator().next().getClass();
+            try (BeanWriter<B> writer = BeanWriter.forPath(clazz, tempFile)) {
+                for (B bean : entries.values()) {
+                    writer.write(bean);
+                }
             }
         }
     }
-
-    private final Class<T> clazz;
-    private final Path path;
-    private final ConcurrentNavigableMap<UUID, T> entries;
 }
