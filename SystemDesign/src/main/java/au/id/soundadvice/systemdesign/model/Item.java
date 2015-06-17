@@ -231,6 +231,12 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     @CheckReturnValue
+    public Item setShortId(IDPath value) {
+        return new Item(
+                uuid, parent.getUuid(), value, name, description, external, origin);
+    }
+
+    @CheckReturnValue
     public Item makeConsistent(Item allocated) {
         return new Item(
                 uuid, parent.getUuid(), id, allocated.getName(), allocated.getDescription(), external, origin);

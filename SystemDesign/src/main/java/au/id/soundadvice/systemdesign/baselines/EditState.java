@@ -153,6 +153,18 @@ public class EditState {
         currentDirectory.set(dir);
         undo.reset(state);
         savedState.set(state);
+
+        // Fix id
+        FunctionalBaseline functional = state.getFunctional();
+        if (functional != null) {
+            Identity correctedId = functional.getSystemOfInterest().asIdentity(
+                    functional.getStore());
+            AllocatedBaseline allocated = state.getAllocated();
+            if (!correctedId.equals(allocated.getIdentity())) {
+                // Identity mismatch - autofix.
+                undo.set(state.setAllocated(allocated.setIdentity(correctedId)));
+            }
+        }
     }
 
     public boolean saveNeeded() {

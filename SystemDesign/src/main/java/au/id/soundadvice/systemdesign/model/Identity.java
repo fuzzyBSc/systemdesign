@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 
@@ -41,6 +42,31 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Identity implements BeanFactory<RelationContext, IdentityBean>, Relation {
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 59 * hash + Objects.hashCode(this.uuid);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Identity other = (Identity) obj;
+        if (!Objects.equals(this.uuid, other.uuid)) {
+            return false;
+        }
+        if (!Objects.equals(this.idPath, other.idPath)) {
+            return false;
+        }
+        return true;
+    }
 
     public static Identity create() {
         return new Identity(UUID.randomUUID(), IDPath.empty());

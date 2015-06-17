@@ -233,9 +233,11 @@ public class AllocatedBaseline {
     }
 
     @CheckReturnValue
-    public AllocatedBaseline setIDPath(IDPath id) {
-        Identity tmpIdentity = getIdentity().setId(id);
-        return new AllocatedBaseline(store.put(tmpIdentity));
+    public AllocatedBaseline setIdentity(Identity id) {
+        RelationStore tmpStore = store
+                .remove(getIdentity().getUuid())
+                .put(id);
+        return new AllocatedBaseline(tmpStore);
     }
 
     @CheckReturnValue
