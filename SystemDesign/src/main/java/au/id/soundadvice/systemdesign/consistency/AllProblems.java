@@ -40,7 +40,8 @@ public class AllProblems implements ProblemFactory {
 
     private final List<ProblemFactory> factories = Arrays.asList(
             new DirectoryNameMismatch(),
-            new ExternalItemMismatch());
+            new ExternalItemMismatch(),
+            new UntracedFunctions());
 
     @Override
     public Collection<Problem> getProblems(EditState state) {

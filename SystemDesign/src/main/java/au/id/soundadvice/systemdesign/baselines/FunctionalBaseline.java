@@ -29,8 +29,10 @@ package au.id.soundadvice.systemdesign.baselines;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
+import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -65,7 +67,32 @@ public class FunctionalBaseline {
     }
 
     @CheckReturnValue
-    public FunctionalBaseline setContext(AllocatedBaseline value) {
-        return new FunctionalBaseline(systemOfInterest, value);
+    public FunctionalBaseline add(Relation relation) {
+        if (systemOfInterest.getUuid().equals(relation.getUuid())) {
+            // System of interest replacement
+            if (relation instanceof Item) {
+                return new FunctionalBaseline((Item) relation, context.add(relation));
+            } else {
+                // Ignore the request
+                return this;
+            }
+        } else {
+            return new FunctionalBaseline(systemOfInterest, context.add(relation));
+        }
+    }
+
+    @CheckReturnValue
+    public FunctionalBaseline remove(UUID uuid) {
+        if (systemOfInterest.getUuid().equals(uuid)) {
+            // Ignore the request
+            return this;
+        } else {
+            return new FunctionalBaseline(systemOfInterest, context.remove(uuid));
+        }
+    }
+
+    public boolean hasRelation(Relation relation) {
+        return relation != null
+                && getStore().get(relation.getUuid(), relation.getClass()) != null;
     }
 }

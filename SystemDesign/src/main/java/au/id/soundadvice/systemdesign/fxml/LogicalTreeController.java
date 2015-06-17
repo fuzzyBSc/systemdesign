@@ -41,7 +41,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import javafx.event.ActionEvent;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
@@ -62,6 +61,7 @@ public class LogicalTreeController {
         this.view = view;
         this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
         this.updateView = new SingleRunnable<>(JFXExecutor.instance(), new UpdateView());
+        this.functionCreator = new FunctionCreator(edit);
     }
 
     public void start() {
@@ -112,6 +112,8 @@ public class LogicalTreeController {
             }
 
             Map<Function, SortedMap<String, Function>> rawAllocation = new HashMap<>();
+            parentFunctions.values().stream()
+                    .forEach((parent) -> rawAllocation.put(parent, new TreeMap<>()));
             // Keep orphans separate to avoid null pointers in TreeMap
             SortedMap<String, Function> rawOrphans = new TreeMap<>();
             allocated.getFunctions().stream()
@@ -120,10 +122,6 @@ public class LogicalTreeController {
                         UUID trace = child.getTrace();
                         Function parent = trace == null ? null : parentFunctions.get(trace);
                         SortedMap<String, Function> map = parent == null ? rawOrphans : rawAllocation.get(parent);
-                        if (map == null) {
-                            map = new TreeMap<>();
-                            rawAllocation.put(parent, map);
-                        }
                         map.put(child.getDisplayName(), child);
                     });
 
@@ -202,9 +200,18 @@ public class LogicalTreeController {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Function");
             contextMenu.getItems().add(addMenuItem);
+            addMenuItem.setOnAction(event -> {
+                Function relation = getItem();
+                FunctionalBaseline functional = undo.get().getFunctional();
+                if (functional != null && functional.hasRelation(relation)) {
+                    functionCreator.addToParent();
+                } else {
+                    functionCreator.addToChild();
+                }
+            });
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction((ActionEvent t) -> {
+            deleteMenuItem.setOnAction(event -> {
                 UndoState state = undo.get();
                 TreeItem<Function> treeItem1 = getTreeItem();
                 Function relation = treeItem1.getValue();
@@ -214,23 +221,26 @@ public class LogicalTreeController {
                 } else {
                     FunctionalBaseline functional = state.getFunctional();
                     if (functional != null) {
-                        undo.set(state.setFunctional(functional.setContext(
-                                functional.getContext().remove(relation.getUuid()))));
+                        undo.set(state.setFunctional(functional.remove(relation.getUuid())));
                     }
                 }
             });
+            this.itemProperty().addListener(value -> this.setEditable(value != null));
         }
 
         @Override
         public void startEdit() {
-            super.startEdit();
+            Function function = getItem();
+            if (function != null) {
+                super.startEdit();
 
-            if (textField == null) {
-                createTextField();
+                if (textField == null) {
+                    createTextField(getItem());
+                }
+                setText(null);
+                setGraphic(textField);
+                textField.selectAll();
             }
-            setText(null);
-            setGraphic(textField);
-            textField.selectAll();
         }
 
         @Override
@@ -250,11 +260,17 @@ public class LogicalTreeController {
         }
 
         @Override
-        public void commitEdit(Function item) {
+        public void commitEdit(Function function) {
             UndoState state = undo.get();
-            super.commitEdit(item);
-            undo.set(state.setAllocated(
-                    state.getAllocated().add(item)));
+            super.commitEdit(function);
+            FunctionalBaseline functional = state.getFunctional();
+            if (functional != null && functional.hasRelation(function)) {
+                // This function is a member of the functional baseline
+                undo.set(state.setFunctional(functional.add(function)));
+            } else {
+                undo.set(state.setAllocated(
+                        state.getAllocated().add(function)));
+            }
         }
 
         @Override
@@ -279,11 +295,11 @@ public class LogicalTreeController {
             }
         }
 
-        private void createTextField() {
-            textField = new TextField(getItem().getName());
+        private void createTextField(Function function) {
+            textField = new TextField(function.getName());
             textField.setOnKeyReleased((KeyEvent t) -> {
                 if (t.getCode() == KeyCode.ENTER) {
-                    commitEdit(getItem().setName(textField.getText()));
+                    commitEdit(function.setName(textField.getText()));
                 } else if (t.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
                 }
@@ -291,7 +307,7 @@ public class LogicalTreeController {
         }
 
         private String getString() {
-            return getItem() == null ? "" : getItem().toString();
+            return getItem() == null ? "(unallocated)" : getItem().toString();
         }
     }
     private final EditState edit;
@@ -299,4 +315,5 @@ public class LogicalTreeController {
     private final AtomicReference<TreeState> treeState = new AtomicReference<>();
     private final SingleRunnable<Changed> changed;
     private final SingleRunnable<UpdateView> updateView;
+    private final FunctionCreator functionCreator;
 }

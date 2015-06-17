@@ -99,13 +99,10 @@ public class SingleRelationSolution implements Solution {
                 // Don't modify the edit state
                 return;
             }
-            AllocatedBaseline baseline = functional.getContext();
             if (insert) {
-                undo.set(state.setFunctional(
-                        functional.setContext(baseline.add(relation))));
+                undo.set(state.setFunctional(functional.add(relation)));
             } else {
-                undo.set(state.setFunctional(
-                        functional.setContext(baseline.remove(relation.getUuid()))));
+                undo.set(state.setFunctional(functional.remove(relation.getUuid())));
             }
         } else {
             AllocatedBaseline baseline = state.getAllocated();

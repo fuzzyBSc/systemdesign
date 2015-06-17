@@ -111,7 +111,7 @@ public class RelationStore implements RelationContext {
 
     @Override
     public <T extends Relation> T get(UUID key, Class<T> type) {
-        Relation result = relations.get(key);
+        Relation result = key == null ? null : relations.get(key);
         return type.cast(result);
     }
 
