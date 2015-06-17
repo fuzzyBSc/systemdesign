@@ -49,7 +49,7 @@ public class UniqueName implements Collector<String, AtomicInteger, String> {
 
     @Override
     public Supplier<AtomicInteger> supplier() {
-        return () -> new AtomicInteger(-1);
+        return AtomicInteger::new;
     }
 
     @Override
@@ -59,16 +59,16 @@ public class UniqueName implements Collector<String, AtomicInteger, String> {
                 int suffix;
                 if (text.length() == prefix.length()) {
                     // Actually equal
-                    suffix = 0;
+                    suffix = 1;
                 } else if (text.length() > prefix.length() + 1
                         && text.charAt(prefix.length()) == ' ') {
                     try {
                         suffix = Integer.parseInt(text.substring(prefix.length() + 1));
                     } catch (NumberFormatException ex) {
-                        suffix = -1;
+                        suffix = 0;
                     }
                 } else {
-                    suffix = -1;
+                    suffix = 0;
                 }
                 index.getAndAccumulate(suffix, Math::max);
             } else {
@@ -89,7 +89,7 @@ public class UniqueName implements Collector<String, AtomicInteger, String> {
     public Function<AtomicInteger, String> finisher() {
         return (index) -> {
             int count = index.incrementAndGet();
-            if (count == 0) {
+            if (count == 1) {
                 return prefix;
             } else {
                 return prefix + " " + count;
