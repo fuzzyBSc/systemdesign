@@ -42,6 +42,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
 
@@ -76,6 +77,8 @@ public class MainController implements Initializable {
     private MenuItem undoMenuItem;
     @FXML
     private MenuItem redoMenuItem;
+    @FXML
+    private TabPane tabs;
 
     private final EditState edit;
 
@@ -84,6 +87,7 @@ public class MainController implements Initializable {
     private PhysicalTreeController physicalTreeController;
     private LogicalTreeController logicalTreeController;
     private PhysicalSchematicController schematicController;
+    private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
 
     public MainController(EditState edit) {
@@ -104,6 +108,8 @@ public class MainController implements Initializable {
         logicalTreeController.start();
         schematicController = new PhysicalSchematicController(edit, physicalDrawing);
         schematicController.start();
+        logicalController = new LogicalTabs(edit, tabs);
+        logicalController.start();
         suggestionsController = new SuggestionsController(
                 edit, suggestions, new AllProblems());
         suggestionsController.start();

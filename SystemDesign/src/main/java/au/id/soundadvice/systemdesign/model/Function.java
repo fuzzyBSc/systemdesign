@@ -35,6 +35,7 @@ import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
@@ -49,8 +50,10 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return getDisplayName();
     }
 
+    private static Point2D defaultOrigin = new Point2D(200, 200);
+
     public static Function create(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, null, name);
+        return new Function(UUID.randomUUID(), item, null, name, defaultOrigin);
     }
 
     @Override
@@ -104,13 +107,15 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         this.trace = bean.getTrace();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
         this.name = bean.getName();
+        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
-    public Function(UUID uuid, UUID item, @Nullable UUID trace, String name) {
+    private Function(UUID uuid, UUID item, @Nullable UUID trace, String name, Point2D origin) {
         this.uuid = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
         this.name = name;
+        this.origin = origin;
     }
 
     private final UUID uuid;
@@ -118,6 +123,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     @Nullable
     private final UUID trace;
     private final String name;
+    private final Point2D origin;
 
     @Override
     public RequirementType getRequirementType() {
@@ -126,7 +132,9 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @Override
     public FunctionBean toBean(RelationContext context) {
-        return new FunctionBean(uuid, item.getUuid(), trace, name);
+        return new FunctionBean(
+                uuid, item.getUuid(), trace, name,
+                (int) origin.getX(), (int) origin.getY());
     }
 
     @Override
@@ -143,11 +151,20 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @CheckReturnValue
     public Function setName(String value) {
-        return new Function(uuid, item.getUuid(), trace, value);
+        return new Function(uuid, item.getUuid(), trace, value, origin);
     }
 
     @CheckReturnValue
     public Function setTrace(UUID value) {
-        return new Function(uuid, item.getUuid(), value, name);
+        return new Function(uuid, item.getUuid(), value, name, origin);
+    }
+
+    @CheckReturnValue
+    public Function setOrigin(Point2D value) {
+        return new Function(uuid, item.getUuid(), trace, name, value);
+    }
+
+    public Point2D getOrigin() {
+        return origin;
     }
 }

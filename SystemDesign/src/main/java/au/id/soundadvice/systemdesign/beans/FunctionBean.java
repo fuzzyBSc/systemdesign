@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -36,35 +35,20 @@ import java.util.UUID;
  */
 public class FunctionBean implements Identifiable {
 
-    @Override
-    public int hashCode() {
-        int hash = 3;
-        hash = 97 * hash + Objects.hashCode(this.uuid);
-        return hash;
+    public int getOriginX() {
+        return originX;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final FunctionBean other = (FunctionBean) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.item, other.item)) {
-            return false;
-        }
-        if (!Objects.equals(this.trace, other.trace)) {
-            return false;
-        }
-        if (!Objects.equals(this.name, other.name)) {
-            return false;
-        }
-        return true;
+    public void setOriginX(int originX) {
+        this.originX = originX;
+    }
+
+    public int getOriginY() {
+        return originY;
+    }
+
+    public void setOriginY(int originY) {
+        this.originY = originY;
     }
 
     public UUID getTrace() {
@@ -100,11 +84,13 @@ public class FunctionBean implements Identifiable {
         return name;
     }
 
-    public FunctionBean(UUID uuid, UUID item, UUID trace, String name) {
+    public FunctionBean(UUID uuid, UUID item, UUID trace, String name, int originX, int originY) {
         this.uuid = uuid;
         this.item = item;
         this.trace = trace;
         this.name = name;
+        this.originX = originX;
+        this.originY = originY;
     }
 
     public FunctionBean() {
@@ -114,5 +100,6 @@ public class FunctionBean implements Identifiable {
     private UUID item;
     private UUID trace;
     private String name;
-
+    private int originX;
+    private int originY;
 }

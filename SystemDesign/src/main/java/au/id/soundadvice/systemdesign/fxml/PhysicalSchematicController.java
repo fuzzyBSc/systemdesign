@@ -120,6 +120,9 @@ public class PhysicalSchematicController {
             }
             result.setText(builder.toString());
             result.getStyleClass().add("schematicItem");
+            if (item.isExternal()) {
+                result.getStyleClass().add("external");
+            }
 
             result.boundsInLocalProperty().addListener((event) -> {
                 Point2D origin = item.getOrigin();

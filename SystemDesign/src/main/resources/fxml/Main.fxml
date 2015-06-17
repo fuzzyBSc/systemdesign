@@ -37,22 +37,6 @@
                </children>
             </TilePane>
          </bottom>
-         <center>
-            <StackPane prefHeight="150.0" prefWidth="200.0" BorderPane.alignment="CENTER">
-               <children>
-                  <ScrollPane prefHeight="200.0" prefWidth="200.0">
-                    <content>
-                      <AnchorPane fx:id="physicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
-                    </content>
-                  </ScrollPane>
-                  <ScrollPane prefHeight="200.0" prefWidth="200.0" visible="false">
-                    <content>
-                      <AnchorPane fx:id="logicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
-                    </content>
-                  </ScrollPane>
-               </children>
-            </StackPane>
-         </center>
          <right>
             <VBox fx:id="suggestions" prefHeight="375.0" prefWidth="214.0" BorderPane.alignment="CENTER" />
          </right>
@@ -100,6 +84,21 @@
               </menus>
             </MenuBar>
          </top>
+         <center>
+            <TabPane fx:id="tabs" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+              <tabs>
+                <Tab text="Physical">
+                     <content>
+                        <ScrollPane prefHeight="200.0" prefWidth="200.0">
+                          <content>
+                            <AnchorPane fx:id="physicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
+                          </content>
+                        </ScrollPane>
+                     </content>
+                </Tab>
+              </tabs>
+            </TabPane>
+         </center>
       </BorderPane>
    </children>
 </AnchorPane>
