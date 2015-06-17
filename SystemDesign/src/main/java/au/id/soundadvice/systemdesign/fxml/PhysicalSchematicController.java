@@ -187,9 +187,13 @@ public class PhysicalSchematicController {
         @Override
         public boolean canConnect(UUID sourceId, UUID targetId) {
             RelationContext store = undo.get().getAllocated().getStore();
-            Item source = store.get(sourceId, Item.class);
-            Item target = store.get(targetId, Item.class);
-            return source != null && target != null;
+            try {
+                Item source = store.get(sourceId, Item.class);
+                Item target = store.get(targetId, Item.class);
+                return source != null && target != null;
+            } catch (ClassCastException ex) {
+                return false;
+            }
         }
 
         @Override

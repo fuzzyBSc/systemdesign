@@ -249,6 +249,11 @@ public class AllocatedBaseline {
         return new AllocatedBaseline(store.remove(key));
     }
 
+    public boolean hasRelation(Relation relation) {
+        return relation != null
+                && getStore().get(relation.getUuid(), relation.getClass()) != null;
+    }
+
     public IDSegment getNextItemId() {
         int nextId = 1;
         for (Item item : getItems()) {
@@ -262,5 +267,14 @@ public class AllocatedBaseline {
             }
         }
         return new IDSegment(Integer.toString(nextId));
+    }
+
+    @CheckReturnValue
+    public AllocatedBaseline removeAll(Collection<UUID> toRemove) {
+        if (toRemove.isEmpty()) {
+            return this;
+        } else {
+            return new AllocatedBaseline(store.removeAll(toRemove));
+        }
     }
 }

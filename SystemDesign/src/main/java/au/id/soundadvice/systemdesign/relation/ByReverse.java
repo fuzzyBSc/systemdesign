@@ -114,13 +114,11 @@ public class ByReverse<E extends Relation> {
             ByClass<E> references = reverse.get(current);
             if (references != null) {
                 references.values().stream()
-                        .forEach(byUUID -> {
-                            byUUID.values().stream()
-                            .forEach(dependant -> {
-                                if (seed.add(dependant)) {
-                                    stack.push(dependant.getUuid());
-                                }
-                            });
+                        .flatMap(byClass -> byClass.values().stream())
+                        .forEach(dependant -> {
+                            if (seed.add(dependant)) {
+                                stack.push(dependant.getUuid());
+                            }
                         });
             }
         }

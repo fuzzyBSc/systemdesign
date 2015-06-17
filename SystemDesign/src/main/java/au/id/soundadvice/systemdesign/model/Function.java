@@ -145,4 +145,9 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     public Function setName(String value) {
         return new Function(uuid, item.getUuid(), trace, value);
     }
+
+    @CheckReturnValue
+    public Function setTrace(UUID value) {
+        return new Function(uuid, item.getUuid(), value, name);
+    }
 }

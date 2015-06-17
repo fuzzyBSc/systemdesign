@@ -43,7 +43,6 @@ import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javafx.event.ActionEvent;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
@@ -83,7 +82,7 @@ public class PhysicalTreeController {
         UndoBuffer<UndoState> undo = edit.getUndo();
         MenuItem addMenuItem = new MenuItem("Add Item");
         contextMenu.getItems().add(addMenuItem);
-        addMenuItem.setOnAction((ActionEvent t) -> {
+        addMenuItem.setOnAction(event -> {
             UndoState state = undo.get();
             AllocatedBaseline baseline = state.getAllocated();
             String name = baseline.getItems().parallelStream()

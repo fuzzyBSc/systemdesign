@@ -32,23 +32,32 @@ import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
+import au.id.soundadvice.systemdesign.files.Identifiable;
+import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
+import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.TransferMode;
 
 /**
  *
@@ -65,12 +74,21 @@ public class LogicalTreeController {
     }
 
     public void start() {
+        addContextMenu();
         edit.subscribe(changed);
         changed.run();
     }
 
     public void stop() {
         edit.unsubscribe(changed);
+    }
+
+    private void addContextMenu() {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem addMenuItem = new MenuItem("Add Function");
+        contextMenu.getItems().add(addMenuItem);
+        addMenuItem.setOnAction(event -> functionCreator.addToChild());
+        view.setContextMenu(contextMenu);
     }
 
     public static final class FunctionAllocation {
@@ -162,6 +180,7 @@ public class LogicalTreeController {
                     .filter((allocation) -> allocation.parent != null)
                     .map((allocation) -> {
                         TreeItem parent = new TreeItem(allocation.parent);
+                        parent.setExpanded(true);
                         parent.getChildren().addAll(allocation.children.values().stream()
                                 .map((child) -> new TreeItem(child))
                                 .toArray());
@@ -226,6 +245,86 @@ public class LogicalTreeController {
                 }
             });
             this.itemProperty().addListener(value -> this.setEditable(value != null));
+
+            this.setOnDragDetected(event -> {
+                Function function = getItem();
+                UndoState state = undo.get();
+                if (state.getFunctional() != null
+                        && state.getAllocated().hasRelation(function)) {
+                    // Start dragging
+                    Dragboard db = this.startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent content = new ClipboardContent();
+                    content.put(DataFormat.PLAIN_TEXT, function.toString());
+                    content.put(DataFormat.URL, ConnectHandler.uuidPrefix + function.getUuid());
+                    db.setContent(content);
+                    this.getStyleClass().add("dragSource");
+
+                    event.consume();
+                }
+            });
+            this.setOnDragOver(event -> {
+                // Decide whether or not to accept the drop
+                UndoState state = undo.get();
+                Function source = state.getAllocated().getStore().get(
+                        ConnectHandler.toUUID(event.getDragboard()), Function.class);
+                if (canConnect(state, source, getItem())) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                    event.consume();
+                }
+            });
+            this.setOnDragEntered(event -> {
+                // Show drag acceptance visually
+                UndoState state = undo.get();
+                Function source = state.getAllocated().getStore().get(
+                        ConnectHandler.toUUID(event.getDragboard()), Function.class);
+                if (canConnect(state, source, getItem())) {
+                    this.getStyleClass().add("dragTarget");
+                    event.consume();
+                }
+            });
+            this.setOnDragExited(event -> {
+                // Unshow drag acceptance
+                this.getStyleClass().remove("dragTarget");
+                event.consume();
+            });
+            this.setOnDragDropped(event -> {
+                // Handle drop
+                UndoState state = undo.get();
+                AllocatedBaseline allocated = state.getAllocated();
+                Function source = allocated.getStore().get(
+                        ConnectHandler.toUUID(event.getDragboard()), Function.class);
+                Function target = getItem();
+                boolean ok;
+                if (source != null && canConnect(state, source, target)) {
+                    List<UUID> toRemove
+                            = allocated.getStore().getReverse(source.getUuid(), Flow.class).parallelStream()
+                            .map(Identifiable::getUuid)
+                            .collect(Collectors.toList());
+                    source = source.setTrace(target.getUuid());
+                    undo.set(state.setAllocated(allocated.removeAll(toRemove).add(source)));
+                    ok = true;
+                } else {
+                    ok = false;
+                }
+                event.setDropCompleted(ok);
+
+                event.consume();
+            });
+            this.setOnDragDone(event -> {
+                this.getStyleClass().remove("dragSource");
+                event.consume();
+            });
+        }
+
+        public boolean canConnect(UndoState state, Function source, Function target) {
+            FunctionalBaseline functional = state.getFunctional();
+            boolean targetOK = functional != null && functional.hasRelation(target);
+            if (targetOK) {
+                boolean sourceOK = source != null && !target.getUuid().equals(source.getTrace());
+                return sourceOK;
+            } else {
+                return false;
+            }
         }
 
         @Override

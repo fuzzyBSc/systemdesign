@@ -31,9 +31,7 @@ import java.util.UUID;
 import javafx.scene.Node;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
-import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javax.annotation.Nullable;
 
@@ -43,7 +41,7 @@ import javax.annotation.Nullable;
  */
 public class ConnectHandler {
 
-    private static final String uuidPrefix = "urn:uuid:";
+    public static final String uuidPrefix = "urn:uuid:";
 
     public interface Connect {
 
@@ -53,7 +51,7 @@ public class ConnectHandler {
     }
 
     @Nullable
-    private static UUID toUUID(Dragboard dragboard) {
+    public static UUID toUUID(Dragboard dragboard) {
         String url = dragboard.getUrl();
         if (url == null || !url.startsWith(uuidPrefix)) {
             return null;
@@ -68,7 +66,7 @@ public class ConnectHandler {
 
     public static void register(
             Node target, Identifiable identifiable, Connect connect, MouseFilter filter) {
-        target.setOnDragDetected((MouseEvent event) -> {
+        target.setOnDragDetected(event -> {
             if (filter.matches(event)) {
                 // Start dragging
                 Dragboard db = target.startDragAndDrop(TransferMode.LINK);
@@ -81,7 +79,7 @@ public class ConnectHandler {
                 event.consume();
             }
         });
-        target.setOnDragOver((DragEvent event) -> {
+        target.setOnDragOver(event -> {
             // Decide whether or not to accept the drop
             UUID sourceUUID = toUUID(event.getDragboard());
             if (connect.canConnect(sourceUUID, identifiable.getUuid())) {
@@ -90,7 +88,7 @@ public class ConnectHandler {
 
             event.consume();
         });
-        target.setOnDragEntered((DragEvent event) -> {
+        target.setOnDragEntered(event -> {
             // Show drag acceptance visually
             UUID sourceUUID = toUUID(event.getDragboard());
             if (connect.canConnect(sourceUUID, identifiable.getUuid())) {
@@ -99,13 +97,13 @@ public class ConnectHandler {
 
             event.consume();
         });
-        target.setOnDragExited((DragEvent event) -> {
+        target.setOnDragExited(event -> {
             // Unshow drag acceptance
             target.getStyleClass().remove("dragTarget");
 
             event.consume();
         });
-        target.setOnDragDropped((DragEvent event) -> {
+        target.setOnDragDropped(event -> {
             // Handle drop
             UUID sourceUUID = toUUID(event.getDragboard());
             UUID targetUUID = identifiable.getUuid();
@@ -120,8 +118,8 @@ public class ConnectHandler {
 
             event.consume();
         });
-        target.setOnDragDone((DragEvent event) -> {
-            target.getStyleClass().add("dragTarget");
+        target.setOnDragDone(event -> {
+            target.getStyleClass().remove("dragSource");
             event.consume();
         });
     }

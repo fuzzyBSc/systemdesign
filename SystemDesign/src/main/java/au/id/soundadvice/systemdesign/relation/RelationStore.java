@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -161,12 +162,18 @@ public class RelationStore implements RelationContext {
 
     @CheckReturnValue
     public RelationStore remove(UUID key) {
-        Relation oldValue = relations.get(key);
-        if (oldValue == null) {
+        return removeAll(Collections.singleton(key));
+    }
+
+    @CheckReturnValue
+    public RelationStore removeAll(Collection<UUID> seed) {
+        Set<Relation> toDelete = seed.parallelStream()
+                .map(uuid -> relations.get(uuid))
+                .filter((relation) -> relation != null)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (seed.isEmpty()) {
             return this;
         } else {
-            Set<Relation> toDelete = new HashSet<>();
-            toDelete.add(oldValue);
             reverseReferences.cascade(toDelete);
             List<UUID> toDeleteAsUUIDs = toDelete.parallelStream()
                     .map(Relation::getUuid)
