@@ -1,0 +1,8 @@
+"description","external","id","name","originX","originY","uuid"
+"","true","3","Runtime Filesystem","460.0","120.0","98ec0213-d1e0-4736-860c-a0507f6bd5bd"
+"","true","4","commons-io","260.0","60.0","a41628cb-19ed-404f-a0f8-895d6b67bbf1"
+"","false","1","Build Instructions","290.0","220.0","f37d90cd-ce2d-459d-b019-d5b8b9cb6780"
+"","true","5","Runtime User","450.0","220.0","0e9f8ef5-cf00-48b3-8c81-e51afa3336ea"
+"","false","2","Sources","290.0","160.0","2bc18f78-5073-4a73-9dfa-ea416bb89995"
+"","true","6","opencsv","380.0","60.0","66e0291c-5cd4-4587-bf43-948994a0c14b"
+"","true","2","Development","290.0","280.0","7f77f551-155d-4e94-b27e-c00e19474cca"
