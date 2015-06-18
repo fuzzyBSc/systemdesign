@@ -31,13 +31,20 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
-import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
-import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
+import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
-import java.util.Collection;
+import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
+import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
+import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
+import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
+import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.relation.RelationStore;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
@@ -48,7 +55,9 @@ import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.shape.Arc;
 import javafx.scene.shape.Ellipse;
+import javafx.util.Pair;
 import javax.annotation.Nullable;
 
 /**
@@ -124,16 +133,101 @@ class LogicalSchematicController {
         return group;
     }
 
-    public void setFunctions(AllocatedBaseline baseline, Collection<Function> functions) {
+    private Node toNode(Flow flow, double radiusX, double radiusY, boolean negate) {
+        int startDegrees;
+        if (negate) {
+            startDegrees = 180;
+        } else {
+            startDegrees = 0;
+        }
+
+        Arc path = new Arc(0, 0, radiusX, radiusY, startDegrees, 180);
+        path.getStyleClass().add("path");
+
+        Label label = new Label(flow.getType());
+        label.boundsInLocalProperty().addListener((info, old, bounds) -> {
+            double halfWidth = bounds.getWidth() / 2;
+            double halfHeight = bounds.getHeight() / 2;
+            label.setLayoutX(-halfWidth);
+            if (negate) {
+                label.setLayoutY(-halfHeight + radiusY);
+            } else {
+                label.setLayoutY(-halfHeight - radiusY);
+            }
+        });
+        label.getStyleClass().add("text");
+
+        Group group = new Group(path, label);
+        group.getStyleClass().add("schematicFlow");
+        return group;
+    }
+
+    private Node toNode(Function left, Function right, List<Flow> flows) {
+        Point2D leftOrigin = left.getOrigin();
+        Point2D rightOrigin = right.getOrigin();
+
+        if (leftOrigin.getX() > rightOrigin.getX()) {
+            // Flip orientation
+            Point2D tmp = leftOrigin;
+            leftOrigin = rightOrigin;
+            rightOrigin = tmp;
+        }
+        Point2D midpoint = leftOrigin.midpoint(rightOrigin);
+
+        Point2D zeroDegrees = new Point2D(1, 0);
+        Point2D vector = new Point2D(
+                rightOrigin.getX() - leftOrigin.getX(),
+                rightOrigin.getY() - leftOrigin.getY());
+        double theta = zeroDegrees.angle(vector);
+        if (leftOrigin.getY() > rightOrigin.getY()) {
+            theta = -theta;
+        }
+
+        Group group = new Group();
+        boolean negate = true;
+        double radiusX = vector.magnitude() / 2;
+        double radiusY = 0;
+        for (int ii = 0; ii < flows.size(); ++ii) {
+            Flow flow = flows.get(ii);
+            Node node = toNode(flow, radiusX, radiusY, negate);
+            group.getChildren().add(node);
+            if (negate) {
+                radiusY += 30;
+                negate = false;
+            } else {
+                negate = true;
+            }
+        }
+        group.setRotate(theta);
+        group.setLayoutX(midpoint.getX());
+        group.setLayoutY(midpoint.getY());
+        return group;
+    }
+
+    public void populate(
+            AllocatedBaseline baseline,
+            Map<UUID, Function> functions,
+            Map<Pair<UUID, UUID>, List<Flow>> flows) {
         Pane pane = new AnchorPane();
-        functions.forEach(function -> {
+        RelationStore store = baseline.getStore();
+        flows.entrySet().forEach(entry -> {
+            Function left = functions.get(entry.getKey().getKey());
+            Function right = functions.get(entry.getKey().getValue());
+            if (left != null && right != null) {
+                Node node = toNode(left, right, entry.getValue());
+                pane.getChildren().add(node);
+            }
+        });
+        functions.values().forEach(function -> {
             Item item = function.getItem().getTarget(baseline.getStore());
             Node node = toNode(function, item);
 
-            new DragHandler(pane, node, new Move(function),
+            new MoveHandler(pane, node, new Move(function),
                     new GridSnap(10),
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
+            DragSource.bind(node, function, true);
+            DragTarget.bind(edit, node, function, new FunctionDropHandler(edit));
             pane.getChildren().add(node);
         });
         tab.setContent(pane);

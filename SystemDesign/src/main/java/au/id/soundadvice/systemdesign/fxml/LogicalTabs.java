@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import java.util.Collection;
 import java.util.Collections;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javafx.scene.control.TabPane;
+import javafx.util.Pair;
 
 /**
  *
@@ -74,21 +76,21 @@ public class LogicalTabs {
         public void run() {
             UndoState state = edit.getUndo().get();
             FunctionalBaseline functional = state.getFunctional();
-            Map<UUID, Function> functions;
+            Map<UUID, Function> parentFunctions;
             if (functional == null) {
-                functions = Collections.emptyMap();
+                parentFunctions = Collections.emptyMap();
                 topLevel.start();
             } else {
                 Collection<Function> reverse
                         = (Collection<Function>) functional.getStore().getReverse(
                                 functional.getSystemOfInterest().getUuid(), Function.class);
-                functions = reverse.stream()
+                parentFunctions = reverse.stream()
                         .collect(Collectors.toMap(
                                         Function::getUuid,
                                         java.util.function.Function.identity()));
                 topLevel.stop();
             }
-            functions.values().stream()
+            parentFunctions.values().stream()
                     .filter(function -> !controllers.containsKey(function.getUuid()))
                     .forEachOrdered(function -> {
                         // Add new tabs
@@ -98,7 +100,7 @@ public class LogicalTabs {
                         newTab.start();
                     });
             controllers.keySet().stream()
-                    .filter(uuid -> !functions.containsKey(uuid))
+                    .filter(uuid -> !parentFunctions.containsKey(uuid))
                     .forEach(uuid -> {
                         // Remove old tabs
                         LogicalSchematicController controller = controllers.remove(uuid);
@@ -106,27 +108,42 @@ public class LogicalTabs {
                     });
 
             AllocatedBaseline allocated = state.getAllocated();
+            Map<Pair<UUID, UUID>, List<Flow>> flows = allocated.getFlows().parallelStream()
+                    .sorted((left, right) -> left.getType().compareTo(right.getType()))
+                    .collect(Collectors.groupingBy((flow) -> {
+                        return new Pair<>(
+                                flow.getLeft().getUuid(),
+                                flow.getRight().getUuid());
+                    }));
             if (functional == null) {
-                topLevel.setFunctions(allocated, allocated.getFunctions());
+                Map<UUID, Function> childFunctions = allocated.getFunctions().parallelStream()
+                        .collect(Collectors.toMap(
+                                        Function::getUuid,
+                                        java.util.function.Function.identity()));
+                topLevel.populate(allocated, childFunctions, flows);
             } else {
-                Collection<Function> allFunctions = allocated.getFunctions();
+                Collection<Function> allChildFunctions = allocated.getFunctions();
                 // Divide up all functions between the various controllers
                 Map<UUID, List<Function>> displayFunctions
-                        = allFunctions.parallelStream()
+                        = allChildFunctions.parallelStream()
                         .filter(function -> function.getTrace() != null)
                         .collect(Collectors.groupingBy(Function::getTrace));
                 displayFunctions.entrySet().stream()
                         .forEach(entry -> {
                             // Update each controller with its subset
                             LogicalSchematicController controller = controllers.get(entry.getKey());
-                            controller.setFunctions(allocated, entry.getValue());
+                            Map<UUID, Function> childFunctions = entry.getValue().parallelStream()
+                            .collect(Collectors.toMap(
+                                            Function::getUuid,
+                                            java.util.function.Function.identity()));
+                            controller.populate(allocated, childFunctions, flows);
                         });
                 controllers.entrySet().stream()
                         .filter(entry -> !displayFunctions.containsKey(entry.getKey()))
                         .map(Map.Entry::getValue)
                         .forEach(controller -> {
                             // Clear any controllers whose function list is now empty
-                            controller.setFunctions(allocated, Collections.emptyList());
+                            controller.populate(allocated, Collections.emptyMap(), flows);
                         });
             }
         }

@@ -30,8 +30,10 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.relation.Relation;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
@@ -102,6 +104,22 @@ public class UndoState {
 
     public AllocatedBaseline getAllocated() {
         return allocated;
+    }
+
+    @Nullable
+    public <T extends Relation> T getAllocatedInstance(
+            UUID uuid, Class<T> clazz) {
+        return allocated.getStore().get(uuid, clazz);
+    }
+
+    @Nullable
+    public <T extends Relation> T getFunctionalInstance(
+            UUID uuid, Class<T> clazz) {
+        if (functional == null) {
+            return null;
+        } else {
+            return functional.getStore().get(uuid, clazz);
+        }
     }
 
     private UndoState(FunctionalBaseline functional, AllocatedBaseline allocated) {

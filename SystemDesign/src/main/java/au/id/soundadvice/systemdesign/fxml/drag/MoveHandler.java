@@ -37,7 +37,7 @@ import static javafx.scene.input.MouseEvent.MOUSE_DRAGGED;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class DragHandler {
+public class MoveHandler {
 
     private final StartDrag startDrag = new StartDrag();
     private final Snap snap;
@@ -63,7 +63,7 @@ public class DragHandler {
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent);
     }
 
-    public DragHandler(
+    public MoveHandler(
             Node parent, Node draggable, Dragged dragged, Snap snap, MouseFilter filter) {
         this.parent = parent;
         this.draggable = draggable;

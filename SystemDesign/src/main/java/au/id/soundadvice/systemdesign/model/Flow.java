@@ -98,12 +98,27 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return type;
     }
 
+    public static Flow createNew(UUID from, UUID to, String type) {
+        return new Flow(UUID.randomUUID(), from, to, FlowDirection.Normal, type);
+    }
+
     public Flow(FlowBean bean) {
-        this.uuid = bean.getUuid();
-        this.direction = bean.getDirection();
-        this.left = new Reference<>(this, bean.getLeft(), FlowEnd.class);
-        this.right = new Reference<>(this, bean.getRight(), FlowEnd.class);
-        this.type = bean.getType();
+        this(bean.getUuid(), bean.getLeft(), bean.getRight(), bean.getDirection(), bean.getType());
+    }
+
+    private Flow(UUID uuid, UUID left, UUID right, FlowDirection direction, String type) {
+        this.uuid = uuid;
+        if (left.compareTo(right) > 0) {
+            // Swap left/right
+            UUID tmp = left;
+            left = right;
+            right = tmp;
+            direction = direction.reverse();
+        }
+        this.left = new Reference<>(this, left, FlowEnd.class);
+        this.right = new Reference<>(this, right, FlowEnd.class);
+        this.direction = direction;
+        this.type = type;
     }
 
     private final UUID uuid;

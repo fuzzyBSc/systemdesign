@@ -35,9 +35,26 @@
     -fx-stroke-dash-array: 12 2 4 2;
 }
 
+.schematicItem > .text {
+    -fx-text-alignment: left;
+}
+
 .schematicFunction > .outline {
     -fx-fill: lightyellow;
     -fx-stroke: black;
+}
+
+.schematicFunction > .text {
+    -fx-text-alignment: center;
+}
+
+.schematicFlow > .path {
+    -fx-fill: none;
+    -fx-stroke: black;
+}
+.schematicFlow > .text {
+    -fx-background-insets: -5px;
+    -fx-background-color: lightyellow;
 }
 
 .suggestion {

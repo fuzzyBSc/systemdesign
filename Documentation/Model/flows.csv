@@ -1,0 +1,6 @@
+"description","direction","left","right","type","uuid"
+"Model Systems --New Flow-> Store Files","Normal","a01a5e30-5764-41ba-a62f-84cb47e10996","7d182653-479e-421f-9491-3ac2b863b62b","New Flow","9c753bac-a0e4-476f-a264-0887422579a7"
+"Develop Software --New Flow 5-> Model Systems","Reverse","a01a5e30-5764-41ba-a62f-84cb47e10996","f7cc903a-86d6-4caf-b132-d9ee628d738a","New Flow 5","2b60936e-1380-4696-b6c8-34bf2192ebbc"
+"Input Model --New Flow 4-> Model Systems","Reverse","a01a5e30-5764-41ba-a62f-84cb47e10996","d5ebb853-799a-4e1b-bc88-1a3b8150f4f8","New Flow 4","3c50c0b6-d3ba-46b2-b728-63cb6f5aa5bd"
+"Model Systems --New Flow 3-> Compare Files","Normal","a01a5e30-5764-41ba-a62f-84cb47e10996","f6aeb6c1-7a95-4203-b4e2-0192d1efd8ac","New Flow 3","5440a96f-4f44-4fab-8340-5f67d5a30b12"
+"Model Systems --New Flow 2-> Process CSV","Normal","a01a5e30-5764-41ba-a62f-84cb47e10996","52869083-71c5-447d-b6af-b6465f369bff","New Flow 2","5b91aabf-39fb-4451-80f0-a010ecf45749"

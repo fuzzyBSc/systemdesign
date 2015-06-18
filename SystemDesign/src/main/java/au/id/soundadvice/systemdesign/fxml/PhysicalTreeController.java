@@ -36,6 +36,9 @@ import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
+import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -170,8 +173,11 @@ public class PhysicalTreeController {
             view.setRoot(root);
             view.setShowRoot(false);
             view.setEditable(true);
-            view.setCellFactory(
-                    (TreeView<Item> p) -> new ItemTreeCell(edit.getUndo()));
+            view.setCellFactory(view -> {
+                ItemTreeCell cell = new ItemTreeCell(edit.getUndo());
+                cell.start();
+                return cell;
+            });
         }
 
         private TreeItem toNode(Item item) {
@@ -190,13 +196,27 @@ public class PhysicalTreeController {
             this.undo = tmpUndo;
             MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
-            addMenuItem.setOnAction(event -> interactions.addItem());
+            addMenuItem.setOnAction(event -> {
+                interactions.addItem();
+                event.consume();
+            });
             MenuItem renameMenuItem = new MenuItem("Renumber");
             contextMenu.getItems().add(renameMenuItem);
-            renameMenuItem.setOnAction(event -> interactions.renumber(getItem()));
+            renameMenuItem.setOnAction(event -> {
+                interactions.renumber(getItem());
+                event.consume();
+            });
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> edit.remove(getItem().getUuid()));
+            deleteMenuItem.setOnAction(event -> {
+                edit.remove(getItem().getUuid());
+                event.consume();
+            });
+        }
+
+        public void start() {
+            DragSource.bind(this, () -> getItem(), false);
+            DragTarget.bind(edit, this, () -> getItem(), new ItemDropHandler(edit));
         }
 
         @Override

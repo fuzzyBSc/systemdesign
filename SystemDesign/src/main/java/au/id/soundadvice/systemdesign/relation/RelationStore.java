@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.CheckReturnValue;
+import javax.annotation.Nullable;
 
 /**
  * An immutable store of relations, suitable for use within an undo buffer.
@@ -111,9 +112,14 @@ public class RelationStore implements RelationContext {
     }
 
     @Override
+    @Nullable
     public <T extends Relation> T get(UUID key, Class<T> type) {
         Relation result = key == null ? null : relations.get(key);
-        return type.cast(result);
+        if (type.isInstance(result)) {
+            return (T) result;
+        } else {
+            return null;
+        }
     }
 
     public <T extends Relation> Collection<T> getByClass(Class<T> type) {

@@ -31,18 +31,17 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler;
-import au.id.soundadvice.systemdesign.fxml.drag.ConnectHandler.Connect;
-import au.id.soundadvice.systemdesign.fxml.drag.DragHandler;
-import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
+import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
+import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
+import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
+import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import java.util.Collection;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
@@ -163,7 +162,10 @@ public class PhysicalSchematicController {
             ContextMenu contextMenu = new ContextMenu();
             if (item.isExternal()) {
                 MenuItem deleteMenuItem = new MenuItem("Delete Interface");
-                deleteMenuItem.setOnAction(event -> edit.remove(item.getUuid()));
+                deleteMenuItem.setOnAction(event -> {
+                    edit.remove(item.getUuid());
+                    event.consume();
+                });
                 contextMenu.getItems().add(deleteMenuItem);
             } else {
                 result.setOnMouseClicked(event -> {
@@ -179,53 +181,33 @@ public class PhysicalSchematicController {
                 });
                 contextMenu.getItems().add(navigateMenuItem);
                 MenuItem addMenuItem = new MenuItem("Add Function");
-                addMenuItem.setOnAction(event -> interactions.addFunctionToItem(item));
+                addMenuItem.setOnAction(event -> {
+                    interactions.addFunctionToItem(item);
+                    event.consume();
+                });
                 contextMenu.getItems().add(addMenuItem);
                 MenuItem deleteMenuItem = new MenuItem("Delete Item");
-                deleteMenuItem.setOnAction(event -> edit.remove(item.getUuid()));
+                deleteMenuItem.setOnAction(event -> {
+                    edit.remove(item.getUuid());
+                    event.consume();
+                });
                 contextMenu.getItems().add(deleteMenuItem);
             }
-            result.getChildren().stream()
+
+            result.getChildren()
+                    .stream()
                     .filter((member) -> (member instanceof Control))
                     .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
-            new DragHandler(parent, result, new MoveItem(item),
+            new MoveHandler(parent, result,
+                    new MoveItem(item),
                     new GridSnap(10), (MouseEvent event)
                     -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
-            ConnectHandler.register(result, item, new ConnectItems(),
-                    (MouseEvent event)
-                    -> MouseButton.PRIMARY.equals(event.getButton())
-                    && event.isControlDown());
+            DragSource.bind(result, item, true);
+            DragTarget.bind(edit, result, item, new ItemDropHandler(edit));
 
             parent.getChildren().add(result);
         }
-    }
-
-    private class ConnectItems implements Connect {
-
-        @Override
-        public boolean canConnect(UUID sourceId, UUID targetId) {
-            RelationContext store = undo.get().getAllocated().getStore();
-            try {
-                Item source = store.get(sourceId, Item.class);
-                Item target = store.get(targetId, Item.class);
-                return source != null && target != null;
-            } catch (ClassCastException ex) {
-                return false;
-            }
-        }
-
-        @Override
-        public void connect(UUID sourceId, UUID targetId) {
-            UndoState state = undo.get();
-            AllocatedBaseline baseline = state.getAllocated();
-            Interface newInterface = new Interface(sourceId, targetId);
-            if (baseline.getStore().getReverse(sourceId, Interface.class).parallelStream()
-                    .noneMatch((existing) -> newInterface.isRedundantTo(existing))) {
-                undo.set(state.setAllocated(baseline.add(newInterface)));
-            }
-        }
-
     }
 
     private class MoveItem implements Dragged {
