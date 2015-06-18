@@ -31,7 +31,6 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,13 +137,8 @@ public class EditState {
         }
     }
 
-    public void loadLastChild() throws IOException {
-        try {
-            Identity child = lastChild.peek();
-            loadChild(child);
-        } catch (EmptyStackException ex) {
-            throw new IOException(ex);
-        }
+    public Identity getLastChild() throws EmptyStackException {
+        return lastChild.peek();
     }
 
     public void load(Directory dir) throws IOException {

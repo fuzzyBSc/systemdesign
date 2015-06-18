@@ -54,7 +54,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -255,16 +257,25 @@ public class AllocatedBaseline {
     }
 
     public IDSegment getNextItemId() {
-        int nextId = 1;
-        for (Item item : getItems()) {
-            try {
-                int itemId = Integer.parseInt(item.getShortId().toString());
-                if (itemId >= nextId) {
-                    nextId = itemId + 1;
-                }
-            } catch (NumberFormatException ex) {
-                // Skip this item
-            }
+        System.out.println(getItems());
+        Optional<Integer> currentMax = getItems().parallelStream()
+                .filter(item -> !item.isExternal())
+                .map(item -> {
+                    try {
+                        System.out.println(item.getShortId());
+                        return Integer.parseInt(item.getShortId().toString());
+                    } catch (NumberFormatException ex) {
+                        System.out.println("NFE: 0");
+                        return 0;
+                    }
+                })
+                .collect(Collectors.maxBy(Integer::compareTo));
+        System.out.println(currentMax);
+        int nextId;
+        if (currentMax.isPresent()) {
+            nextId = currentMax.get() + 1;
+        } else {
+            nextId = 1;
         }
         return new IDSegment(Integer.toString(nextId));
     }

@@ -35,6 +35,14 @@ import java.util.UUID;
  */
 public class FunctionBean implements Identifiable {
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     public int getOriginX() {
         return originX;
     }
@@ -84,9 +92,10 @@ public class FunctionBean implements Identifiable {
         return name;
     }
 
-    public FunctionBean(UUID uuid, UUID item, UUID trace, String name, int originX, int originY) {
+    public FunctionBean(UUID uuid, UUID item, String description, UUID trace, String name, int originX, int originY) {
         this.uuid = uuid;
         this.item = item;
+        this.description = description;
         this.trace = trace;
         this.name = name;
         this.originX = originX;
@@ -98,6 +107,7 @@ public class FunctionBean implements Identifiable {
 
     private UUID uuid;
     private UUID item;
+    private String description;
     private UUID trace;
     private String name;
     private int originX;

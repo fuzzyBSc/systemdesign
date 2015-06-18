@@ -33,11 +33,8 @@ import au.id.soundadvice.systemdesign.consistency.AllProblems;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -87,9 +84,11 @@ public class MainController implements Initializable {
     private PhysicalSchematicController schematicController;
     private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
+    private final Interactions interactions;
 
     public MainController(EditState edit) {
         this.edit = edit;
+        this.interactions = new Interactions(edit);
     }
 
     /**
@@ -113,22 +112,11 @@ public class MainController implements Initializable {
         suggestionsController.start();
 
         upButton.setOnAction(event -> {
-            try {
-                if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before navigating?")) {
-                    edit.loadParent();
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            interactions.navigateUp(upButton.getScene().getWindow());
         });
         downButton.setOnAction(event -> {
-            try {
-                if (SaveHelper.checkSave(downButton.getScene().getWindow(), edit, "Save before navigating?")) {
-                    edit.loadLastChild();
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            interactions.navigateDown(
+                    downButton.getScene().getWindow(), edit.getLastChild());
         });
 
         newMenuItem.setOnAction(event -> {

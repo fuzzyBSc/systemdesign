@@ -35,7 +35,7 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.SortedMap;

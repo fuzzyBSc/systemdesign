@@ -40,15 +40,13 @@ import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
-import java.io.IOException;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
@@ -162,34 +160,34 @@ public class PhysicalSchematicController {
                 result.getStyleClass().add("external");
             }
 
-            if (!item.isExternal()) {
-                result.setOnMouseClicked((MouseEvent ev) -> {
-                    if (ev.getClickCount() > 1) {
-                        // Navigate down
-                        if (SaveHelper.checkSave(parent.getScene().getWindow(), edit, "Save before navigating?")) {
-                            try {
-                                UndoState state = undo.get();
-                                edit.loadChild(item.asIdentity(state.getAllocated().getStore()));
-                            } catch (IOException ex) {
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Load Failed");
-                                alert.setHeaderText("Load Failed");
-                                alert.setContentText(ex.toString());
-
-                                alert.showAndWait();
-                            }
-                        }
-                        ev.consume();
+            ContextMenu contextMenu = new ContextMenu();
+            if (item.isExternal()) {
+                MenuItem deleteMenuItem = new MenuItem("Delete Interface");
+                deleteMenuItem.setOnAction(event -> edit.remove(item.getUuid()));
+                contextMenu.getItems().add(deleteMenuItem);
+            } else {
+                result.setOnMouseClicked(event -> {
+                    if (event.getClickCount() > 1) {
+                        interactions.navigateDown(contextMenu.getScene().getWindow(), item);
+                        event.consume();
                     }
                 });
-                ContextMenu contextMenu = new ContextMenu();
+                MenuItem navigateMenuItem = new MenuItem("Navigate Down");
+                navigateMenuItem.setOnAction(event -> {
+                    interactions.navigateDown(contextMenu.getScene().getWindow(), item);
+                    event.consume();
+                });
+                contextMenu.getItems().add(navigateMenuItem);
                 MenuItem addMenuItem = new MenuItem("Add Function");
-                contextMenu.getItems().add(addMenuItem);
                 addMenuItem.setOnAction(event -> interactions.addFunctionToItem(item));
-                result.getChildren().stream()
-                        .filter((member) -> (member instanceof Control))
-                        .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
+                contextMenu.getItems().add(addMenuItem);
+                MenuItem deleteMenuItem = new MenuItem("Delete Item");
+                deleteMenuItem.setOnAction(event -> edit.remove(item.getUuid()));
+                contextMenu.getItems().add(deleteMenuItem);
             }
+            result.getChildren().stream()
+                    .filter((member) -> (member instanceof Control))
+                    .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
             new DragHandler(parent, result, new MoveItem(item),
                     new GridSnap(10), (MouseEvent event)
                     -> MouseButton.PRIMARY.equals(event.getButton())

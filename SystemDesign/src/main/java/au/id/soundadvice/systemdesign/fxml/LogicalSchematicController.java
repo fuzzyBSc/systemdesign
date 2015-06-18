@@ -36,7 +36,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;

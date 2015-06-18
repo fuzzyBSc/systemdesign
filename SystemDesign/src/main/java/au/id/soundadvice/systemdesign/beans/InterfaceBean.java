@@ -53,8 +53,8 @@ public class InterfaceBean implements Identifiable {
         this.rightItem = rightItem;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     @Override
@@ -91,6 +91,7 @@ public class InterfaceBean implements Identifiable {
         return true;
     }
 
+    @Override
     public UUID getUuid() {
         return uuid;
     }
@@ -107,11 +108,11 @@ public class InterfaceBean implements Identifiable {
         return rightItem;
     }
 
-    public String getName() {
-        return name;
+    public String getDescription() {
+        return description;
     }
 
-    public InterfaceBean(UUID uuid, UUID parentInterface, UUID leftItem, UUID rightItem, String name) {
+    public InterfaceBean(UUID uuid, UUID parentInterface, UUID leftItem, UUID rightItem, String description) {
         this.uuid = uuid;
         this.parentInterface = parentInterface;
         // Normalise left/right
@@ -122,7 +123,7 @@ public class InterfaceBean implements Identifiable {
             this.leftItem = rightItem;
             this.rightItem = leftItem;
         }
-        this.name = name;
+        this.description = description;
     }
 
     public InterfaceBean() {
@@ -133,6 +134,5 @@ public class InterfaceBean implements Identifiable {
     private UUID parentInterface;
     private UUID leftItem;
     private UUID rightItem;
-    // Strictly for descriptive purposes within the file
-    private String name;
+    private String description;
 }

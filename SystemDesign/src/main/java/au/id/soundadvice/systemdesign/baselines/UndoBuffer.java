@@ -24,7 +24,7 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.undo;
+package au.id.soundadvice.systemdesign.baselines;
 
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.concurrent.ChangeSubscribable;

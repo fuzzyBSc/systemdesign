@@ -28,15 +28,23 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.IDSegment;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.model.Identity;
+import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.scene.control.Alert;
 import javafx.scene.control.TextInputDialog;
+import javafx.stage.Window;
 
 /**
  *
@@ -52,15 +60,18 @@ public class Interactions {
     public Item addItem() {
         UndoBuffer<UndoState> undo = edit.getUndo();
         UndoState state = undo.get();
-        AllocatedBaseline baseline = state.getAllocated();
-        String name = baseline.getItems().parallelStream()
+        FunctionalBaseline functional = state.getFunctional();
+        AllocatedBaseline allocated = state.getAllocated();
+        Collection<Item> items = allocated.getItems();
+        String name = items.parallelStream()
+                .filter(item -> !item.isExternal())
                 .map(Item::getName)
                 .collect(new UniqueName("New Item"));
         Item item = Item.newItem(
-                baseline.getIdentity().getUuid(),
-                baseline.getNextItemId(),
-                name, "");
-        undo.set(state.setAllocated(baseline.add(item)));
+                allocated.getIdentity().getUuid(),
+                allocated.getNextItemId(),
+                name, "", false);
+        undo.set(state.setAllocated(allocated.add(item)));
         return item;
     }
 
@@ -99,6 +110,36 @@ public class Interactions {
             if (isUnique) {
                 item = item.setShortId(path);
                 undo.set(state.setAllocated(allocated.add(item)));
+            }
+        }
+    }
+
+    public void navigateUp(Window window) {
+        try {
+            if (SaveHelper.checkSave(window, edit, "Save before navigating?")) {
+                edit.loadParent();
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public void navigateDown(Window window, Item item) {
+        UndoState state = edit.getUndo().get();
+        this.navigateDown(window, item.asIdentity(state.getAllocated().getStore()));
+    }
+
+    public void navigateDown(Window window, Identity identity) {
+        if (SaveHelper.checkSave(window, edit, "Save before navigating?")) {
+            try {
+                edit.loadChild(identity);
+            } catch (IOException ex) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Load Failed");
+                alert.setHeaderText("Load Failed");
+                alert.setContentText(ex.toString());
+
+                alert.showAndWait();
             }
         }
     }

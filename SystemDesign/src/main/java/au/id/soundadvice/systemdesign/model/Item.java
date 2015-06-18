@@ -182,10 +182,11 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return finder.getReferences(this);
     }
 
-    public static Item newItem(UUID parent, IDSegment shortId, String name, String description) {
+    public static Item newItem(
+            UUID parent, IDSegment shortId, String name, String description, boolean external) {
         IDPath id = IDPath.empty().getChild(shortId);
         return new Item(
-                UUID.randomUUID(), parent, id, name, description, false, defaultOrigin);
+                UUID.randomUUID(), parent, id, name, description, external, defaultOrigin);
     }
 
     private Item(

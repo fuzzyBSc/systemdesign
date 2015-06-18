@@ -119,18 +119,6 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         return right;
     }
 
-    public String getDescription(RelationContext context) {
-        Item leftItem = this.left.getTarget(context);
-        Item rightItem = this.right.getTarget(context);
-        IDPath leftPath = leftItem.getIdPath(context);
-        IDPath rightPath = rightItem.getIdPath(context);
-        if (leftPath.compareTo(rightPath) < 0) {
-            return leftPath + ":" + rightPath;
-        } else {
-            return rightPath + ":" + leftPath;
-        }
-    }
-
     private final UUID uuid;
     private final Reference<Interface, Item> left;
     private final Reference<Interface, Item> right;
@@ -142,8 +130,35 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
 
     @Override
     public InterfaceBean toBean(RelationContext context) {
+        Item leftItem = this.left.getTarget(context);
+        Item rightItem = this.right.getTarget(context);
+        IDPath leftPath = leftItem.getIdPath(context);
+        IDPath rightPath = rightItem.getIdPath(context);
+        if (leftPath.compareTo(rightPath) > 0) {
+            // Invert
+            {
+                Item tmp = leftItem;
+                leftItem = rightItem;
+                rightItem = tmp;
+            }
+            {
+                IDPath tmp = leftPath;
+                leftPath = rightPath;
+                rightPath = tmp;
+            }
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(leftPath);
+        builder.append(':');
+        builder.append(rightPath);
+        builder.append(' ');
+        builder.append(leftItem.getName());
+        builder.append(':');
+        builder.append(rightItem.getName());
+
         return new InterfaceBean(
-                uuid, null, left.getUuid(), right.getUuid(), getDescription(context));
+                uuid, null, left.getUuid(), right.getUuid(), builder.toString());
     }
 
     private static final ReferenceFinder<Interface> finder

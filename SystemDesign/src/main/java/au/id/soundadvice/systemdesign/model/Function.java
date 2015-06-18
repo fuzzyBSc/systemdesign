@@ -138,8 +138,13 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @Override
     public FunctionBean toBean(RelationContext context) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(name);
+        builder.append(" (");
+        builder.append(item.getTarget(context).getDisplayName());
+        builder.append(')');
         return new FunctionBean(
-                uuid, item.getUuid(), trace, name,
+                uuid, item.getUuid(), builder.toString(), trace, name,
                 (int) origin.getX(), (int) origin.getY());
     }
 

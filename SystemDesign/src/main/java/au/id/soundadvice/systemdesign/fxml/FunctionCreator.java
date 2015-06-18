@@ -32,7 +32,7 @@ import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

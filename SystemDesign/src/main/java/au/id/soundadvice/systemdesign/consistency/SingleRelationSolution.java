@@ -31,7 +31,7 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.undo.UndoBuffer;
+import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 
 /**
  *
