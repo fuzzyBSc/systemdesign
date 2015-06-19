@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import java.util.Collection;
+import java.util.stream.Stream;
 
 /**
  *
@@ -35,6 +35,6 @@ import java.util.Collection;
  */
 public interface ProblemFactory {
 
-    public Collection<Problem> getProblems(EditState edit);
+    public Stream<Problem> getProblems(EditState edit);
 
 }

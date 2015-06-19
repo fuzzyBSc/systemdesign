@@ -26,9 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  *
@@ -47,8 +46,8 @@ public class ToRelation implements Relation {
     private final UUID uuid;
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
-        return Collections.emptyList();
+    public Stream<Reference> getReferences() {
+        return Stream.empty();
     }
 
 }

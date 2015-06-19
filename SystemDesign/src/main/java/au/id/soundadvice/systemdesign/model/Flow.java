@@ -28,20 +28,26 @@ package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.FlowBean;
-import au.id.soundadvice.systemdesign.beans.FlowDirection;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
+
+    @Override
+    public String toString() {
+        return type;
+    }
 
     @Override
     public int hashCode() {
@@ -62,13 +68,10 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.left, other.left)) {
+        if (!Objects.equals(this.iface, other.iface)) {
             return false;
         }
-        if (!Objects.equals(this.right, other.right)) {
-            return false;
-        }
-        if (this.direction != other.direction) {
+        if (!Objects.equals(this.connectionScope, other.connectionScope)) {
             return false;
         }
         if (!Objects.equals(this.type, other.type)) {
@@ -82,6 +85,10 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return uuid;
     }
 
+    public Reference<Flow, Interface> getInterface() {
+        return iface;
+    }
+
     public Reference<Flow, FlowEnd> getLeft() {
         return left;
     }
@@ -90,41 +97,39 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return right;
     }
 
-    public FlowDirection getDirection() {
-        return direction;
+    public Direction getDirection() {
+        return connectionScope.getDirection();
     }
 
     public String getType() {
         return type;
     }
 
-    public static Flow createNew(UUID from, UUID to, String type) {
-        return new Flow(UUID.randomUUID(), from, to, FlowDirection.Normal, type);
+    public static Flow createNew(UUID iface, ConnectionScope connectionScope, String type) {
+        return new Flow(UUID.randomUUID(), iface, connectionScope, type);
     }
 
     public Flow(FlowBean bean) {
-        this(bean.getUuid(), bean.getLeft(), bean.getRight(), bean.getDirection(), bean.getType());
+        this(bean.getUuid(),
+                bean.getInterface(),
+                new ConnectionScope(bean.getLeft(), bean.getRight(), bean.getDirection()),
+                bean.getType());
     }
 
-    private Flow(UUID uuid, UUID left, UUID right, FlowDirection direction, String type) {
+    private Flow(UUID uuid, UUID iface, ConnectionScope connectionScope, String type) {
         this.uuid = uuid;
-        if (left.compareTo(right) > 0) {
-            // Swap left/right
-            UUID tmp = left;
-            left = right;
-            right = tmp;
-            direction = direction.reverse();
-        }
-        this.left = new Reference<>(this, left, FlowEnd.class);
-        this.right = new Reference<>(this, right, FlowEnd.class);
-        this.direction = direction;
+        this.iface = new Reference<>(this, iface, Interface.class);
+        this.connectionScope = connectionScope;
+        this.left = new Reference<>(this, connectionScope.getLeft(), FlowEnd.class);
+        this.right = new Reference<>(this, connectionScope.getRight(), FlowEnd.class);
         this.type = type;
     }
 
     private final UUID uuid;
+    private final Reference<Flow, Interface> iface;
+    private final ConnectionScope connectionScope;
     private final Reference<Flow, FlowEnd> left;
     private final Reference<Flow, FlowEnd> right;
-    private final FlowDirection direction;
     private final String type;
 
     @Override
@@ -132,7 +137,7 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         StringBuilder builder = new StringBuilder();
         FlowEnd leftEnd = left.getTarget(context);
         FlowEnd rightEnd = right.getTarget(context);
-        switch (direction) {
+        switch (connectionScope.getDirection()) {
             case Normal:
                 builder.append(leftEnd.getDisplayName());
                 builder.append(" --").append(type).append("-> ");
@@ -143,24 +148,41 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
                 builder.append(" --").append(type).append("-> ");
                 builder.append(leftEnd.getDisplayName());
                 break;
-            case Bidirectional:
+            case Both:
                 builder.append(leftEnd.getDisplayName());
                 builder.append(" <-").append(type).append("-> ");
                 builder.append(rightEnd.getDisplayName());
                 break;
             default:
-                throw new AssertionError(direction.name());
+                throw new AssertionError(connectionScope.toString());
 
         }
 
         return new FlowBean(
-                uuid, direction, left.getUuid(), right.getUuid(), type, builder.toString());
+                uuid, iface.getUuid(),
+                connectionScope.getDirection(),
+                left.getUuid(), right.getUuid(),
+                type, builder.toString());
     }
     private static final ReferenceFinder<Flow> finder
             = new ReferenceFinder<>(Flow.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
+    }
+
+    @CheckReturnValue
+    public Flow setType(String value) {
+        return new Flow(uuid, iface.getUuid(), connectionScope, value);
+    }
+
+    @CheckReturnValue
+    public Flow setDirection(Direction value) {
+        return new Flow(uuid, iface.getUuid(), connectionScope.setDirection(value), type);
+    }
+
+    public ConnectionScope getConnectionScope() {
+        return connectionScope;
     }
 }

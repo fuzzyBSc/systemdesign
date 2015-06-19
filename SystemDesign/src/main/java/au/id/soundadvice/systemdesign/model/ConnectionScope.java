@@ -24,22 +24,43 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.beans;
+package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.files.Identifiable;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.CheckReturnValue;
 
 /**
+ * An ordered pair of UUID, useful for describing the scope of a connection
+ * between other relations, such as an interface or a flow.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FlowBean implements Identifiable {
+public class ConnectionScope {
+
+    @Override
+    public String toString() {
+        switch (direction) {
+            case None:
+                return "(none)";
+            case Normal:
+                return left + " -> " + right;
+            case Reverse:
+                return right + " -> " + left;
+            case Both:
+                return left + " -- " + right;
+            default:
+                throw new AssertionError(direction.name());
+        }
+    }
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 89 * hash + Objects.hashCode(this.uuid);
+        int hash = 7;
+        hash = 83 * hash + Objects.hashCode(this.left);
+        hash = 83 * hash + Objects.hashCode(this.right);
+        hash = 83 * hash + Objects.hashCode(this.direction);
         return hash;
     }
 
@@ -51,13 +72,7 @@ public class FlowBean implements Identifiable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final FlowBean other = (FlowBean) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.iface, other.iface)) {
-            return false;
-        }
+        final ConnectionScope other = (ConnectionScope) obj;
         if (!Objects.equals(this.left, other.left)) {
             return false;
         }
@@ -67,103 +82,44 @@ public class FlowBean implements Identifiable {
         if (this.direction != other.direction) {
             return false;
         }
-        if (!Objects.equals(this.type, other.type)) {
-            return false;
-        }
-        if (!Objects.equals(this.description, other.description)) {
-            return false;
-        }
         return true;
-    }
-
-    @Override
-    public UUID getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
-
-    public UUID getInterface() {
-        return iface;
-    }
-
-    public void setInterface(UUID uuid) {
-        this.iface = uuid;
     }
 
     public UUID getLeft() {
         return left;
     }
 
-    public void setLeft(UUID left) {
-        this.left = left;
-    }
-
     public UUID getRight() {
         return right;
-    }
-
-    public void setRight(UUID right) {
-        this.right = right;
     }
 
     public Direction getDirection() {
         return direction;
     }
 
-    public void setDirection(Direction direction) {
-        this.direction = direction;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public FlowBean(UUID uuid, UUID iface, Direction direction, UUID left, UUID right, String type, String description) {
-        this.uuid = uuid;
-        this.iface = iface;
-        // Normalise left/right
+    public ConnectionScope(UUID left, UUID right, Direction direction) {
         if (left.compareTo(right) < 0) {
             this.left = left;
             this.right = right;
             this.direction = direction;
         } else {
-            this.left = right;
+            // swap
             this.right = left;
+            this.left = right;
             this.direction = direction.reverse();
         }
-        this.type = type;
-        this.description = description;
     }
 
-    public FlowBean() {
-    }
+    private final UUID left;
+    private final UUID right;
+    private final Direction direction;
 
-    private UUID uuid;
-    private UUID iface;
-    /**
-     * Left function or external item.
-     */
-    private UUID left;
-    /**
-     * Right function or external item.
-     */
-    private UUID right;
-    private Direction direction;
-    private String type;
-    private String description;
+    @CheckReturnValue
+    public ConnectionScope setDirection(Direction value) {
+        if (direction == value) {
+            return this;
+        } else {
+            return new ConnectionScope(left, right, value);
+        }
+    }
 }

@@ -26,8 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.Collection;
 import java.util.UUID;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
@@ -55,6 +55,6 @@ public interface RelationContext {
      * @param fromType The expected relation type
      * @return
      */
-    public <F extends Relation> Collection<? extends F> getReverse(
+    public <F extends Relation> Stream<F> getReverse(
             UUID key, Class<F> fromType);
 }

@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -74,9 +75,9 @@ public class ByUUID<E extends Identifiable> {
         return empty;
     }
 
-    static <T extends Identifiable> ByUUID valueOf(Collection<? extends T> relations) {
+    static <T extends Identifiable> ByUUID valueOf(Stream<T> relations) {
         return new ByUUID(Collections.unmodifiableMap(
-                relations.parallelStream().collect(
+                relations.parallel().collect(
                         Collectors.<T, UUID, T>toConcurrentMap(
                                 T::getUuid,
                                 Function.identity()))));
@@ -141,8 +142,8 @@ public class ByUUID<E extends Identifiable> {
         return relations.size();
     }
 
-    public Collection<E> values() {
-        return relations.values();
+    public Stream<E> stream() {
+        return relations.values().stream();
     }
 
     public boolean contains(UUID key) {

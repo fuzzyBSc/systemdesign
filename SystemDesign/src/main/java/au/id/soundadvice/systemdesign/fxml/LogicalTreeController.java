@@ -59,7 +59,10 @@ import javafx.scene.input.KeyEvent;
  */
 public class LogicalTreeController {
 
-    public LogicalTreeController(EditState edit, TreeView<Function> view) {
+    public LogicalTreeController(
+            Interactions interactions, EditState edit,
+            TreeView<Function> view) {
+        this.interactions = interactions;
         this.edit = edit;
         this.view = view;
         this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
@@ -119,16 +122,16 @@ public class LogicalTreeController {
             } else {
                 UUID systemUuid = functional.getSystemOfInterest().getUuid();
                 parentFunctions = new HashMap<>();
-                functional.getStore().getReverse(systemUuid, Function.class).stream()
+                functional.getStore().getReverse(systemUuid, Function.class)
                         .forEach((function) -> parentFunctions.put(function.getUuid(), function));
             }
 
             Map<Function, SortedMap<String, Function>> rawAllocation = new HashMap<>();
-            parentFunctions.values().stream()
+            parentFunctions.values()
                     .forEach((parent) -> rawAllocation.put(parent, new TreeMap<>()));
             // Keep orphans separate to avoid null pointers in TreeMap
             SortedMap<String, Function> rawOrphans = new TreeMap<>();
-            allocated.getFunctions().stream()
+            allocated.getFunctions()
                     .forEach((child) -> {
                         // Parent may be null, ie child is orphaned
                         UUID trace = child.getTrace();
@@ -225,7 +228,8 @@ public class LogicalTreeController {
 
         public void start() {
             DragSource.bind(this, () -> getItem(), false);
-            DragTarget.bind(edit, this, () -> getItem(), new FunctionDropHandler(edit));
+            DragTarget.bind(edit, this, () -> getItem(),
+                    new FunctionDropHandler(interactions, edit));
         }
 
         @Override
@@ -310,6 +314,7 @@ public class LogicalTreeController {
             return getItem() == null ? "(unallocated)" : getItem().toString();
         }
     }
+    private final Interactions interactions;
     private final EditState edit;
     private final TreeView<Function> view;
     private final AtomicReference<TreeState> treeState = new AtomicReference<>();

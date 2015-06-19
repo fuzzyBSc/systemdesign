@@ -35,6 +35,7 @@ import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -121,7 +122,7 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
             = new ReferenceFinder<>(Identity.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 

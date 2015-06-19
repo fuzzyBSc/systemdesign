@@ -35,13 +35,14 @@ import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
+import au.id.soundadvice.systemdesign.model.ConnectionScope;
 import au.id.soundadvice.systemdesign.model.Flow;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +50,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseButton;
@@ -57,7 +60,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.Ellipse;
-import javafx.util.Pair;
+import javafx.scene.shape.Polygon;
 import javax.annotation.Nullable;
 
 /**
@@ -69,6 +72,7 @@ class LogicalSchematicController {
     private static final double root2 = Math.sqrt(2);
 
     private final EditState edit;
+    private final Interactions interactions;
     private final Tab tab;
     @Nullable
     private final Function parentFunction;
@@ -77,8 +81,12 @@ class LogicalSchematicController {
             JFXExecutor.instance(), new OnChange());
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    LogicalSchematicController(EditState edit, TabPane tabs, @Nullable Function parentFunction) {
+    LogicalSchematicController(
+            Interactions interactions, EditState edit,
+            TabPane tabs,
+            @Nullable Function parentFunction) {
         this.edit = edit;
+        this.interactions = interactions;
         this.tab = new Tab();
         this.tabs = tabs;
         this.parentFunction = parentFunction;
@@ -133,31 +141,69 @@ class LogicalSchematicController {
         return group;
     }
 
-    private Node toNode(Flow flow, double radiusX, double radiusY, boolean negate) {
+    private Node toNode(
+            Flow flow, Direction direction,
+            double radiusX, double radiusY, boolean negate) {
         int startDegrees;
         if (negate) {
-            startDegrees = 180;
-        } else {
             startDegrees = 0;
+        } else {
+            startDegrees = 180;
         }
 
         Arc path = new Arc(0, 0, radiusX, radiusY, startDegrees, 180);
         path.getStyleClass().add("path");
+
+        Polygon normalArrow = new Polygon(
+                5, -5,
+                15, 0,
+                5, 5);
+        normalArrow.getStyleClass().add("arrow");
+        Polygon reverseArrow = new Polygon(
+                -5, -5,
+                -15, 0,
+                -5, 5);
+        reverseArrow.getStyleClass().add("arrow");
+
+        switch (direction) {
+            case Normal:
+                reverseArrow.setVisible(false);
+                break;
+            case Reverse:
+                normalArrow.setVisible(false);
+                break;
+            case Both:
+                // Leave both visible
+                break;
+            default:
+                throw new AssertionError(direction.name());
+
+        }
 
         Label label = new Label(flow.getType());
         label.boundsInLocalProperty().addListener((info, old, bounds) -> {
             double halfWidth = bounds.getWidth() / 2;
             double halfHeight = bounds.getHeight() / 2;
             label.setLayoutX(-halfWidth);
-            if (negate) {
-                label.setLayoutY(-halfHeight + radiusY);
-            } else {
-                label.setLayoutY(-halfHeight - radiusY);
-            }
+            normalArrow.setLayoutX(halfWidth);
+            reverseArrow.setLayoutX(-halfWidth);
+            double layoutY = negate ? -radiusY : radiusY;
+            label.setLayoutY(-halfHeight + layoutY);
+            normalArrow.setLayoutY(layoutY);
+            reverseArrow.setLayoutY(layoutY);
         });
         label.getStyleClass().add("text");
 
-        Group group = new Group(path, label);
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem typeMenuItem = new MenuItem("Set Type");
+        typeMenuItem.setOnAction((event) -> {
+            interactions.setFlowType(flow);
+            event.consume();
+        });
+        contextMenu.getItems().add(typeMenuItem);
+        label.setContextMenu(contextMenu);
+
+        Group group = new Group(path, label, normalArrow, reverseArrow);
         group.getStyleClass().add("schematicFlow");
         return group;
     }
@@ -165,12 +211,14 @@ class LogicalSchematicController {
     private Node toNode(Function left, Function right, List<Flow> flows) {
         Point2D leftOrigin = left.getOrigin();
         Point2D rightOrigin = right.getOrigin();
+        boolean reverseDirection = false;
 
         if (leftOrigin.getX() > rightOrigin.getX()) {
             // Flip orientation
             Point2D tmp = leftOrigin;
             leftOrigin = rightOrigin;
             rightOrigin = tmp;
+            reverseDirection = true;
         }
         Point2D midpoint = leftOrigin.midpoint(rightOrigin);
 
@@ -189,7 +237,11 @@ class LogicalSchematicController {
         double radiusY = 0;
         for (int ii = 0; ii < flows.size(); ++ii) {
             Flow flow = flows.get(ii);
-            Node node = toNode(flow, radiusX, radiusY, negate);
+            Direction direction = flow.getDirection();
+            if (reverseDirection) {
+                direction = direction.reverse();
+            }
+            Node node = toNode(flow, direction, radiusX, radiusY, negate);
             group.getChildren().add(node);
             if (negate) {
                 radiusY += 30;
@@ -205,21 +257,20 @@ class LogicalSchematicController {
     }
 
     public void populate(
-            AllocatedBaseline baseline,
+            AllocatedBaseline allocated,
             Map<UUID, Function> functions,
-            Map<Pair<UUID, UUID>, List<Flow>> flows) {
+            Map<ConnectionScope, List<Flow>> flows) {
         Pane pane = new AnchorPane();
-        RelationStore store = baseline.getStore();
         flows.entrySet().forEach(entry -> {
-            Function left = functions.get(entry.getKey().getKey());
-            Function right = functions.get(entry.getKey().getValue());
+            Function left = functions.get(entry.getKey().getLeft());
+            Function right = functions.get(entry.getKey().getRight());
             if (left != null && right != null) {
                 Node node = toNode(left, right, entry.getValue());
                 pane.getChildren().add(node);
             }
         });
         functions.values().forEach(function -> {
-            Item item = function.getItem().getTarget(baseline.getStore());
+            Item item = function.getItem().getTarget(allocated.getStore());
             Node node = toNode(function, item);
 
             new MoveHandler(pane, node, new Move(function),
@@ -227,7 +278,8 @@ class LogicalSchematicController {
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
             DragSource.bind(node, function, true);
-            DragTarget.bind(edit, node, function, new FunctionDropHandler(edit));
+            DragTarget.bind(edit, node, function,
+                    new FunctionDropHandler(interactions, edit));
             pane.getChildren().add(node);
         });
         tab.setContent(pane);

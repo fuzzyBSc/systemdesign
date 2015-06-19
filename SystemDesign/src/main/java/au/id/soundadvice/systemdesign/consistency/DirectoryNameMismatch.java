@@ -31,10 +31,10 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  *
@@ -71,7 +71,7 @@ public class DirectoryNameMismatch implements ProblemFactory {
     }
 
     @Override
-    public Collection<Problem> getProblems(EditState edit) {
+    public Stream<Problem> getProblems(EditState edit) {
         Directory dir = edit.getCurrentDirectory();
         if (dir != null) {
             Path path = dir.getPath();
@@ -81,14 +81,14 @@ public class DirectoryNameMismatch implements ProblemFactory {
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
                     Path renameTo = path.getParent().resolve(identity);
                     if (!Files.exists(renameTo)) {
-                        return Collections.singleton(
+                        Stream.of(
                                 new Problem("Directory name mismatch", Collections.singleton(
                                                 new RenameDir(path, renameTo))));
                     }
                 }
             }
         }
-        return Collections.emptyList();
+        return Stream.empty();
     }
 
 }

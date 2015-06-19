@@ -28,9 +28,8 @@ package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -44,9 +43,8 @@ public class AllProblems implements ProblemFactory {
             new UntracedFunctions());
 
     @Override
-    public Collection<Problem> getProblems(EditState state) {
+    public Stream<Problem> getProblems(EditState state) {
         return factories.parallelStream()
-                .flatMap(factory -> factory.getProblems(state).parallelStream())
-                .collect(Collectors.toList());
+                .flatMap(factory -> factory.getProblems(state).parallel());
     }
 }

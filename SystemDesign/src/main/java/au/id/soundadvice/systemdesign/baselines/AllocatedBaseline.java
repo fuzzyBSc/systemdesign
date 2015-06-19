@@ -51,12 +51,12 @@ import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -100,27 +100,27 @@ public class AllocatedBaseline {
         return store;
     }
 
-    public Collection<Item> getItems() {
+    public Stream<Item> getItems() {
         return store.getByClass(Item.class);
     }
 
-    public Collection<Interface> getInterfaces() {
+    public Stream<Interface> getInterfaces() {
         return store.getByClass(Interface.class);
     }
 
-    public Collection<Function> getFunctions() {
+    public Stream<Function> getFunctions() {
         return store.getByClass(Function.class);
     }
 
-    public Collection<Flow> getFlows() {
+    public Stream<Flow> getFlows() {
         return store.getByClass(Flow.class);
     }
 
-    public Collection<Hazard> getHazards() {
+    public Stream<Hazard> getHazards() {
         return store.getByClass(Hazard.class);
     }
 
-    public Collection<Requirement> getRequirements() {
+    public Stream<Requirement> getRequirements() {
         return store.getByClass(Requirement.class);
     }
 
@@ -210,7 +210,7 @@ public class AllocatedBaseline {
             }
         }
 
-        return new AllocatedBaseline(RelationStore.valueOf(relations));
+        return new AllocatedBaseline(RelationStore.valueOf(relations.stream()));
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
@@ -257,20 +257,16 @@ public class AllocatedBaseline {
     }
 
     public IDSegment getNextItemId() {
-        System.out.println(getItems());
-        Optional<Integer> currentMax = getItems().parallelStream()
+        Optional<Integer> currentMax = getItems().parallel()
                 .filter(item -> !item.isExternal())
                 .map(item -> {
                     try {
-                        System.out.println(item.getShortId());
                         return Integer.parseInt(item.getShortId().toString());
                     } catch (NumberFormatException ex) {
-                        System.out.println("NFE: 0");
                         return 0;
                     }
                 })
                 .collect(Collectors.maxBy(Integer::compareTo));
-        System.out.println(currentMax);
         int nextId;
         if (currentMax.isPresent()) {
             nextId = currentMax.get() + 1;
@@ -281,11 +277,7 @@ public class AllocatedBaseline {
     }
 
     @CheckReturnValue
-    public AllocatedBaseline removeAll(Collection<UUID> toRemove) {
-        if (toRemove.isEmpty()) {
-            return this;
-        } else {
-            return new AllocatedBaseline(store.removeAll(toRemove));
-        }
+    public AllocatedBaseline removeAll(Stream<UUID> toRemove) {
+        return new AllocatedBaseline(store.removeAll(toRemove));
     }
 }

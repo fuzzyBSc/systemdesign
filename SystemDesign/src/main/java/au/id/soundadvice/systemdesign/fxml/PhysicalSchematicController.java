@@ -41,8 +41,8 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
-import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
@@ -69,11 +69,13 @@ public class PhysicalSchematicController {
             JFXExecutor.instance(), new OnChange());
     private final Interactions interactions;
 
-    PhysicalSchematicController(EditState edit, Pane drawing) {
+    PhysicalSchematicController(
+            Interactions interactions, EditState edit,
+            Pane drawing) {
         this.edit = edit;
         this.undo = edit.getUndo();
         this.drawing = drawing;
-        this.interactions = new Interactions(edit);
+        this.interactions = interactions;
     }
 
     void start() {
@@ -81,10 +83,10 @@ public class PhysicalSchematicController {
         onChange.run();
     }
 
-    private Group toNode(Item item, Collection<? extends Function> functions) {
+    private Group toNode(Item item, Stream<Function> functions) {
         StringBuilder builder = new StringBuilder();
         builder.append(item);
-        String functionsText = functions.stream()
+        String functionsText = functions
                 .map((function) -> function.getDisplayName())
                 .sorted()
                 .collect(Collectors.joining("\n+"));
@@ -98,9 +100,6 @@ public class PhysicalSchematicController {
 
         Rectangle rectangle = new Rectangle();
         rectangle.getStyleClass().add("outline");
-        // Why does this not work from the CSS??
-//        rectangle.getStrokeDashArray().addAll(12d, 2d, 4d, 2d);
-//        rectangle.setStyle("-fx-stroke-dash-array: 12 2 4 2");
 
         int insets = 5;
 
@@ -117,7 +116,10 @@ public class PhysicalSchematicController {
         });
 
         Group group = new Group(rectangle, label);
-        group.getStyleClass().add("schematicFunction");
+        group.getStyleClass().add("schematicItem");
+        if (item.isExternal()) {
+            group.getStyleClass().add("external");
+        }
         group.setLayoutX(item.getOrigin().getX());
         group.setLayoutY(item.getOrigin().getY());
 
@@ -130,10 +132,10 @@ public class PhysicalSchematicController {
         public void run() {
             drawing.getChildren().clear();
             AllocatedBaseline baseline = undo.get().getAllocated();
-            baseline.getInterfaces().stream().forEach((iface) -> {
+            baseline.getInterfaces().forEach((iface) -> {
                 addNode(drawing, baseline, iface);
             });
-            baseline.getItems().stream().forEach((item) -> {
+            baseline.getItems().forEach((item) -> {
                 addNode(drawing, baseline, item);
             });
         }
@@ -154,10 +156,6 @@ public class PhysicalSchematicController {
             Group result = toNode(
                     item,
                     baseline.getStore().getReverse(item.getUuid(), Function.class));
-            result.getStyleClass().add("schematicItem");
-            if (item.isExternal()) {
-                result.getStyleClass().add("external");
-            }
 
             ContextMenu contextMenu = new ContextMenu();
             if (item.isExternal()) {
@@ -170,13 +168,13 @@ public class PhysicalSchematicController {
             } else {
                 result.setOnMouseClicked(event -> {
                     if (event.getClickCount() > 1) {
-                        interactions.navigateDown(contextMenu.getScene().getWindow(), item);
+                        interactions.navigateDown(item);
                         event.consume();
                     }
                 });
                 MenuItem navigateMenuItem = new MenuItem("Navigate Down");
                 navigateMenuItem.setOnAction(event -> {
-                    interactions.navigateDown(contextMenu.getScene().getWindow(), item);
+                    interactions.navigateDown(item);
                     event.consume();
                 });
                 contextMenu.getItems().add(navigateMenuItem);
@@ -204,7 +202,8 @@ public class PhysicalSchematicController {
                     -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
             DragSource.bind(result, item, true);
-            DragTarget.bind(edit, result, item, new ItemDropHandler(edit));
+            DragTarget.bind(edit, result, item,
+                    new ItemDropHandler(interactions));
 
             parent.getChildren().add(result);
         }

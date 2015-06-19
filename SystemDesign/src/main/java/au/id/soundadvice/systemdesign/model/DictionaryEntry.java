@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  *
@@ -102,7 +103,7 @@ public class DictionaryEntry implements BeanFactory<RelationContext, DictionaryB
             = new ReferenceFinder<>(DictionaryEntry.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 }

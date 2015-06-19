@@ -60,12 +60,14 @@ import javax.annotation.Nullable;
  */
 public class PhysicalTreeController {
 
-    public PhysicalTreeController(EditState edit, TreeView<Item> view) {
+    public PhysicalTreeController(
+            Interactions interactions, EditState edit,
+            TreeView<Item> view) {
         this.edit = edit;
         this.view = view;
         this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
         this.updateView = new SingleRunnable<>(JFXExecutor.instance(), new UpdateView());
-        this.interactions = new Interactions(edit);
+        this.interactions = interactions;
     }
 
     public void start() {
@@ -129,7 +131,7 @@ public class PhysicalTreeController {
             this.systemOfInterest = functional == null ? null : functional.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
             RelationContext context = allocated.getStore();
-            allocated.getItems().stream()
+            allocated.getItems()
                     .forEach((item) -> tmpItems.put(item.getIdPath(context), item));
             this.items = Collections.unmodifiableSortedMap(tmpItems);
         }
@@ -216,7 +218,8 @@ public class PhysicalTreeController {
 
         public void start() {
             DragSource.bind(this, () -> getItem(), false);
-            DragTarget.bind(edit, this, () -> getItem(), new ItemDropHandler(edit));
+            DragTarget.bind(edit, this, () -> getItem(),
+                    new ItemDropHandler(interactions));
         }
 
         @Override

@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -52,14 +53,14 @@ public class ByClass<E extends Identifiable> {
         return empty;
     }
 
-    static <E extends Identifiable> ByClass<E> valueOf(Collection<? extends E> relations) {
-        ConcurrentMap<Class<?>, List<E>> byClass = relations.parallelStream()
+    static <E extends Identifiable> ByClass<E> valueOf(Stream<E> relations) {
+        ConcurrentMap<Class<?>, List<E>> byClass = relations.parallel()
                 .collect(Collectors.<E, Class<?>>groupingByConcurrent(E::getClass));
         return new ByClass(Collections.unmodifiableMap(
                 byClass.entrySet().parallelStream()
                 .collect(Collectors.toMap(
                                 entry -> entry.getKey(),
-                                entry -> ByUUID.valueOf(entry.getValue())))));
+                                entry -> ByUUID.valueOf(entry.getValue().stream())))));
     }
 
     private final Map<Class<?>, ByUUID<E>> relations;
@@ -68,12 +69,12 @@ public class ByClass<E extends Identifiable> {
         this.relations = unmodifiable;
     }
 
-    public <T> Collection<T> get(Class<T> key) {
+    public <T> Stream<T> get(Class<T> key) {
         ByUUID<E> result = relations.get(key);
         if (result == null) {
-            return Collections.emptyList();
+            return Stream.empty();
         } else {
-            return (Collection<T>) result.values();
+            return result.stream().map(e -> key.cast(e));
         }
     }
 
@@ -119,8 +120,8 @@ public class ByClass<E extends Identifiable> {
                                 entry -> entry.getValue()))));
     }
 
-    public Collection<ByUUID<E>> values() {
-        return relations.values();
+    public Stream<ByUUID<E>> values() {
+        return relations.values().stream();
     }
 
     public boolean isEmpty() {

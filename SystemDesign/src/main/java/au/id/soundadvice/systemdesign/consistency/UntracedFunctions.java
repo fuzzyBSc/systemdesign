@@ -28,8 +28,8 @@ package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.Stream;
 
 /**
  *
@@ -38,20 +38,20 @@ import java.util.Collections;
 public class UntracedFunctions implements ProblemFactory {
 
     @Override
-    public Collection<Problem> getProblems(EditState edit) {
+    public Stream<Problem> getProblems(EditState edit) {
         UndoState state = edit.getUndo().get();
         if (state.getFunctional() == null) {
-            return Collections.emptyList();
+            return Stream.empty();
         } else {
-            boolean anyUntraced = state.getAllocated().getFunctions().parallelStream()
+            boolean anyUntraced = state.getAllocated().getFunctions().parallel()
                     .anyMatch((function) -> function.getTrace() == null);
             if (anyUntraced) {
-                return Collections.singleton(
+                return Stream.of(
                         new Problem("Check function allocation",
                                 // No automatic solutions
                                 Collections.emptyList()));
             } else {
-                return Collections.emptyList();
+                return Stream.empty();
             }
         }
     }

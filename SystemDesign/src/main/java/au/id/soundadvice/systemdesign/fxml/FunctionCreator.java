@@ -39,7 +39,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javafx.scene.control.ChoiceDialog;
-import javafx.scene.control.TreeItem;
 import javax.annotation.Nullable;
 
 /**
@@ -90,7 +89,7 @@ public class FunctionCreator {
 
     @Nullable
     private UUID chooseItem(AllocatedBaseline baseline) {
-        List<Item> choices = baseline.getItems().parallelStream()
+        List<Item> choices = baseline.getItems().parallel()
                 .filter(item -> !item.isExternal())
                 .sorted((left, right) -> left.toString().compareTo(right.toString()))
                 .collect(Collectors.toList());
@@ -125,7 +124,7 @@ public class FunctionCreator {
     }
 
     private Function createFunction(AllocatedBaseline baseline, UUID item) {
-        String name = baseline.getFunctions().parallelStream()
+        String name = baseline.getFunctions().parallel()
                 .map(Function::getName)
                 .collect(new UniqueName("New Function"));
         return Function.create(item, name);

@@ -26,9 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  *
@@ -53,8 +53,8 @@ public class FromRelation implements Relation {
     private final Reference<FromRelation, ToRelation> reference;
 
     @Override
-    public Collection<Reference<FromRelation, ToRelation>> getReferences() {
-        return Collections.singletonList(reference);
+    public Stream<Reference> getReferences() {
+        return Collections.<Reference>singletonList(reference).stream();
     }
 
 }

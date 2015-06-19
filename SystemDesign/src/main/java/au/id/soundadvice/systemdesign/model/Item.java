@@ -34,9 +34,9 @@ import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import javafx.geometry.Point2D;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -113,6 +113,11 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return uuid;
     }
 
+    @Override
+    public UUID getItemUuid() {
+        return uuid;
+    }
+
     public IDPath getIdPath(RelationContext context) {
         if (external) {
             return id;
@@ -178,7 +183,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
             = new ReferenceFinder<>(Item.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 

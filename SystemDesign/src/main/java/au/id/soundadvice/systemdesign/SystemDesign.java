@@ -27,8 +27,8 @@
 package au.id.soundadvice.systemdesign;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.MainController;
-import au.id.soundadvice.systemdesign.fxml.SaveHelper;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import javafx.application.Application;
@@ -47,10 +47,11 @@ public class SystemDesign extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         EditState edit = EditState.init(Executors.newCachedThreadPool());
+        Interactions interactions = new Interactions(stage, edit);
 
         Callback<Class<?>, Object> controllerFactory = (Class<?> param) -> {
             if (param.equals(MainController.class)) {
-                return new MainController(edit);
+                return new MainController(interactions, edit);
             } else {
                 try {
                     return param.newInstance();
@@ -64,7 +65,10 @@ public class SystemDesign extends Application {
                 getClass().getResource("/fxml/Main.fxml"),
                 null, null, controllerFactory);
 
-        stage.setOnCloseRequest(event -> SaveHelper.tryExit(stage, edit));
+        stage.setOnCloseRequest(event -> {
+            interactions.tryExit();
+            event.consume();
+        });
 
         Scene scene = new Scene(root);
         stage.setTitle("System Design");

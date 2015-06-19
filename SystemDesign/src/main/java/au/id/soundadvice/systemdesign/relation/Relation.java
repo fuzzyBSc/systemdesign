@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.Collection;
+import java.util.stream.Stream;
 
 /**
  *
@@ -35,5 +35,5 @@ import java.util.Collection;
  */
 public interface Relation extends Identifiable {
 
-    public Collection<? extends Reference<?, ?>> getReferences();
+    public Stream<Reference> getReferences();
 }

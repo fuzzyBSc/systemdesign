@@ -40,6 +40,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
@@ -59,15 +60,15 @@ public class ByReverse<E extends Relation> {
 
     public static class Loader<E extends Relation> {
 
-        private final Set<E> toDelete;
+        private final Set<E> deletedRelations;
         private final ByReverse<E> result;
 
         public Loader(ByUUID<E> relations) {
             ConcurrentMap<UUID, List<E>> reverse = new ConcurrentHashMap<>();
             Set<E> tmpDelete = Collections.newSetFromMap(new ConcurrentHashMap<>());
-            relations.values().parallelStream()
+            relations.stream().parallel()
                     .forEach(relation -> {
-                        relation.getReferences().parallelStream()
+                        relation.getReferences().parallel()
                         .forEach(reference -> {
                             ReferenceTarget<?> target = reference.getTo();
                             if (target.getType().isInstance(relations.get(target.getUuid()))) {
@@ -89,14 +90,14 @@ public class ByReverse<E extends Relation> {
             Map<UUID, ByClass<E>> tmpResult = reverse.entrySet().parallelStream()
                     .collect(Collectors.toMap(
                                     entry -> entry.getKey(),
-                                    entry -> ByClass.valueOf(entry.getValue())));
+                                    entry -> ByClass.valueOf(entry.getValue().stream())));
             cascade(tmpResult, tmpDelete);
             result = new ByReverse<>(Collections.unmodifiableMap(tmpResult)).removeAll(tmpDelete);
-            toDelete = Collections.unmodifiableSet(tmpDelete);
+            deletedRelations = tmpDelete;
         }
 
-        public Collection<E> getToDelete() {
-            return toDelete;
+        public Stream<E> getDeletedRelations() {
+            return deletedRelations.stream();
         }
 
         public ByReverse<E> build() {
@@ -113,8 +114,8 @@ public class ByReverse<E extends Relation> {
             UUID current = stack.pop();
             ByClass<E> references = reverse.get(current);
             if (references != null) {
-                references.values().stream()
-                        .flatMap(byClass -> byClass.values().stream())
+                references.values()
+                        .flatMap(byClass -> byClass.stream())
                         .forEach(dependant -> {
                             if (seed.add(dependant)) {
                                 stack.push(dependant.getUuid());
@@ -134,10 +135,10 @@ public class ByReverse<E extends Relation> {
         cascade(relations, seed);
     }
 
-    public <T> Collection<T> get(UUID target, Class<T> fromType) {
+    public <T> Stream<T> get(UUID target, Class<T> fromType) {
         ByClass<E> byClass = relations.get(target);
         if (byClass == null) {
-            return Collections.emptyList();
+            return Stream.empty();
         } else {
             return byClass.get(fromType);
         }
@@ -146,7 +147,7 @@ public class ByReverse<E extends Relation> {
     @CheckReturnValue
     private ByReverse<E> putImpl(E value) {
         Map<UUID, ByClass<E>> map = new HashMap<>(relations);
-        value.getReferences().stream()
+        value.getReferences()
                 .forEach(relation -> {
                     ReferenceTarget<?> target = relation.getTo();
                     ByClass<E> byClass = map.get(target.getUuid());
@@ -179,7 +180,7 @@ public class ByReverse<E extends Relation> {
         Map<UUID, List<UUID>> toDeleteByTarget = new HashMap<>();
         toDelete.stream()
                 .forEach(source -> {
-                    source.getReferences().stream()
+                    source.getReferences()
                     .forEach(reference -> {
                         UUID targetUUID = reference.getTo().getUuid();
                         List<UUID> list = toDeleteByTarget.get(targetUUID);

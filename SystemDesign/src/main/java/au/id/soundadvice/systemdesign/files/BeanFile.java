@@ -30,14 +30,10 @@ import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 /**
  * Model the contents of a single file for loading and storing. The whole file
@@ -55,50 +51,49 @@ public class BeanFile<T extends Identifiable> {
 
     public static <B extends Identifiable, T extends BeanFactory<C, B>, C> void saveModel(
             SaveTransaction transaction, C context, Path csv,
-            Class<B> beanClass, Collection<T> objects) throws IOException {
-        ConcurrentNavigableMap<UUID, B> map = objects.parallelStream()
-                .collect(Collectors.toConcurrentMap(
-                                model -> model.getUuid(),
-                                model -> model.toBean(context),
-                                (u, v) -> {
-                                    throw new IllegalStateException(String.format("Duplicate key %s", u));
-                                },
-                                () -> new ConcurrentSkipListMap()
-                        ));
-        save(transaction, csv, map);
+            Class<B> beanClass, Stream<T> objects) throws IOException {
+        save(transaction, csv, beanClass, objects.parallel()
+                .map(model -> model.toBean(context))
+                .sorted((left, right) -> left.getUuid().compareTo(right.getUuid())));
     }
 
     public static <B extends Identifiable> void saveBeans(
             SaveTransaction transaction, Path csv,
-            Class<B> beanClass, Map<UUID, B> objects) throws IOException {
-        if (objects instanceof SortedMap) {
-            save(transaction, csv, (SortedMap<UUID, B>) objects);
-        } else {
-            save(transaction, csv, new TreeMap<>(objects));
-        }
+            Class<B> beanClass, Stream<B> beans) throws IOException {
+        save(transaction, csv, beanClass,
+                beans.sorted((left, right) -> left.getUuid().compareTo(right.getUuid())));
     }
 
     public static <B extends Identifiable> void saveBean(
             SaveTransaction transaction, Path csv, B bean) throws IOException {
-        SortedMap<UUID, B> map = new TreeMap<>();
-        map.put(bean.getUuid(), bean);
-        save(transaction, csv, map);
+        save(transaction, csv, (Class<B>) bean.getClass(), Stream.of(bean));
     }
 
     public static <B extends Identifiable> void save(
-            SaveTransaction transaction, Path path, SortedMap<UUID, B> entries) throws IOException {
+            SaveTransaction transaction, Path path, Class<B> clazz, Stream<B> entries) throws IOException {
         Path directory = path.getParent();
         Path tempFile = Files.createTempFile(directory, null, null);
         transaction.addJob(path, tempFile);
-        if (entries.isEmpty()) {
-            // Deleting the temp file will cause the real file to be deleted
-            Files.deleteIfExists(tempFile);
-        } else {
-            Class<B> clazz = (Class<B>) entries.values().iterator().next().getClass();
-            try (BeanWriter<B> writer = BeanWriter.forPath(clazz, tempFile)) {
-                for (B bean : entries.values()) {
-                    writer.write(bean);
-                }
+        AtomicBoolean found = new AtomicBoolean(false);
+        try (BeanWriter<B> writer = BeanWriter.forPath(clazz, tempFile)) {
+            Optional<IOException> exception = entries.sequential()
+                    .map(bean -> {
+                        try {
+                            writer.write(bean);
+                            found.set(true);
+                            return null;
+                        } catch (IOException ex) {
+                            return ex;
+                        }
+                    })
+                    .filter(ex -> ex != null)
+                    .findAny();
+            if (exception.isPresent()) {
+                throw exception.get();
+            }
+            if (!found.get()) {
+                // Deleting the temp file will cause the real file to be deleted
+                Files.deleteIfExists(tempFile);
             }
         }
     }

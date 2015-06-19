@@ -26,9 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -50,20 +50,23 @@ public class ReferenceFinderTest {
         ToRelation to = new ToRelation();
         FromRelation from = new FromRelation(to.getUuid());
 
-        assertTrue(toFinder.getReferences(to).isEmpty());
-        assertFalse(fromFinder.getReferences(from).isEmpty());
+        assertTrue(toFinder.getReferences(to).count() == 0);
+        assertFalse(fromFinder.getReferences(from).count() == 0);
 
-        RelationStore store = RelationStore.valueOf(Arrays.asList(to, from));
+        RelationStore store = RelationStore.valueOf(Stream.of(to, from));
 
         assertSame(to, from.getReference().getTarget(store));
         Collection<? extends FromRelation> reverse = store.getReverse(
-                to.getUuid(), FromRelation.class);
+                to.getUuid(), FromRelation.class)
+                .collect(Collectors.toList());
         assertEquals(1, reverse.size());
         assertSame(from, reverse.iterator().next());
-        Collection<ToRelation> toByClass = store.getByClass(ToRelation.class);
+        Collection<ToRelation> toByClass = store.getByClass(ToRelation.class)
+                .collect(Collectors.toList());
         assertEquals(1, toByClass.size());
         assertSame(to, toByClass.iterator().next());
-        Collection<FromRelation> fromByClass = store.getByClass(FromRelation.class);
+        Collection<FromRelation> fromByClass = store.getByClass(FromRelation.class)
+                .collect(Collectors.toList());
         assertEquals(1, fromByClass.size());
         assertSame(from, fromByClass.iterator().next());
     }

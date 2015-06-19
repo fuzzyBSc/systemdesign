@@ -72,7 +72,7 @@ public class SuggestionsController {
 
         @Override
         public void run() {
-            problems.set(factory.getProblems(edit));
+            problems.set(factory.getProblems(edit).collect(Collectors.toList()));
             updateDisplay.run();
         }
 

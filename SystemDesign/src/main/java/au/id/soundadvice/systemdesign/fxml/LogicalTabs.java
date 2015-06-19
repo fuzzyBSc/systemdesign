@@ -30,19 +30,20 @@ import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.model.ConnectionScope;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javafx.scene.control.TabPane;
-import javafx.util.Pair;
 
 /**
  *
@@ -50,10 +51,11 @@ import javafx.util.Pair;
  */
 public class LogicalTabs {
 
-    public LogicalTabs(EditState edit, TabPane tabs) {
+    public LogicalTabs(Interactions interactions, EditState edit, TabPane tabs) {
+        this.interactions = interactions;
         this.edit = edit;
         this.tabs = tabs;
-        this.topLevel = new LogicalSchematicController(edit, tabs, null);
+        this.topLevel = new LogicalSchematicController(interactions, edit, tabs, null);
     }
 
     private final SingleRunnable onChange = new SingleRunnable(
@@ -67,6 +69,7 @@ public class LogicalTabs {
     private final Map<UUID, LogicalSchematicController> controllers
             = new ConcurrentHashMap<>();
     private final LogicalSchematicController topLevel;
+    private final Interactions interactions;
     private final EditState edit;
     private final TabPane tabs;
 
@@ -81,13 +84,11 @@ public class LogicalTabs {
                 parentFunctions = Collections.emptyMap();
                 topLevel.start();
             } else {
-                Collection<Function> reverse
-                        = (Collection<Function>) functional.getStore().getReverse(
-                                functional.getSystemOfInterest().getUuid(), Function.class);
-                parentFunctions = reverse.stream()
-                        .collect(Collectors.toMap(
-                                        Function::getUuid,
-                                        java.util.function.Function.identity()));
+                Stream<Function> reverse = functional.getStore().getReverse(
+                        functional.getSystemOfInterest().getUuid(), Function.class);
+                parentFunctions = reverse.collect(Collectors.toMap(
+                        Function::getUuid,
+                        java.util.function.Function.identity()));
                 topLevel.stop();
             }
             parentFunctions.values().stream()
@@ -95,7 +96,7 @@ public class LogicalTabs {
                     .forEachOrdered(function -> {
                         // Add new tabs
                         LogicalSchematicController newTab
-                        = new LogicalSchematicController(edit, tabs, function);
+                        = new LogicalSchematicController(interactions, edit, tabs, function);
                         controllers.put(function.getUuid(), newTab);
                         newTab.start();
                     });
@@ -108,24 +109,21 @@ public class LogicalTabs {
                     });
 
             AllocatedBaseline allocated = state.getAllocated();
-            Map<Pair<UUID, UUID>, List<Flow>> flows = allocated.getFlows().parallelStream()
+            // Obtain the flows for each connection scope, ignoring direction
+            Map<ConnectionScope, List<Flow>> flows = allocated.getFlows().parallel()
                     .sorted((left, right) -> left.getType().compareTo(right.getType()))
-                    .collect(Collectors.groupingBy((flow) -> {
-                        return new Pair<>(
-                                flow.getLeft().getUuid(),
-                                flow.getRight().getUuid());
-                    }));
+                    .collect(Collectors.groupingBy(
+                                    flow -> flow.getConnectionScope().setDirection(Direction.Both)));
             if (functional == null) {
-                Map<UUID, Function> childFunctions = allocated.getFunctions().parallelStream()
+                Map<UUID, Function> childFunctions = allocated.getFunctions().parallel()
                         .collect(Collectors.toMap(
                                         Function::getUuid,
                                         java.util.function.Function.identity()));
                 topLevel.populate(allocated, childFunctions, flows);
             } else {
-                Collection<Function> allChildFunctions = allocated.getFunctions();
                 // Divide up all functions between the various controllers
                 Map<UUID, List<Function>> displayFunctions
-                        = allChildFunctions.parallelStream()
+                        = allocated.getFunctions().parallel()
                         .filter(function -> function.getTrace() != null)
                         .collect(Collectors.groupingBy(Function::getTrace));
                 displayFunctions.entrySet().stream()

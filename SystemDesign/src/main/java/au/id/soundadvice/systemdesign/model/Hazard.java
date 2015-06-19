@@ -32,9 +32,9 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  *
@@ -74,6 +74,7 @@ public class Hazard implements BeanFactory<RelationContext, HazardBean>, Relatio
         return description;
     }
 
+    @Override
     public UUID getUuid() {
         return uuid;
     }
@@ -100,7 +101,7 @@ public class Hazard implements BeanFactory<RelationContext, HazardBean>, Relatio
             = new ReferenceFinder<>(Hazard.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 }

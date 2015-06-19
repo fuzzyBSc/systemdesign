@@ -86,9 +86,9 @@ public class MainController implements Initializable {
     private SuggestionsController suggestionsController;
     private final Interactions interactions;
 
-    public MainController(EditState edit) {
+    public MainController(Interactions interactions, EditState edit) {
         this.edit = edit;
-        this.interactions = new Interactions(edit);
+        this.interactions = interactions;
     }
 
     /**
@@ -99,44 +99,50 @@ public class MainController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        physicalTreeController = new PhysicalTreeController(edit, physicalTree);
+        physicalTreeController = new PhysicalTreeController(interactions, edit, physicalTree);
         physicalTreeController.start();
-        logicalTreeController = new LogicalTreeController(edit, logicalTree);
+        logicalTreeController = new LogicalTreeController(interactions, edit, logicalTree);
         logicalTreeController.start();
-        schematicController = new PhysicalSchematicController(edit, physicalDrawing);
+        schematicController = new PhysicalSchematicController(interactions, edit, physicalDrawing);
         schematicController.start();
-        logicalController = new LogicalTabs(edit, tabs);
+        logicalController = new LogicalTabs(interactions, edit, tabs);
         logicalController.start();
         suggestionsController = new SuggestionsController(
                 edit, suggestions, new AllProblems());
         suggestionsController.start();
 
         upButton.setOnAction(event -> {
-            interactions.navigateUp(upButton.getScene().getWindow());
+            interactions.navigateUp();
+            event.consume();
         });
         downButton.setOnAction(event -> {
-            interactions.navigateDown(
-                    downButton.getScene().getWindow(), edit.getLastChild());
+            interactions.navigateDown(edit.getLastChild());
+            event.consume();
         });
 
         newMenuItem.setOnAction(event -> {
-            if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before closing?")) {
+            if (interactions.checkSave("Save before closing?")) {
                 edit.clear();
             }
+            event.consume();
         });
         openMenuItem.setOnAction(event -> {
-            if (SaveHelper.checkSave(upButton.getScene().getWindow(), edit, "Save before closing?")) {
-                SaveHelper.tryLoadChooser(upButton.getScene().getWindow(), edit);
+            if (interactions.checkSave("Save before closing?")) {
+                interactions.tryLoadChooser(upButton.getScene().getWindow(), edit);
             }
+            event.consume();
         });
         saveMenuItem.setOnAction(event -> {
-            SaveHelper.trySave(upButton.getScene().getWindow(), edit);
+            interactions.trySave();
+            event.consume();
         });
         undoMenuItem.setOnAction(event -> {
             edit.getUndo().undo();
+            event.consume();
         });
         redoMenuItem.setOnAction(event -> {
             edit.getUndo().redo();
+            event.consume();
         });
 
         edit.subscribe(buttonDisable);

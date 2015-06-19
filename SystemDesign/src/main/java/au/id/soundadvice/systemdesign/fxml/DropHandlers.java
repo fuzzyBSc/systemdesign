@@ -33,15 +33,13 @@ import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget.Drop;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javafx.scene.input.TransferMode;
 
 /**
@@ -52,9 +50,11 @@ public class DropHandlers {
 
     public static class FunctionDropHandler implements Drop {
 
-        public FunctionDropHandler(EditState edit) {
+        public FunctionDropHandler(Interactions interactions, EditState edit) {
+            this.interactions = interactions;
             this.edit = edit;
         }
+        private final Interactions interactions;
         private final EditState edit;
 
         @Override
@@ -74,10 +74,9 @@ public class DropHandlers {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.MOVE, () -> {
-                    List<UUID> toRemove
-                            = store.getReverse(sourceUUID, Flow.class).parallelStream()
-                            .map(Identifiable::getUuid)
-                            .collect(Collectors.toList());
+                    Stream<UUID> toRemove
+                            = store.getReverse(sourceUUID, Flow.class).parallel()
+                            .map(Identifiable::getUuid);
                     edit.getUndo().set(state.setAllocated(
                             allocated.removeAll(toRemove).add(
                                     sourceChildFunction.setTrace(targetUUID))));
@@ -88,11 +87,7 @@ public class DropHandlers {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {
-                    String flowType = allocated.getFlows().parallelStream()
-                            .map(Flow::getType)
-                            .collect(new UniqueName("New Flow"));
-                    Flow flow = Flow.createNew(sourceUUID, targetUUID, flowType);
-                    edit.getUndo().set(state.setAllocated(allocated.add(flow)));
+                    interactions.addFlow(sourceUUID, targetUUID);
                     return true;
                 });
             }
@@ -103,10 +98,10 @@ public class DropHandlers {
 
     public static class ItemDropHandler implements Drop {
 
-        public ItemDropHandler(EditState edit) {
-            this.edit = edit;
+        public ItemDropHandler(Interactions interactions) {
+            this.interactions = interactions;
         }
-        private final EditState edit;
+        private final Interactions interactions;
 
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
@@ -117,16 +112,11 @@ public class DropHandlers {
             Item targetItem = state.getAllocatedInstance(
                     targetUUID, Item.class);
 
-            AllocatedBaseline allocated = state.getAllocated();
             if (sourceItem != null && targetItem != null) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {
-                    Interface newInterface = new Interface(sourceUUID, targetUUID);
-                    if (allocated.getStore().getReverse(sourceUUID, Interface.class).parallelStream()
-                            .noneMatch((existing) -> newInterface.isRedundantTo(existing))) {
-                        edit.getUndo().set(state.setAllocated(allocated.add(newInterface)));
-                    }
+                    interactions.addInterface(sourceUUID, targetUUID);
                     return true;
                 });
             }

@@ -27,14 +27,15 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.beans.InterfaceBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  *
@@ -61,49 +62,35 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.left, other.left)) {
-            return false;
-        }
-        if (!Objects.equals(this.right, other.right)) {
+        if (!Objects.equals(this.connectionScope, other.connectionScope)) {
             return false;
         }
         return true;
     }
 
-    public boolean isRedundantTo(Interface other) {
-        if (!Objects.equals(this.left.getTo(), other.left.getTo())) {
-            return false;
-        }
-        if (!Objects.equals(this.right.getTo(), other.right.getTo())) {
-            return false;
-        }
-        return true;
+    public ConnectionScope getConnectionScope() {
+        return connectionScope;
     }
 
-    public Interface(UUID left, UUID right) {
-        this.uuid = UUID.randomUUID();
-        // Normalise left/right by UUID
-        if (left.compareTo(right) < 0) {
-            this.left = new Reference<>(this, left, Item.class);
-            this.right = new Reference<>(this, right, Item.class);
-        } else {
-            this.left = new Reference<>(this, right, Item.class);
-            this.right = new Reference<>(this, left, Item.class);
-        }
+    public static Interface createNew(ConnectionScope connectionScope) {
+        return new Interface(UUID.randomUUID(), connectionScope);
     }
 
     public Interface(InterfaceBean bean) {
-        this.uuid = bean.getUuid();
-        UUID leftItemUuid = bean.getLeftItem();
-        UUID rightItemUuid = bean.getRightItem();
-        // Normalise left/right by UUID
-        if (leftItemUuid.compareTo(rightItemUuid) < 0) {
-            this.left = new Reference<>(this, leftItemUuid, Item.class);
-            this.right = new Reference<>(this, rightItemUuid, Item.class);
-        } else {
-            this.left = new Reference<>(this, rightItemUuid, Item.class);
-            this.right = new Reference<>(this, leftItemUuid, Item.class);
+        this(bean.getUuid(), new ConnectionScope(
+                bean.getLeftItem(),
+                bean.getRightItem(),
+                Direction.Both));
+    }
+
+    private Interface(UUID uuid, ConnectionScope connectionScope) {
+        if (connectionScope.getDirection() != Direction.Both) {
+            throw new AssertionError("Interfaces must be bidirectional");
         }
+        this.uuid = uuid;
+        this.connectionScope = connectionScope;
+        this.left = new Reference<>(this, connectionScope.getLeft(), Item.class);
+        this.right = new Reference<>(this, connectionScope.getRight(), Item.class);
     }
 
     @Override
@@ -122,6 +109,7 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
     private final UUID uuid;
     private final Reference<Interface, Item> left;
     private final Reference<Interface, Item> right;
+    private final ConnectionScope connectionScope;
 
     @Override
     public RequirementType getRequirementType() {
@@ -165,7 +153,7 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
             = new ReferenceFinder<>(Interface.class);
 
     @Override
-    public Collection<Reference<?, ?>> getReferences() {
+    public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 }

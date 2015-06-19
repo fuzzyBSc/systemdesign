@@ -33,11 +33,11 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * Find reference properties by introspection to hopefully reduce sources of
@@ -67,19 +67,17 @@ public class ReferenceFinder<F extends Relation> {
 
     private final List<Method> methods;
 
-    public Collection<Reference<?, ?>> getReferences(F instance) {
-        List<Reference<?, ?>> result = new ArrayList<>(methods.size());
-        for (Method method : methods) {
-            try {
-                Reference<?, ?> reference = (Reference<?, ?>) method.invoke(instance);
-                if (reference != null) {
-                    result.add(reference);
-                }
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                LOG.log(Level.SEVERE, null, ex);
-            }
-        }
-        return result;
+    public Stream<Reference> getReferences(F instance) {
+        return methods.stream()
+                .map(method -> {
+                    try {
+                        return (Reference) method.invoke(instance);
+                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        LOG.log(Level.SEVERE, null, ex);
+                        return null;
+                    }
+                })
+                .filter(reference -> reference != null && reference.getUuid() != null);
     }
 
 }

@@ -29,16 +29,15 @@ package au.id.soundadvice.systemdesign.consistency;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.beans.Direction;
+import au.id.soundadvice.systemdesign.model.ConnectionScope;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -47,19 +46,17 @@ import java.util.stream.Collectors;
 public class ExternalItemMismatch implements ProblemFactory {
 
     @Override
-    public Collection<Problem> getProblems(EditState edit) {
+    public Stream<Problem> getProblems(EditState edit) {
         UndoState state = edit.getUndo().get();
         FunctionalBaseline functional = state.getFunctional();
         if (functional == null) {
-            return Collections.emptyList();
+            return Stream.empty();
         }
         UUID contextId = functional.getSystemOfInterest().getUuid();
         RelationStore parentContext = functional.getStore();
         RelationStore childContext = state.getAllocated().getStore();
 
-        List<Problem> result = new ArrayList<>();
-
-        result.addAll(parentContext.getReverse(contextId, Interface.class).stream()
+        Stream<Problem> childProblems = parentContext.getReverse(contextId, Interface.class)
                 .map((iface) -> {
                     Item parentExternal;
                     // Obtain connected item from parent
@@ -93,12 +90,11 @@ public class ExternalItemMismatch implements ProblemFactory {
                         return null;
                     }
                 })
-                .filter((problem) -> problem != null)
-                .collect(Collectors.toList()));
+                .filter((problem) -> problem != null);
 
-        result.addAll(childContext.getByClass(Item.class).stream()
+        Stream<Problem> parentProblems = childContext.getByClass(Item.class)
                 .filter((item) -> {
-                    return item.isExternal() && parentContext.getReverse(contextId, Interface.class).stream()
+                    return item.isExternal() && parentContext.getReverse(contextId, Interface.class)
                     .noneMatch((iface) -> {
                         return item.getUuid().equals(iface.getLeft().getTarget(parentContext).getUuid())
                         || item.getUuid().equals(iface.getRight().getTarget(parentContext).getUuid());
@@ -120,7 +116,9 @@ public class ExternalItemMismatch implements ProblemFactory {
                          * The parent instance exists, just not the relevant
                          * interface.
                          */
-                        Interface parentInterface = new Interface(item.getUuid(), contextId);
+                        ConnectionScope connectionScope = new ConnectionScope(
+                                item.getUuid(), contextId, Direction.Both);
+                        Interface parentInterface = Interface.createNew(connectionScope);
                         return new Problem(
                                 name + " is missing in " + parentId, Arrays.asList(
                                         new SingleRelationSolution[]{
@@ -128,9 +126,8 @@ public class ExternalItemMismatch implements ProblemFactory {
                                             SingleRelationSolution.removeFromParent("Flow up", parentInterface)}));
                     }
                 })
-                .filter((problem) -> problem != null)
-                .collect(Collectors.toList()));
+                .filter((problem) -> problem != null);
 
-        return result;
+        return Stream.concat(childProblems, parentProblems);
     }
 }

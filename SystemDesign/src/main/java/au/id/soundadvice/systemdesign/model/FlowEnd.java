@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.relation.Relation;
+import java.util.UUID;
 
 /**
  *
@@ -36,4 +37,5 @@ public interface FlowEnd extends Relation {
 
     public String getDisplayName();
 
+    public UUID getItemUuid();
 }
