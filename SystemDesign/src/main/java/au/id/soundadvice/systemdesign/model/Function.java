@@ -43,7 +43,7 @@ import javax.annotation.Nullable;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, FlowEnd, Relation {
+public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, Relation {
 
     @Override
     public int hashCode() {
@@ -70,6 +70,9 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (!Objects.equals(this.trace, other.trace)) {
             return false;
         }
+        if (this.external != other.external) {
+            return false;
+        }
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
@@ -79,6 +82,27 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return true;
     }
 
+    public boolean isConsistent(Function other) {
+        if (!Objects.equals(this.uuid, other.uuid)) {
+            return false;
+        }
+        if (!Objects.equals(this.item, other.item)) {
+            return false;
+        }
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
+        return true;
+    }
+
+    @CheckReturnValue
+    public Function makeConsistent(Function other) {
+        return new Function(
+                other.getUuid(),
+                other.getItem().getUuid(), trace, external,
+                other.name, origin);
+    }
+
     @Override
     public String toString() {
         return getDisplayName();
@@ -86,8 +110,8 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     private static Point2D defaultOrigin = new Point2D(200, 200);
 
-    public static Function create(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, null, name, defaultOrigin);
+    public static Function createNew(UUID item, String name) {
+        return new Function(UUID.randomUUID(), item, null, false, name, defaultOrigin);
     }
 
     @Override
@@ -99,14 +123,13 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return item;
     }
 
-    @Override
-    public UUID getItemUuid() {
-        return item.getUuid();
-    }
-
     @Nullable
     public UUID getTrace() {
         return this.trace;
+    }
+
+    public boolean isExternal() {
+        return external;
     }
 
     public String getName() {
@@ -116,15 +139,17 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     public Function(FunctionBean bean) {
         this.uuid = bean.getUuid();
         this.trace = bean.getTrace();
+        this.external = bean.isExternal();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
         this.name = bean.getName();
         this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
-    private Function(UUID uuid, UUID item, @Nullable UUID trace, String name, Point2D origin) {
+    private Function(UUID uuid, UUID item, @Nullable UUID trace, boolean external, String name, Point2D origin) {
         this.uuid = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
+        this.external = external;
         this.name = name;
         this.origin = origin;
     }
@@ -133,6 +158,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     private final Reference<Function, Item> item;
     @Nullable
     private final UUID trace;
+    private final boolean external;
     private final String name;
     private final Point2D origin;
 
@@ -149,11 +175,10 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         builder.append(item.getTarget(context).getDisplayName());
         builder.append(')');
         return new FunctionBean(
-                uuid, item.getUuid(), builder.toString(), trace, name,
+                uuid, item.getUuid(), builder.toString(), trace, external, name,
                 (int) origin.getX(), (int) origin.getY());
     }
 
-    @Override
     public String getDisplayName() {
         return name;
     }
@@ -167,20 +192,27 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @CheckReturnValue
     public Function setName(String value) {
-        return new Function(uuid, item.getUuid(), trace, value, origin);
+        return new Function(uuid, item.getUuid(), trace, external, value, origin);
     }
 
     @CheckReturnValue
     public Function setTrace(UUID value) {
-        return new Function(uuid, item.getUuid(), value, name, origin);
+        return new Function(uuid, item.getUuid(), value, external, name, origin);
     }
 
     @CheckReturnValue
     public Function setOrigin(Point2D value) {
-        return new Function(uuid, item.getUuid(), trace, name, value);
+        return new Function(uuid, item.getUuid(), trace, external, name, value);
     }
 
     public Point2D getOrigin() {
         return origin;
+    }
+
+    public Function asExternal(UUID allocateToParentFunction) {
+        return new Function(
+                uuid, item.getUuid(),
+                allocateToParentFunction, true,
+                name, origin);
     }
 }

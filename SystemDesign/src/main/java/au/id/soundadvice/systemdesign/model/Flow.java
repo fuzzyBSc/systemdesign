@@ -33,7 +33,9 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
+import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
@@ -43,6 +45,15 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
+
+    public static Optional<Flow> findExisting(
+            RelationStore context, UndirectedPair functions, String type) {
+        return context.getReverse(functions.getLeft(), Flow.class).parallel()
+                .filter((candidate) -> {
+                    return functions.getRight().equals(candidate.getRight().getUuid())
+                    && type.equals(candidate.getType());
+                }).findAny();
+    }
 
     @Override
     public String toString() {
@@ -71,7 +82,7 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         if (!Objects.equals(this.iface, other.iface)) {
             return false;
         }
-        if (!Objects.equals(this.connectionScope, other.connectionScope)) {
+        if (!Objects.equals(this.flowScope, other.flowScope)) {
             return false;
         }
         if (!Objects.equals(this.type, other.type)) {
@@ -89,55 +100,59 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return iface;
     }
 
-    public Reference<Flow, FlowEnd> getLeft() {
+    public Reference<Flow, Function> getLeft() {
         return left;
     }
 
-    public Reference<Flow, FlowEnd> getRight() {
+    public Reference<Flow, Function> getRight() {
         return right;
     }
 
     public Direction getDirection() {
-        return connectionScope.getDirection();
+        return flowScope.getDirection();
+    }
+
+    public Direction getDirectionFrom(Function from) {
+        return flowScope.getDirectionFrom(from.getUuid());
     }
 
     public String getType() {
         return type;
     }
 
-    public static Flow createNew(UUID iface, ConnectionScope connectionScope, String type) {
-        return new Flow(UUID.randomUUID(), iface, connectionScope, type);
+    public static Flow createNew(UUID iface, DirectedPair scope, String type) {
+        return new Flow(UUID.randomUUID(), iface, scope, type);
     }
 
     public Flow(FlowBean bean) {
         this(bean.getUuid(),
                 bean.getInterface(),
-                new ConnectionScope(bean.getLeft(), bean.getRight(), bean.getDirection()),
+                new DirectedPair(bean.getLeft(), bean.getRight(), bean.getDirection()),
                 bean.getType());
     }
 
-    private Flow(UUID uuid, UUID iface, ConnectionScope connectionScope, String type) {
+    private Flow(UUID uuid, UUID iface, DirectedPair flowScope, String type) {
         this.uuid = uuid;
         this.iface = new Reference<>(this, iface, Interface.class);
-        this.connectionScope = connectionScope;
-        this.left = new Reference<>(this, connectionScope.getLeft(), FlowEnd.class);
-        this.right = new Reference<>(this, connectionScope.getRight(), FlowEnd.class);
+        this.flowScope = flowScope;
+        this.left = new Reference<>(this, flowScope.getLeft(), Function.class);
+        this.right = new Reference<>(this, flowScope.getRight(), Function.class);
         this.type = type;
     }
 
     private final UUID uuid;
     private final Reference<Flow, Interface> iface;
-    private final ConnectionScope connectionScope;
-    private final Reference<Flow, FlowEnd> left;
-    private final Reference<Flow, FlowEnd> right;
+    private final DirectedPair flowScope;
+    private final Reference<Flow, Function> left;
+    private final Reference<Flow, Function> right;
     private final String type;
 
     @Override
     public FlowBean toBean(RelationContext context) {
         StringBuilder builder = new StringBuilder();
-        FlowEnd leftEnd = left.getTarget(context);
-        FlowEnd rightEnd = right.getTarget(context);
-        switch (connectionScope.getDirection()) {
+        Function leftEnd = left.getTarget(context);
+        Function rightEnd = right.getTarget(context);
+        switch (flowScope.getDirection()) {
             case Normal:
                 builder.append(leftEnd.getDisplayName());
                 builder.append(" --").append(type).append("-> ");
@@ -154,13 +169,13 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
                 builder.append(rightEnd.getDisplayName());
                 break;
             default:
-                throw new AssertionError(connectionScope.toString());
+                throw new AssertionError(flowScope.toString());
 
         }
 
         return new FlowBean(
                 uuid, iface.getUuid(),
-                connectionScope.getDirection(),
+                flowScope.getDirection(),
                 left.getUuid(), right.getUuid(),
                 type, builder.toString());
     }
@@ -174,15 +189,45 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
 
     @CheckReturnValue
     public Flow setType(String value) {
-        return new Flow(uuid, iface.getUuid(), connectionScope, value);
+        return new Flow(uuid, iface.getUuid(), flowScope, value);
     }
 
     @CheckReturnValue
     public Flow setDirection(Direction value) {
-        return new Flow(uuid, iface.getUuid(), connectionScope.setDirection(value), type);
+        return new Flow(
+                uuid, iface.getUuid(),
+                flowScope.setDirection(value), type);
     }
 
-    public ConnectionScope getConnectionScope() {
-        return connectionScope;
+    @CheckReturnValue
+    public Flow setDirectionFrom(Function from, Direction value) {
+        return new Flow(
+                uuid, iface.getUuid(),
+                flowScope.setDirectionFrom(from.getUuid(), value), type);
+    }
+
+    public DirectedPair getScope() {
+        return flowScope;
+    }
+
+    public Function otherEnd(RelationContext store, Function function) {
+        UUID otherEndUUID = flowScope.otherEnd(function.getUuid());
+        return store.get(otherEndUUID, Function.class);
+    }
+
+    public Function otherEnd(RelationContext store, Item item) {
+        Function leftFunction = left.getTarget(store);
+        Function rightFunction = right.getTarget(store);
+        if (leftFunction.getItem().getUuid().equals(item.getUuid())) {
+            return rightFunction;
+        } else if (rightFunction.getItem().getUuid().equals(item.getUuid())) {
+            return leftFunction;
+        } else {
+            throw new IllegalArgumentException(this + " does not link to " + item);
+        }
+    }
+
+    public boolean hasEnd(Function function) {
+        return flowScope.hasEnd(function.getUuid());
     }
 }

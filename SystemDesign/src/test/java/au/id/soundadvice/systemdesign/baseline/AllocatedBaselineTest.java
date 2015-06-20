@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.UUID;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -76,12 +75,12 @@ public class AllocatedBaselineTest {
 
         System.out.println("Load from nonexistant");
         AllocatedBaseline baseline = AllocatedBaseline.load(subsystemDirectory);
-        assertEquals(Collections.emptyList(), baseline.getItems());
-        assertEquals(Collections.emptyList(), baseline.getInterfaces());
-        assertEquals(Collections.emptyList(), baseline.getFunctions());
-        assertEquals(Collections.emptyList(), baseline.getFlows());
-        assertEquals(Collections.emptyList(), baseline.getHazards());
-        assertEquals(Collections.emptyList(), baseline.getRequirements());
+        assertFalse(baseline.getItems().iterator().hasNext());
+        assertFalse(baseline.getInterfaces().iterator().hasNext());
+        assertFalse(baseline.getFunctions().iterator().hasNext());
+        assertFalse(baseline.getFlows().iterator().hasNext());
+        assertFalse(baseline.getHazards().iterator().hasNext());
+        assertFalse(baseline.getRequirements().iterator().hasNext());
 
         System.out.println("Load from empty");
         try (SaveTransaction transaction = new SaveTransaction()) {
@@ -89,12 +88,12 @@ public class AllocatedBaselineTest {
             transaction.commit();
         }
         baseline = AllocatedBaseline.load(subsystemDirectory);
-        assertEquals(Collections.emptyList(), baseline.getItems());
-        assertEquals(Collections.emptyList(), baseline.getInterfaces());
-        assertEquals(Collections.emptyList(), baseline.getFunctions());
-        assertEquals(Collections.emptyList(), baseline.getFlows());
-        assertEquals(Collections.emptyList(), baseline.getHazards());
-        assertEquals(Collections.emptyList(), baseline.getRequirements());
+        assertFalse(baseline.getItems().iterator().hasNext());
+        assertFalse(baseline.getInterfaces().iterator().hasNext());
+        assertFalse(baseline.getFunctions().iterator().hasNext());
+        assertFalse(baseline.getFlows().iterator().hasNext());
+        assertFalse(baseline.getHazards().iterator().hasNext());
+        assertFalse(baseline.getRequirements().iterator().hasNext());
     }
 
     @Test

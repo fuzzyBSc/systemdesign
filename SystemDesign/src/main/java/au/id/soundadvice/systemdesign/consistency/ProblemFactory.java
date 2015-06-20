@@ -35,6 +35,11 @@ import java.util.stream.Stream;
  */
 public interface ProblemFactory {
 
+    /**
+     *
+     * @param edit The edit state to work from
+     * @return The list of identified problems and solutions
+     */
     public Stream<Problem> getProblems(EditState edit);
 
 }

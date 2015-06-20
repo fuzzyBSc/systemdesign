@@ -31,7 +31,6 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -68,6 +67,11 @@ public class DirectoryNameMismatch implements ProblemFactory {
             }
         }
 
+        @Override
+        public boolean isEnabled() {
+            return true;
+        }
+
     }
 
     @Override
@@ -81,9 +85,8 @@ public class DirectoryNameMismatch implements ProblemFactory {
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
                     Path renameTo = path.getParent().resolve(identity);
                     if (!Files.exists(renameTo)) {
-                        Stream.of(
-                                new Problem("Directory name mismatch", Collections.singleton(
-                                                new RenameDir(path, renameTo))));
+                        Stream.of(new Problem("Directory name mismatch",
+                                Stream.of(new RenameDir(path, renameTo))));
                     }
                 }
             }

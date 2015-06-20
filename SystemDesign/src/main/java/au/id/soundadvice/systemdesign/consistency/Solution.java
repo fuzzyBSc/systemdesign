@@ -34,7 +34,9 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
  */
 public interface Solution {
 
-    String getDescription();
+    public String getDescription();
 
-    void solve(EditState edit);
+    public boolean isEnabled();
+
+    public void solve(EditState edit);
 }

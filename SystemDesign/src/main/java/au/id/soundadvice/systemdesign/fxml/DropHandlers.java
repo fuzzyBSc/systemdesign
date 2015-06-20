@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget.Drop;
@@ -65,12 +66,21 @@ public class DropHandlers {
                     sourceUUID, Function.class);
             Function targetChildFunction = state.getAllocatedInstance(
                     targetUUID, Function.class);
-            Function targetParentFunction = state.getFunctionalInstance(
+            Function targetTraceFunction = state.getFunctionalInstance(
                     targetUUID, Function.class);
+            if (targetTraceFunction != null) {
+                // Only use if the function traces to the system of interest
+                FunctionalBaseline functional = state.getFunctional();
+                assert functional != null;
+                if (!targetTraceFunction.getItem().getUuid().equals(
+                        functional.getSystemOfInterest().getUuid())) {
+                    targetTraceFunction = null;
+                }
+            }
 
             AllocatedBaseline allocated = state.getAllocated();
             RelationStore store = allocated.getStore();
-            if (sourceChildFunction != null && targetParentFunction != null) {
+            if (sourceChildFunction != null && targetTraceFunction != null) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.MOVE, () -> {

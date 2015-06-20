@@ -24,18 +24,34 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.model;
+package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.relation.Relation;
-import java.util.UUID;
+import au.id.soundadvice.systemdesign.baselines.EditState;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface FlowEnd extends Relation {
+public class DisabledSolution implements Solution {
 
-    public String getDisplayName();
+    public DisabledSolution(String description) {
+        this.description = description;
+    }
 
-    public UUID getItemUuid();
+    private final String description;
+
+    @Override
+    public String getDescription() {
+        return description;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return false;
+    }
+
+    @Override
+    public void solve(EditState edit) {
+        // Do nothing
+    }
 }

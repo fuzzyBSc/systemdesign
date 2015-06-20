@@ -127,6 +127,6 @@ public class FunctionCreator {
         String name = baseline.getFunctions().parallel()
                 .map(Function::getName)
                 .collect(new UniqueName("New Function"));
-        return Function.create(item, name);
+        return Function.createNew(item, name);
     }
 }

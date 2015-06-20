@@ -1,0 +1,6 @@
+"description","direction","interface","left","right","type","uuid"
+"Model Systems <-CSV Files-> Store Files","Both","c3f30ee5-1089-453b-aa68-cfcb11293d09","848a4aa5-3f30-4561-a6fc-01e4d5168dca","7d182653-479e-421f-9491-3ac2b863b62b","CSV Files","9e90f9e6-d5ce-4e86-ade9-9a00777c79db"
+"Compare Files --boolean-> Model Systems","Reverse","5c5abf8e-a2b9-4d6f-a803-426d91d23d46","848a4aa5-3f30-4561-a6fc-01e4d5168dca","f6aeb6c1-7a95-4203-b4e2-0192d1efd8ac","boolean","bec089e3-73af-41b1-94d4-aef34a2882cc"
+"Model Systems <-User Interaction-> Input Model","Both","f0ad30c5-6443-4749-8f51-53010f6259dd","848a4aa5-3f30-4561-a6fc-01e4d5168dca","d5ebb853-799a-4e1b-bc88-1a3b8150f4f8","User Interaction","cf482e51-4483-494e-a7b0-189bb3897bcb"
+"Model Systems --Files-> Compare Files","Normal","5c5abf8e-a2b9-4d6f-a803-426d91d23d46","848a4aa5-3f30-4561-a6fc-01e4d5168dca","f6aeb6c1-7a95-4203-b4e2-0192d1efd8ac","Files","fc962842-e890-4a38-8f51-a413717c3e92"
+"Model Systems <-CSV Data-> Process CSV","Both","16cc0ac3-a5a1-4c7a-b3ef-fff082dde5d8","848a4aa5-3f30-4561-a6fc-01e4d5168dca","52869083-71c5-447d-b6af-b6465f369bff","CSV Data","5f226dfc-fc60-4d08-bb0a-3f03247aa65d"

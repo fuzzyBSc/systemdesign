@@ -32,6 +32,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.function.UnaryOperator;
 
 /**
  * Model an infinite undo buffer as we might find any any GUI editor app.
@@ -90,15 +91,47 @@ public class UndoBuffer<T> {
     public void set(T state) {
         boolean differs;
         synchronized (mustLock) {
-            differs = !Objects.equals(state, mustLock.currentState);
-            if (differs) {
-                mustLock.undoBuffer.push(mustLock.currentState);
-                mustLock.redoBuffer.clear();
-                mustLock.currentState = state;
+            differs = mustLockSet(state);
+        }
+        if (differs) {
+            changed.changed();
+        }
+    }
+
+    private boolean mustLockSet(T state) {
+        boolean differs = !Objects.equals(state, mustLock.currentState);
+        if (differs) {
+            mustLock.undoBuffer.push(mustLock.currentState);
+            mustLock.redoBuffer.clear();
+            mustLock.currentState = state;
+        }
+        return differs;
+    }
+
+    public boolean compareAndSet(T expect, T state) {
+        boolean differs;
+        boolean matched;
+        synchronized (mustLock) {
+            matched = expect.equals(mustLock.currentState);
+            if (matched) {
+                differs = mustLockSet(state);
+            } else {
+                differs = false;
             }
         }
         if (differs) {
             changed.changed();
+        }
+        return matched;
+    }
+
+    public final void update(UnaryOperator<T> update) {
+        for (;;) {
+            T oldState = get();
+            T newState = update.apply(oldState);
+            if (compareAndSet(oldState, newState)) {
+                break;
+            }
         }
     }
 

@@ -39,7 +39,7 @@ public class AllProblems implements ProblemFactory {
 
     private final List<ProblemFactory> factories = Arrays.asList(
             new DirectoryNameMismatch(),
-            new ExternalItemMismatch(),
+            new ItemConsistency(),
             new UntracedFunctions());
 
     @Override

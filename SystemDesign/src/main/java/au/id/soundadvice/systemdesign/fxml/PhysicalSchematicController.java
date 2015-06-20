@@ -41,6 +41,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
@@ -197,7 +198,7 @@ public class PhysicalSchematicController {
                     .filter((member) -> (member instanceof Control))
                     .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
             new MoveHandler(parent, result,
-                    new MoveItem(item),
+                    new MoveItem(item.getUuid()),
                     new GridSnap(10), (MouseEvent event)
                     -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
@@ -211,16 +212,23 @@ public class PhysicalSchematicController {
 
     private class MoveItem implements Dragged {
 
-        public MoveItem(Item item) {
-            this.item = item;
+        public MoveItem(UUID item) {
+            this.uuid = item;
         }
 
-        private final Item item;
+        private final UUID uuid;
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            UndoState state = undo.get();
-            undo.set(state.setAllocated(state.getAllocated().add(item.setOrigin(layoutCurrent))));
+            undo.update(state -> {
+                Item toAdd = state.getAllocatedInstance(uuid, Item.class);
+                if (toAdd == null) {
+                    return state;
+                } else {
+                    return state.setAllocated(
+                            state.getAllocated().add(toAdd.setOrigin(layoutCurrent)));
+                }
+            });
         }
     }
 

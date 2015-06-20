@@ -33,11 +33,12 @@ import javax.annotation.CheckReturnValue;
 
 /**
  * An ordered pair of UUID, useful for describing the scope of a connection
- * between other relations, such as an interface or a flow.
+ * between other relations. There should be at most one Interface matching any
+ * given ConnectionScope.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ConnectionScope {
+public class DirectedPair {
 
     @Override
     public String toString() {
@@ -72,7 +73,7 @@ public class ConnectionScope {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final ConnectionScope other = (ConnectionScope) obj;
+        final DirectedPair other = (DirectedPair) obj;
         if (!Objects.equals(this.left, other.left)) {
             return false;
         }
@@ -97,7 +98,19 @@ public class ConnectionScope {
         return direction;
     }
 
-    public ConnectionScope(UUID left, UUID right, Direction direction) {
+    public Direction getDirectionFrom(UUID from) {
+        if (from.equals(left)) {
+            // The from orientation is already our left
+            return direction;
+        } else if (from.equals(right)) {
+            // The from orientation is reversed
+            return direction.reverse();
+        } else {
+            throw new IllegalArgumentException(from + " is not in this scope");
+        }
+    }
+
+    public DirectedPair(UUID left, UUID right, Direction direction) {
         if (left.compareTo(right) < 0) {
             this.left = left;
             this.right = right;
@@ -115,11 +128,38 @@ public class ConnectionScope {
     private final Direction direction;
 
     @CheckReturnValue
-    public ConnectionScope setDirection(Direction value) {
+    public DirectedPair setDirection(Direction value) {
         if (direction == value) {
             return this;
         } else {
-            return new ConnectionScope(left, right, value);
+            return new DirectedPair(left, right, value);
         }
+    }
+
+    @CheckReturnValue
+    public DirectedPair setDirectionFrom(UUID from, Direction value) {
+        if (from.equals(left)) {
+            // The from orientation is already our left
+            return setDirection(value);
+        } else if (from.equals(right)) {
+            // The from orientation is reversed
+            return setDirection(value.reverse());
+        } else {
+            throw new IllegalArgumentException(from + " is not in this scope");
+        }
+    }
+
+    public UUID otherEnd(UUID uuid) throws IllegalArgumentException {
+        if (uuid.equals(left)) {
+            return right;
+        } else if (uuid.equals(right)) {
+            return left;
+        } else {
+            throw new IllegalArgumentException(uuid + " is not in this scope");
+        }
+    }
+
+    public boolean hasEnd(UUID uuid) {
+        return uuid.equals(left) || uuid.equals(right);
     }
 }

@@ -26,10 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -46,16 +46,17 @@ public class Problem {
         return description;
     }
 
-    public List<Solution> getSolutions() {
-        return solutions;
+    public Stream<Solution> getSolutions() {
+        return solutions.stream();
     }
 
     private final String description;
     private final List<Solution> solutions;
 
-    Problem(String description, Collection<? extends Solution> solutions) {
+    Problem(String description, Stream<Solution> solutions) {
         this.description = description;
-        this.solutions = Collections.unmodifiableList(new ArrayList<>(solutions));
+        this.solutions = Collections.unmodifiableList(
+                solutions.collect(Collectors.toList()));
     }
 
 }

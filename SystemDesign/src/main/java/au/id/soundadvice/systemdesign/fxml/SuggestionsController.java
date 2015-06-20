@@ -85,7 +85,7 @@ public class SuggestionsController {
             Collection children = parent.getChildren();
             children.clear();
             problems.get().stream()
-                    .map((problem) -> toNode(problem))
+                    .map(problem -> toNode(problem))
                     .collect(Collectors.toCollection(() -> children));
         }
 
@@ -96,17 +96,19 @@ public class SuggestionsController {
         container.getStyleClass().add("suggestion");
 
         Label description = new Label(problem.getDescription());
+        description.setWrapText(true);
         container.getChildren().add(description);
 
         Pane buttonContainer = new HBox();
         container.getChildren().add(buttonContainer);
 
-        problem.getSolutions().stream()
+        problem.getSolutions()
                 .map((solution) -> {
                     Button button = new Button(solution.getDescription());
                     button.setOnAction((ActionEvent e) -> {
                         solution.solve(edit);
                     });
+                    button.setDisable(!solution.isEnabled());
                     return button;
                 })
                 .forEachOrdered((button) -> {

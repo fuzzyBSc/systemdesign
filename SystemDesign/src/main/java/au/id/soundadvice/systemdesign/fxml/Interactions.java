@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.IDPath;
@@ -37,19 +38,24 @@ import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Identity;
-import au.id.soundadvice.systemdesign.model.ConnectionScope;
-import au.id.soundadvice.systemdesign.model.FlowEnd;
+import au.id.soundadvice.systemdesign.model.UndirectedPair;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextInputDialog;
@@ -57,7 +63,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -73,158 +78,191 @@ public class Interactions {
     private final EditState edit;
 
     public Item addItem() {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        UndoState state = undo.get();
-        AllocatedBaseline allocated = state.getAllocated();
-        String name = allocated.getItems().parallel()
-                .filter(item -> !item.isExternal())
-                .map(Item::getName)
-                .collect(new UniqueName("New Item"));
-        Item item = Item.newItem(
-                allocated.getIdentity().getUuid(),
-                allocated.getNextItemId(),
-                name, "", false);
-        undo.set(state.setAllocated(allocated.add(item)));
-        return item;
+        AtomicReference<Item> result = new AtomicReference<>();
+        edit.getUndo().update(state -> {
+            AllocatedBaseline allocated = state.getAllocated();
+            String name = allocated.getItems().parallel()
+                    .filter(item -> !item.isExternal())
+                    .map(Item::getName)
+                    .collect(new UniqueName("New Item"));
+            Item item = Item.newItem(
+                    allocated.getIdentity().getUuid(),
+                    allocated.getNextItemId(),
+                    name, "", false);
+            result.set(item);
+            return state.setAllocated(allocated.add(item));
+        });
+        return result.get();
     }
 
     void addFunctionToItem(Item item) {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        UndoState state = undo.get();
-        AllocatedBaseline allocated = state.getAllocated();
-        String name = allocated.getStore()
-                .getReverse(item.getUuid(), Function.class).parallel()
-                .map(Function::getName)
-                .collect(new UniqueName("New Function"));
-        Function function = Function.create(item.getUuid(), name);
-        undo.set(state.setAllocated(allocated.add(function)));
+        edit.getUndo().update(state -> {
+            AllocatedBaseline allocated = state.getAllocated();
+            String name = allocated.getStore()
+                    .getReverse(item.getUuid(), Function.class).parallel()
+                    .map(Function::getName)
+                    .collect(new UniqueName("New Function"));
+            Function function = Function.createNew(item.getUuid(), name);
+            return state.setAllocated(allocated.add(function));
+        });
     }
 
     void renumber(Item item) {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        if (item.isExternal() || !undo.get().getAllocated().hasRelation(item)) {
-            return;
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            if (item.isExternal() || !undo.get().getAllocated().hasRelation(item)) {
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog(
+                    item.getShortId().toString());
+            dialog.setTitle("Enter new number for item");
+            dialog.setHeaderText("Enter new number for " + item.getDisplayName());
+
+            result = dialog.showAndWait();
         }
-
-        TextInputDialog dialog = new TextInputDialog(
-                item.getShortId().toString());
-        dialog.setTitle("Enter new number for item");
-        dialog.setHeaderText("Enter new number for " + item.getDisplayName());
-
-        Optional<String> result = dialog.showAndWait();
         if (result.isPresent()) {
             IDPath path = IDPath.valueOf(
                     Collections.singletonList(new IDSegment(result.get())));
-            UndoState state = undo.get();
-            AllocatedBaseline allocated = state.getAllocated();
-            boolean isUnique = allocated.getItems().parallel()
-                    .map(Item::getShortId)
-                    .noneMatch((existing) -> path.equals(existing));
-            if (isUnique) {
-                item = item.setShortId(path);
-                undo.set(state.setAllocated(allocated.add(item)));
-            }
+            edit.getUndo().update(state -> {
+                AllocatedBaseline allocated = state.getAllocated();
+                boolean isUnique = allocated.getItems().parallel()
+                        .map(Item::getShortId)
+                        .noneMatch((existing) -> path.equals(existing));
+                if (isUnique) {
+                    Item toAdd = item.setShortId(path);
+                    return state.setAllocated(allocated.add(toAdd));
+                } else {
+                    return state;
+                }
+            });
         }
     }
 
     void addInterface(UUID left, UUID right) {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        undo.set(addInterfaceImpl(undo.get(), left, right).getValue());
+        edit.getUndo().update(state -> {
+            return addInterfaceImpl(state, new UndirectedPair(left, right)).getValue();
+        });
     }
 
     @CheckReturnValue
-    private Pair<UUID, UndoState> addInterfaceImpl(UndoState state, UUID left, UUID right) {
+    private Pair<UUID, UndoState> addInterfaceImpl(UndoState state, UndirectedPair scope) {
         AllocatedBaseline allocated = state.getAllocated();
-        ConnectionScope connectionScope = new ConnectionScope(
-                left, right, Direction.Both);
-        Optional<? extends Interface> existing = allocated.getStore().getReverse(left, Interface.class).parallel()
-                .filter((candidate) -> connectionScope.equals(candidate.getConnectionScope()))
-                .findAny();
+        Optional<Interface> existing = Interface.findExisting(allocated.getStore(), scope);
         if (existing.isPresent()) {
             return new Pair<>(existing.get().getUuid(), state);
         } else {
-            Interface newInterface = Interface.createNew(connectionScope);
+            Interface newInterface = Interface.createNew(scope);
             return new Pair<>(
                     newInterface.getUuid(),
                     state.setAllocated(allocated.add(newInterface)));
         }
     }
 
-    void addFlow(UUID source, UUID target) {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        UndoState state = undo.get();
-        ConnectionScope connectionScope = new ConnectionScope(
-                source, target, Direction.Normal);
+    private String getTypeForNewFlow(UndoState state, DirectedPair scope) {
+        FunctionalBaseline functional = state.getFunctional();
+        AllocatedBaseline allocated = state.getAllocated();
+        if (functional != null) {
+            // See if we can pick out a likely type
+            RelationStore childStore = allocated.getStore();
+            Function leftFunction = childStore.get(scope.getLeft(), Function.class);
+            Function rightFunction = childStore.get(scope.getRight(), Function.class);
+            if (leftFunction != null && rightFunction != null) {
+                Function internal;
+                Function external;
+                if (leftFunction.isExternal()) {
+                    internal = rightFunction;
+                    external = leftFunction;
+                } else if (rightFunction.isExternal()) {
+                    internal = leftFunction;
+                    external = rightFunction;
+                } else {
+                    internal = null;
+                    external = null;
+                }
+                if (internal != null && external != null) {
+                    Set<String> alreadyUsed = childStore.getReverse(scope.getLeft(), Flow.class).parallel()
+                            .filter((candidate) -> {
+                                return scope.getRight().equals(candidate.getRight().getUuid());
+                            })
+                            .map(Flow::getType)
+                            .collect(Collectors.toSet());
 
-        ConnectionScope interfaceScope
-                = flowScopeToInterfaceScope(state, connectionScope);
-        if (interfaceScope != null) {
-            Pair<UUID, UndoState> pair = addInterfaceImpl(
-                    state, interfaceScope.getLeft(), interfaceScope.getRight());
-            state = pair.getValue();
-            UUID interfaceUUID = pair.getKey();
-
-            AllocatedBaseline allocated = state.getAllocated();
-            String flowType = allocated.getFlows().parallel()
-                    .map(Flow::getType)
-                    .collect(new UniqueName("New Flow"));
-            Flow flow = Flow.createNew(interfaceUUID, connectionScope, flowType);
-            edit.getUndo().set(state.setAllocated(allocated.add(flow)));
+                    Map<Boolean, List<String>> types = functional.getStore().getReverse(external.getUuid(), Flow.class)
+                            .filter(flow -> flow.getScope().hasEnd(internal.getTrace()))
+                            .filter(flow -> flow.getDirectionFrom(external).contains(
+                                            scope.getDirectionFrom(external.getUuid())))
+                            .map(Flow::getType)
+                            .collect(Collectors.groupingBy(type -> alreadyUsed.contains(type)));
+                    // Prefer types not already used
+                    for (Boolean key : new Boolean[]{Boolean.FALSE, Boolean.TRUE}) {
+                        List<String> list = types.get(key);
+                        if (list != null && !list.isEmpty()) {
+                            return list.get(0);
+                        }
+                    }
+                }
+            }
         }
+        return allocated.getFlows().parallel()
+                .map(Flow::getType)
+                .collect(new UniqueName("New Flow"));
     }
 
-    @Nullable
-    private ConnectionScope flowScopeToInterfaceScope(
-            UndoState state, ConnectionScope connectionScope) {
-        FlowEnd left = state.getAllocatedInstance(connectionScope.getLeft(), FlowEnd.class);
-        FlowEnd right = state.getAllocatedInstance(connectionScope.getRight(), FlowEnd.class);
-        if (left == null || right == null) {
-            return null;
-        } else {
-            return new ConnectionScope(
-                    left.getItemUuid(), right.getItemUuid(),
-                    Direction.Both);
-        }
+    public void addFlow(UUID source, UUID target) {
+        edit.getUndo().update(state -> {
+            AllocatedBaseline allocated = state.getAllocated();
+            DirectedPair flowScope = new DirectedPair(source, target, Direction.Normal);
+            String flowType = getTypeForNewFlow(state, flowScope);
+            RelationStore store = allocated.getStore();
+            Function left = store.get(source, Function.class);
+            Function right = store.get(target, Function.class);
+            return state.setAllocated(
+                    allocated.addFlow(left, right, flowType, Direction.Normal).getValue());
+        });
     }
 
     void setFlowType(Flow flow) {
-        UndoBuffer<UndoState> undo = edit.getUndo();
-        if (!undo.get().getAllocated().hasRelation(flow)) {
-            return;
-        }
-
-        TextInputDialog dialog = new TextInputDialog(flow.getType());
-        dialog.setTitle("Enter Flow Type");
-        dialog.setHeaderText("Enter Flow Type");
-
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent()) {
-            UndoState state = undo.get();
-            AllocatedBaseline allocated = state.getAllocated();
-            RelationStore store = allocated.getStore();
-            ConnectionScope pair = flow.getConnectionScope();
-            UUID left = flow.getLeft().getUuid();
-            UUID right = flow.getRight().getUuid();
-            String type = result.get();
-            Optional<Flow> existing = store.getByClass(Flow.class).parallel()
-                    .filter((candidate) -> {
-                        return left.equals(candidate.getLeft().getUuid())
-                        && right.equals(candidate.getRight().getUuid())
-                        && type.equals(candidate.getType());
-                    }).findAny();
-            if (existing.isPresent()) {
-                allocated = allocated.remove(flow.getUuid());
-                /*
-                 * Preserve the flow's direction, but otherwise merge into
-                 * existing flow of the correct type.
-                 */
-                Direction direction = flow.getDirection();
-                flow = existing.get();
-                flow = flow.setDirection(flow.getDirection().add(direction));
-            } else {
-                flow = flow.setType(type);
+        Optional<String> result;
+        {
+            // User interaction, read-only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            if (!undo.get().getAllocated().hasRelation(flow)) {
+                return;
             }
-            undo.set(state.setAllocated(allocated.add(flow)));
+
+            TextInputDialog dialog = new TextInputDialog(flow.getType());
+            dialog.setTitle("Enter Flow Type");
+            dialog.setHeaderText("Enter Flow Type");
+
+            result = dialog.showAndWait();
+        }
+        if (result.isPresent()) {
+            edit.getUndo().update(state -> {
+                AllocatedBaseline allocated = state.getAllocated();
+                RelationStore store = allocated.getStore();
+                UUID left = flow.getLeft().getUuid();
+                UUID right = flow.getRight().getUuid();
+                String type = result.get();
+                Optional<Flow> existing = Flow.findExisting(
+                        store, new UndirectedPair(left, right), type);
+                Flow toAdd;
+                if (existing.isPresent()) {
+                    allocated = allocated.remove(flow.getUuid());
+                    /*
+                     * Preserve the flow's direction, but otherwise merge into
+                     * existing flow of the correct type.
+                     */
+                    Direction direction = flow.getDirection();
+                    toAdd = existing.get();
+                    toAdd = toAdd.setDirection(toAdd.getDirection().add(direction));
+                } else {
+                    toAdd = flow.setType(type);
+                }
+                return state.setAllocated(allocated.add(toAdd));
+            });
         }
     }
 
@@ -353,5 +391,4 @@ public class Interactions {
             return tryLoad(edit, dir);
         }
     }
-
 }

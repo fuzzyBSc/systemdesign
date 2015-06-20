@@ -67,6 +67,14 @@ public class FunctionBean implements Identifiable {
         this.trace = trace;
     }
 
+    public boolean isExternal() {
+        return external;
+    }
+
+    public void setExternal(boolean value) {
+        this.external = value;
+    }
+
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
@@ -92,11 +100,12 @@ public class FunctionBean implements Identifiable {
         return name;
     }
 
-    public FunctionBean(UUID uuid, UUID item, String description, UUID trace, String name, int originX, int originY) {
+    public FunctionBean(UUID uuid, UUID item, String description, UUID trace, boolean external, String name, int originX, int originY) {
         this.uuid = uuid;
         this.item = item;
         this.description = description;
         this.trace = trace;
+        this.external = external;
         this.name = name;
         this.originX = originX;
         this.originY = originY;
@@ -109,6 +118,7 @@ public class FunctionBean implements Identifiable {
     private UUID item;
     private String description;
     private UUID trace;
+    private boolean external;
     private String name;
     private int originX;
     private int originY;

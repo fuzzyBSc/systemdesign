@@ -43,7 +43,7 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, FlowEnd, Relation {
+public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, Relation {
 
     private static Point2D defaultOrigin = new Point2D(200, 200);
 
@@ -113,11 +113,6 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return uuid;
     }
 
-    @Override
-    public UUID getItemUuid() {
-        return uuid;
-    }
-
     public IDPath getIdPath(RelationContext context) {
         if (external) {
             return id;
@@ -174,7 +169,6 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return RequirementType.NonFunctional;
     }
 
-    @Override
     public String getDisplayName() {
         return this.toString();
     }

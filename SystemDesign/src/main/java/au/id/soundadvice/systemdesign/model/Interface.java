@@ -27,13 +27,14 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.beans.InterfaceBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
+import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -42,6 +43,14 @@ import java.util.stream.Stream;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Interface implements RequirementContext, BeanFactory<RelationContext, InterfaceBean>, Relation {
+
+    public static Optional<Interface> findExisting(
+            RelationStore context, UndirectedPair items) {
+        return context.getReverse(items.getLeft(), Interface.class).parallel()
+                .filter((candidate) -> {
+                    return items.getRight().equals(candidate.getRight().getUuid());
+                }).findAny();
+    }
 
     @Override
     public int hashCode() {
@@ -62,35 +71,31 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.connectionScope, other.connectionScope)) {
+        if (!Objects.equals(this.scope, other.scope)) {
             return false;
         }
         return true;
     }
 
-    public ConnectionScope getConnectionScope() {
-        return connectionScope;
+    public UndirectedPair getScope() {
+        return scope;
     }
 
-    public static Interface createNew(ConnectionScope connectionScope) {
-        return new Interface(UUID.randomUUID(), connectionScope);
+    public static Interface createNew(UndirectedPair scope) {
+        return new Interface(UUID.randomUUID(), scope);
     }
 
     public Interface(InterfaceBean bean) {
-        this(bean.getUuid(), new ConnectionScope(
+        this(bean.getUuid(), new UndirectedPair(
                 bean.getLeftItem(),
-                bean.getRightItem(),
-                Direction.Both));
+                bean.getRightItem()));
     }
 
-    private Interface(UUID uuid, ConnectionScope connectionScope) {
-        if (connectionScope.getDirection() != Direction.Both) {
-            throw new AssertionError("Interfaces must be bidirectional");
-        }
+    private Interface(UUID uuid, UndirectedPair scope) {
         this.uuid = uuid;
-        this.connectionScope = connectionScope;
-        this.left = new Reference<>(this, connectionScope.getLeft(), Item.class);
-        this.right = new Reference<>(this, connectionScope.getRight(), Item.class);
+        this.scope = scope;
+        this.left = new Reference<>(this, scope.getLeft(), Item.class);
+        this.right = new Reference<>(this, scope.getRight(), Item.class);
     }
 
     @Override
@@ -109,7 +114,7 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
     private final UUID uuid;
     private final Reference<Interface, Item> left;
     private final Reference<Interface, Item> right;
-    private final ConnectionScope connectionScope;
+    private final UndirectedPair scope;
 
     @Override
     public RequirementType getRequirementType() {
@@ -155,5 +160,10 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
     @Override
     public Stream<Reference> getReferences() {
         return finder.getReferences(this);
+    }
+
+    public Item otherEnd(RelationContext store, Item item) {
+        UUID otherEndUUID = scope.otherEnd(item.getUuid());
+        return store.get(otherEndUUID, Item.class);
     }
 }

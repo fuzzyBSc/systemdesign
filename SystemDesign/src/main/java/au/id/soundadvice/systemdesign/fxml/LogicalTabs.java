@@ -33,8 +33,8 @@ import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.model.ConnectionScope;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Function;
 import java.util.Collections;
 import java.util.List;
@@ -110,10 +110,10 @@ public class LogicalTabs {
 
             AllocatedBaseline allocated = state.getAllocated();
             // Obtain the flows for each connection scope, ignoring direction
-            Map<ConnectionScope, List<Flow>> flows = allocated.getFlows().parallel()
+            Map<DirectedPair, List<Flow>> flows = allocated.getFlows().parallel()
                     .sorted((left, right) -> left.getType().compareTo(right.getType()))
                     .collect(Collectors.groupingBy(
-                                    flow -> flow.getConnectionScope().setDirection(Direction.Both)));
+                                    flow -> flow.getScope().setDirection(Direction.Both)));
             if (functional == null) {
                 Map<UUID, Function> childFunctions = allocated.getFunctions().parallel()
                         .collect(Collectors.toMap(

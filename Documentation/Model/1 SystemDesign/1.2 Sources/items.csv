@@ -2,7 +2,7 @@
 "","false","2","beans","500.0","110.0","92d4aca0-736f-49fa-b6a6-920ee1e57228"
 "","false","4","consistency","220.0","260.0","955b267b-be24-49db-808b-b69aa9f59a57"
 "","true","3","Runtime Filesystem","570.0","270.0","98ec0213-d1e0-4736-860c-a0507f6bd5bd"
-"","true","4","commons-io","660.0","130.0","a41628cb-19ed-404f-a0f8-895d6b67bbf1"
+"","true","4","commons-io","660.0","120.0","a41628cb-19ed-404f-a0f8-895d6b67bbf1"
 "","false","8","relation","320.0","180.0","cd07422c-1c61-4e4e-acb6-73337283050c"
 "","false","1","baselines","110.0","100.0","d82ac11b-a061-445a-b244-cfc10abbff36"
 "","false","3","concurrent","230.0","340.0","e71771bf-e893-4204-a79f-177a75bc8b1a"

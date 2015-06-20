@@ -39,6 +39,7 @@ import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
 /**
  *
@@ -211,12 +212,27 @@ public class EditState {
         }
     }
 
+    public void updateFunctional(UnaryOperator<FunctionalBaseline> update) {
+        undo.update(state -> {
+            FunctionalBaseline functional = state.getFunctional();
+            if (functional == null) {
+                return state;
+            } else {
+                return state.setFunctional(update.apply(functional));
+            }
+        });
+    }
+
+    public void updateAllocated(UnaryOperator<AllocatedBaseline> update) {
+        undo.update(state -> state.setAllocated(update.apply(state.getAllocated())));
+    }
+
     /**
      * Remove a relation from the allocated baseline (only).
+     *
+     * @param uuid The identifier of the relation to remove
      */
     public void remove(UUID uuid) {
-        UndoState state = undo.get();
-        AllocatedBaseline allocated = state.getAllocated();
-        undo.set(state.setAllocated(allocated.remove(uuid)));
+        undo.update(state -> state.setAllocated(state.getAllocated().remove(uuid)));
     }
 }

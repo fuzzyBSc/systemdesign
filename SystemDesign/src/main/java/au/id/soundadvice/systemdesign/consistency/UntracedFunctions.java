@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import java.util.Collections;
 import java.util.stream.Stream;
 
 /**
@@ -49,7 +48,7 @@ public class UntracedFunctions implements ProblemFactory {
                 return Stream.of(
                         new Problem("Check function allocation",
                                 // No automatic solutions
-                                Collections.emptyList()));
+                                Stream.empty()));
             } else {
                 return Stream.empty();
             }

@@ -40,7 +40,8 @@ public enum Direction {
 
     /**
      * No direction - the flow should be deleted.
-     *//**
+     */
+    /**
      * No direction - the flow should be deleted.
      */
     None,
@@ -72,7 +73,7 @@ public enum Direction {
         }
     }
 
-    public Direction valueOf(Set<Direction> set) {
+    public static Direction valueOf(Set<Direction> set) {
         if (set.contains(Both)) {
             return Both;
         } else if (set.contains(Normal)) {
@@ -135,6 +136,19 @@ public enum Direction {
                 } else {
                     return this;
                 }
+            default:
+                throw new AssertionError(this.name());
+        }
+    }
+
+    public boolean contains(Direction direction) {
+        switch (this) {
+            case Both:
+                return true;
+            case None:
+            case Normal:
+            case Reverse:
+                return direction == this;
             default:
                 throw new AssertionError(this.name());
         }

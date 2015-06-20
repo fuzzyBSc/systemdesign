@@ -265,16 +265,17 @@ public class LogicalTreeController {
 
         @Override
         public void commitEdit(Function function) {
-            UndoState state = undo.get();
             super.commitEdit(function);
-            FunctionalBaseline functional = state.getFunctional();
-            if (functional != null && functional.hasRelation(function)) {
-                // This function is a member of the functional baseline
-                undo.set(state.setFunctional(functional.add(function)));
-            } else {
-                undo.set(state.setAllocated(
-                        state.getAllocated().add(function)));
-            }
+            edit.getUndo().update(state -> {
+                FunctionalBaseline functional = state.getFunctional();
+                if (functional != null && functional.hasRelation(function)) {
+                    // This function is a member of the functional baseline
+                    return state.setFunctional(functional.add(function));
+                } else {
+                    return state.setAllocated(
+                            state.getAllocated().add(function));
+                }
+            });
         }
 
         @Override

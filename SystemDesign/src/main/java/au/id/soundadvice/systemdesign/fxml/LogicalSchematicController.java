@@ -28,21 +28,19 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
-import au.id.soundadvice.systemdesign.model.ConnectionScope;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.DirectedPair;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -135,6 +133,9 @@ class LogicalSchematicController {
 
         Group group = new Group(ellipse, label);
         group.getStyleClass().add("schematicFunction");
+        if (function.isExternal()) {
+            group.getStyleClass().add("external");
+        }
         group.setLayoutX(function.getOrigin().getX());
         group.setLayoutY(function.getOrigin().getY());
 
@@ -201,6 +202,12 @@ class LogicalSchematicController {
             event.consume();
         });
         contextMenu.getItems().add(typeMenuItem);
+        MenuItem deleteMenuItem = new MenuItem("Delete");
+        deleteMenuItem.setOnAction((event) -> {
+            edit.remove(flow.getUuid());
+            event.consume();
+        });
+        contextMenu.getItems().add(deleteMenuItem);
         label.setContextMenu(contextMenu);
 
         Group group = new Group(path, label, normalArrow, reverseArrow);
@@ -259,7 +266,7 @@ class LogicalSchematicController {
     public void populate(
             AllocatedBaseline allocated,
             Map<UUID, Function> functions,
-            Map<ConnectionScope, List<Flow>> flows) {
+            Map<DirectedPair, List<Flow>> flows) {
         Pane pane = new AnchorPane();
         flows.entrySet().forEach(entry -> {
             Function left = functions.get(entry.getKey().getLeft());
@@ -273,7 +280,7 @@ class LogicalSchematicController {
             Item item = function.getItem().getTarget(allocated.getStore());
             Node node = toNode(function, item);
 
-            new MoveHandler(pane, node, new Move(function),
+            new MoveHandler(pane, node, new Move(function.getUuid()),
                     new GridSnap(10),
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
@@ -287,17 +294,21 @@ class LogicalSchematicController {
 
     private class Move implements Dragged {
 
-        public Move(Function function) {
-            this.function = function;
+        public Move(UUID uuid) {
+            this.uuid = uuid;
         }
-        private final Function function;
+        private final UUID uuid;
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            UndoState state = undo.get();
-            AllocatedBaseline allocated = state.getAllocated();
-            undo.set(state.setAllocated(allocated.add(function.setOrigin(layoutCurrent))));
+            edit.getUndo().update(state -> {
+                Function toAdd = state.getAllocatedInstance(uuid, Function.class);
+                if (toAdd == null) {
+                    return state;
+                }
+                toAdd = toAdd.setOrigin(layoutCurrent);
+                return state.setAllocated(state.getAllocated().add(toAdd));
+            });
         }
 
     }

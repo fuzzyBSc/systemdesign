@@ -44,6 +44,11 @@
     -fx-stroke: black;
 }
 
+.schematicFunction.external > .outline {
+    -fx-stroke-width: 2px;
+    -fx-stroke-dash-array: 12 2 4 2;
+}
+
 .schematicFunction > .text {
     -fx-text-alignment: center;
 }

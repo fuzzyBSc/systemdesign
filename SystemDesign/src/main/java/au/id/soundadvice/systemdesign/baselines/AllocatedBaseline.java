@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.baselines;
 
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.beans.FlowBean;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
 import au.id.soundadvice.systemdesign.beans.HazardBean;
@@ -37,6 +38,7 @@ import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.BeanReader;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
+import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Hazard;
@@ -45,6 +47,7 @@ import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.Requirement;
+import au.id.soundadvice.systemdesign.model.UndirectedPair;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
@@ -57,6 +60,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -279,5 +283,76 @@ public class AllocatedBaseline {
     @CheckReturnValue
     public AllocatedBaseline removeAll(Stream<UUID> toRemove) {
         return new AllocatedBaseline(store.removeAll(toRemove));
+    }
+
+    @CheckReturnValue
+    public Pair<Interface, AllocatedBaseline> addInterface(Item left, Item right) {
+        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        Optional<Interface> existing = store.getReverse(scope.getLeft(), Interface.class).parallel()
+                .filter(iface
+                        -> scope.getLeft().equals(iface.getLeft().getUuid())
+                        && scope.getRight().equals(iface.getRight().getUuid())
+                )
+                .findAny();
+        if (existing.isPresent()) {
+            return new Pair<>(existing.get(), this);
+        } else {
+            Interface newInterface = Interface.createNew(scope);
+            return new Pair<>(newInterface, this.add(newInterface));
+        }
+    }
+
+    @CheckReturnValue
+    public Pair<Flow, AllocatedBaseline> addFlow(
+            Function left, Function right, String flowType, Direction direction) {
+        Item leftItem = left.getItem().getTarget(store);
+        Item rightItem = right.getItem().getTarget(store);
+        Pair<Interface, AllocatedBaseline> tmp = addInterface(leftItem, rightItem);
+
+        Optional<Flow> existing = Flow.findExisting(
+                tmp.getValue().store,
+                new UndirectedPair(left.getUuid(), right.getUuid()),
+                flowType);
+        if (existing.isPresent()) {
+            Flow flow = existing.get();
+            Direction current = flow.getDirectionFrom(left);
+            Direction updated = current.add(direction);
+            if (current.equals(updated)) {
+                // Nothing changed
+                return new Pair<>(flow, tmp.getValue());
+            } else {
+                flow = flow.setDirectionFrom(left, updated);
+                return new Pair<>(flow, tmp.getValue().add(flow));
+            }
+        } else {
+            Flow flow = Flow.createNew(
+                    tmp.getKey().getUuid(),
+                    new DirectedPair(left.getUuid(), right.getUuid(), direction),
+                    flowType);
+            return new Pair<>(flow, tmp.getValue().add(flow));
+        }
+    }
+
+    @CheckReturnValue
+    public AllocatedBaseline removeFlow(Function left, Function right, String type, Direction direction) {
+        Optional<Flow> existing = Flow.findExisting(
+                store, new UndirectedPair(left.getUuid(), right.getUuid()), type);
+        if (existing.isPresent()) {
+            Flow flow = existing.get();
+            Direction current = flow.getDirectionFrom(left);
+            Direction remaining = current.remove(direction);
+            if (current.equals(remaining)) {
+                // No change
+                return this;
+            } else if (remaining == Direction.None) {
+                // Remove the flow completely
+                return remove(flow.getUuid());
+            } else {
+                // Update the flow
+                return add(flow.setDirectionFrom(left, remaining));
+            }
+        } else {
+            return this;
+        }
     }
 }
