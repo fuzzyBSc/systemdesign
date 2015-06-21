@@ -40,6 +40,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -52,6 +53,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
@@ -90,16 +92,16 @@ public class LogicalTreeController {
 
     public static final class FunctionAllocation {
 
-        public FunctionAllocation(Function parent, SortedMap<String, Function> children) {
+        public FunctionAllocation(Optional<Function> parent, SortedMap<String, Function> children) {
             this.parent = parent;
             this.children = children;
         }
 
         public String getDisplayName() {
-            return parent.getName();
+            return parent.map(Function::getName).orElse("Logical");
         }
 
-        private final Function parent;
+        private final Optional<Function> parent;
         private final SortedMap<String, Function> children;
 
         private boolean isEmpty() {
@@ -113,17 +115,17 @@ public class LogicalTreeController {
         private final FunctionAllocation orphans;
 
         private TreeState(UndoState state) {
-            FunctionalBaseline functional = state.getFunctional();
+            Optional<FunctionalBaseline> functional = state.getFunctional();
             AllocatedBaseline allocated = state.getAllocated();
 
             Map<UUID, Function> parentFunctions;
-            if (functional == null) {
-                parentFunctions = Collections.emptyMap();
-            } else {
-                UUID systemUuid = functional.getSystemOfInterest().getUuid();
+            if (functional.isPresent()) {
+                UUID systemUuid = functional.get().getSystemOfInterest().getUuid();
                 parentFunctions = new HashMap<>();
-                functional.getStore().getReverse(systemUuid, Function.class)
+                functional.get().getStore().getReverse(systemUuid, Function.class)
                         .forEach((function) -> parentFunctions.put(function.getUuid(), function));
+            } else {
+                parentFunctions = Collections.emptyMap();
             }
 
             Map<Function, SortedMap<String, Function>> rawAllocation = new HashMap<>();
@@ -132,23 +134,24 @@ public class LogicalTreeController {
             // Keep orphans separate to avoid null pointers in TreeMap
             SortedMap<String, Function> rawOrphans = new TreeMap<>();
             allocated.getFunctions()
-                    .forEach((child) -> {
+                    .forEach(child -> {
                         // Parent may be null, ie child is orphaned
-                        UUID trace = child.getTrace();
-                        Function parent = trace == null ? null : parentFunctions.get(trace);
-                        SortedMap<String, Function> map = parent == null ? rawOrphans : rawAllocation.get(parent);
+                        Optional<UUID> trace = child.getTrace();
+                        Optional<Function> parent = trace.map(uuid -> parentFunctions.get(uuid));
+                        SortedMap<String, Function> map = parent.isPresent()
+                                ? rawAllocation.get(parent.get()) : rawOrphans;
                         map.put(child.getDisplayName(allocated.getStore()), child);
                     });
 
             SortedMap<String, FunctionAllocation> tmpAllocation = new TreeMap<>();
             rawAllocation.entrySet().stream()
-                    .map((entry) -> new FunctionAllocation(entry.getKey(), Collections.unmodifiableSortedMap(entry.getValue())))
+                    .map((entry) -> new FunctionAllocation(Optional.of(entry.getKey()), Collections.unmodifiableSortedMap(entry.getValue())))
                     .forEach((alloc) -> {
                         tmpAllocation.put(alloc.getDisplayName(), alloc);
                     });
             this.allocation = Collections.unmodifiableSortedMap(tmpAllocation);
             this.orphans = new FunctionAllocation(
-                    null, Collections.unmodifiableSortedMap(rawOrphans));
+                    Optional.empty(), Collections.unmodifiableSortedMap(rawOrphans));
         }
     }
 
@@ -174,9 +177,9 @@ public class LogicalTreeController {
             root.setExpanded(true);
             root.getChildren().addAll(
                     state.allocation.values().stream()
-                    .filter((allocation) -> allocation.parent != null)
+                    .filter((allocation) -> allocation.parent.isPresent())
                     .map((allocation) -> {
-                        TreeItem parent = new TreeItem(allocation.parent);
+                        TreeItem parent = new TreeItem(allocation.parent.get());
                         parent.setExpanded(true);
                         parent.getChildren().addAll(allocation.children.values().stream()
                                 .map((child) -> new TreeItem(child))
@@ -212,7 +215,7 @@ public class LogicalTreeController {
     private final class FunctionTreeCell extends TreeCell<Function> {
 
         private final UndoBuffer<UndoState> undo;
-        private TextField textField;
+        private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
         public FunctionTreeCell(UndoBuffer<UndoState> tmpUndo) {
@@ -227,8 +230,8 @@ public class LogicalTreeController {
         }
 
         public void start() {
-            DragSource.bind(this, () -> getItem(), false);
-            DragTarget.bind(edit, this, () -> getItem(),
+            DragSource.bind(this, () -> Optional.ofNullable(getItem()), false);
+            DragTarget.bind(edit, this, () -> Optional.ofNullable(getItem()),
                     new FunctionDropHandler(interactions, edit));
         }
 
@@ -238,13 +241,13 @@ public class LogicalTreeController {
             if (function != null) {
                 super.startEdit();
 
-                if (textField == null) {
-                    createTextField(getItem());
+                if (!textField.isPresent()) {
+                    textField = Optional.of(createTextField(getItem()));
                 }
                 setText(null);
-                setGraphic(textField);
-                textField.selectAll();
-                textField.requestFocus();
+                setGraphic(textField.get());
+                textField.get().selectAll();
+                textField.get().requestFocus();
             }
         }
 
@@ -260,7 +263,9 @@ public class LogicalTreeController {
                  * If the cancelEdit is due to a loss of focus, override it.
                  * Commit instead.
                  */
-                commitEdit(getItem().setName(textField.getText()));
+                if (textField.isPresent()) {
+                    commitEdit(getItem().setName(textField.get().getText()));
+                }
             }
         }
 
@@ -268,10 +273,10 @@ public class LogicalTreeController {
         public void commitEdit(Function function) {
             super.commitEdit(function);
             edit.getUndo().update(state -> {
-                FunctionalBaseline functional = state.getFunctional();
-                if (functional != null && functional.hasRelation(function)) {
+                Optional<FunctionalBaseline> functional = state.getFunctional();
+                if (functional.isPresent() && functional.get().hasRelation(function)) {
                     // This function is a member of the functional baseline
-                    return state.setFunctional(functional.add(function));
+                    return state.setFunctional(functional.get().add(function));
                 } else {
                     return state.setAllocated(
                             state.getAllocated().add(function));
@@ -288,11 +293,11 @@ public class LogicalTreeController {
                 setGraphic(null);
             } else {
                 if (isEditing()) {
-                    if (textField != null) {
-                        textField.setText(getString());
-                    }
                     setText(null);
-                    setGraphic(textField);
+                    if (textField.isPresent()) {
+                        textField.get().setText(getString());
+                        setGraphic(textField.get());
+                    }
                 } else {
                     setText(getString());
                     setGraphic(getTreeItem().getGraphic());
@@ -301,15 +306,17 @@ public class LogicalTreeController {
             }
         }
 
-        private void createTextField(Function function) {
-            textField = new TextField(function.getName());
-            textField.setOnKeyReleased((KeyEvent t) -> {
+        @CheckReturnValue
+        private TextField createTextField(Function function) {
+            TextField node = new TextField(function.getName());
+            node.setOnKeyReleased((KeyEvent t) -> {
                 if (t.getCode() == KeyCode.ENTER) {
-                    commitEdit(function.setName(textField.getText()));
+                    commitEdit(function.setName(node.getText()));
                 } else if (t.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
                 }
             });
+            return node;
         }
 
         private String getString() {

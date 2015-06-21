@@ -29,12 +29,12 @@ package au.id.soundadvice.systemdesign.relation;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 
 /**
  * An immutable store of relations, suitable for use within an undo buffer.
@@ -112,13 +112,12 @@ public class RelationStore implements RelationContext {
     }
 
     @Override
-    @Nullable
-    public <T extends Relation> T get(UUID key, Class<T> type) {
-        Relation result = key == null ? null : relations.get(key);
+    public <T extends Relation> Optional<T> get(UUID key, Class<T> type) {
+        Relation result = relations.get(key);
         if (type.isInstance(result)) {
-            return (T) result;
+            return Optional.of((T) result);
         } else {
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -146,14 +145,14 @@ public class RelationStore implements RelationContext {
         }
 
         UUID key = value.getUuid();
-        Relation oldValue = relations.get(key);
-        if (value.equals(oldValue)) {
+        Optional<Relation> oldValue = Optional.ofNullable(relations.get(key));
+        if (value.equals(oldValue.orElse(null))) {
             return this;
         } else {
             RelationStore tmp;
-            if (oldValue != null && !value.getClass().equals(oldValue.getClass())) {
+            if (oldValue.isPresent() && !value.getClass().equals(oldValue.get().getClass())) {
                 // Remove first
-                tmp = this.remove(oldValue.getUuid());
+                tmp = this.remove(oldValue.get().getUuid());
             } else {
                 tmp = this;
             }
@@ -175,7 +174,7 @@ public class RelationStore implements RelationContext {
     public RelationStore removeAll(Stream<UUID> seed) {
         Set<Relation> toDelete = seed.parallel()
                 .map(uuid -> relations.get(uuid))
-                .filter((relation) -> relation != null)
+                .filter(relation -> relation != null)
                 .collect(Collectors.toCollection(HashSet::new));
         if (toDelete.isEmpty()) {
             return this;
@@ -188,7 +187,7 @@ public class RelationStore implements RelationContext {
             ByUUID<Relation> tmpRelations = relations.removeAll(toDeleteAsUUIDs);
             ByClass<Relation> tmpByClass = byClass.removeAll(toDeleteAsUUIDs);
             ByReverse<Relation> tmpReverseRelations
-                    = reverseReferences.removeAll(toDelete);
+                    = reverseReferences.removeAll(toDelete.stream());
             return new RelationStore(
                     tmpRelations, tmpByClass, tmpReverseRelations);
         }

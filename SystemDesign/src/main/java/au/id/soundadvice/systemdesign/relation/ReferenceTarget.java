@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.relation;
 
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -68,7 +67,6 @@ public class ReferenceTarget<T> {
         return true;
     }
 
-    @Nullable
     public UUID getUuid() {
         return key;
     }
@@ -82,7 +80,6 @@ public class ReferenceTarget<T> {
         this.type = type;
     }
 
-    @Nullable
     private final UUID key;
     private final Class<T> type;
 }

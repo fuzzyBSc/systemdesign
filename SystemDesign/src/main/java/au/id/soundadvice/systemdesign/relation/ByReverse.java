@@ -29,20 +29,20 @@ package au.id.soundadvice.systemdesign.relation;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 
 /**
  * An immutable set keyed on class and UUID.
@@ -92,7 +92,8 @@ public class ByReverse<E extends Relation> {
                                     entry -> entry.getKey(),
                                     entry -> ByClass.valueOf(entry.getValue().stream())));
             cascade(tmpResult, tmpDelete);
-            result = new ByReverse<>(Collections.unmodifiableMap(tmpResult)).removeAll(tmpDelete);
+            result = new ByReverse<>(Collections.unmodifiableMap(tmpResult))
+                    .removeAll(tmpDelete.stream());
             deletedRelations = tmpDelete;
         }
 
@@ -161,36 +162,32 @@ public class ByReverse<E extends Relation> {
     }
 
     @CheckReturnValue
-    public ByReverse<E> replace(@Nullable E old, E value) {
-        if (value.equals(old)) {
+    public ByReverse<E> replace(Optional<E> old, E value) {
+        if (value.equals(old.orElse(null))) {
             return this;
         } else {
             ByReverse<E> tmp;
-            if (old == null) {
-                tmp = this;
+            if (old.isPresent() && !value.equals(old.get())) {
+                tmp = removeAll(Stream.of(old.get()));
             } else {
-                tmp = removeAll(Collections.singleton(old));
+                tmp = this;
             }
             return tmp.putImpl(value);
         }
     }
 
     @CheckReturnValue
-    public ByReverse<E> removeAll(Collection<E> toDelete) {
-        Map<UUID, List<UUID>> toDeleteByTarget = new HashMap<>();
-        toDelete.stream()
-                .forEach(source -> {
-                    source.getReferences()
-                    .forEach(reference -> {
+    public ByReverse<E> removeAll(Stream<E> toDelete) {
+        Map<UUID, List<UUID>> toDeleteByTarget = toDelete
+                .flatMap(source -> {
+                    return source.getReferences()
+                    .map(reference -> {
                         UUID targetUUID = reference.getTo().getUuid();
-                        List<UUID> list = toDeleteByTarget.get(targetUUID);
-                        if (list == null) {
-                            list = new ArrayList<>();
-                            toDeleteByTarget.put(targetUUID, list);
-                        }
-                        list.add(source.getUuid());
+                        return new Pair<>(targetUUID, source.getUuid());
                     });
-                });
+                })
+                .collect(Collectors.groupingBy(
+                        Pair::getKey, Collectors.mapping(Pair::getValue, Collectors.toList())));
         if (toDeleteByTarget.isEmpty()) {
             // There were no references
             return this;

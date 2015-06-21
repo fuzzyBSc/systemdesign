@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EmptyStackException;
+import java.util.Optional;
 import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -47,7 +48,7 @@ import java.util.function.UnaryOperator;
  */
 public class EditState {
 
-    public Directory getCurrentDirectory() {
+    public Optional<Directory> getCurrentDirectory() {
         return currentDirectory.get();
     }
 
@@ -60,12 +61,12 @@ public class EditState {
     }
 
     public static EditState init(Executor executor) {
-        return new EditState(executor, null, UndoState.createNew(), true);
+        return new EditState(executor, Optional.empty(), UndoState.createNew(), true);
     }
 
     public void clear() {
         UndoState state = UndoState.createNew();
-        this.currentDirectory.set(null);
+        this.currentDirectory.set(Optional.empty());
         this.lastChild.clear();
         this.undo.reset(state);
         this.savedState.set(state);
@@ -73,7 +74,7 @@ public class EditState {
 
     private EditState(
             Executor executor,
-            Directory currentDirectory,
+            Optional<Directory> currentDirectory,
             UndoState undo,
             boolean alreadySaved) {
         this.currentDirectory = new AtomicReference<>(currentDirectory);
@@ -88,13 +89,14 @@ public class EditState {
     }
 
     public void loadParent() throws IOException {
-        Directory dir = currentDirectory.get();
-        if (dir == null) {
+        Optional<Directory> dir = currentDirectory.get();
+        if (dir.isPresent()) {
+            UndoState state = undo.get();
+            loadImpl(dir.get().getParent());
+            lastChild.push(state.getAllocated().getIdentity());
+        } else {
             throw new IOException("Cannot load from null directory");
         }
-        UndoState state = undo.get();
-        loadImpl(dir.getParent());
-        lastChild.push(state.getAllocated().getIdentity());
     }
 
     public boolean hasLastChild() {
@@ -102,32 +104,37 @@ public class EditState {
     }
 
     public void loadChild(Identity child) throws IOException {
-        Directory parentDir = currentDirectory.get();
-        if (currentDirectory == null) {
+        Optional<Directory> parentDir = currentDirectory.get();
+        if (!parentDir.isPresent()) {
             throw new IOException("Parent is not saved yet");
         }
-        Directory childDir = parentDir.getChild(child.getUuid());
-        if (childDir == null) {
+        Optional<Directory> existing = parentDir.get().getChild(child.getUuid());
+        if (existing.isPresent()) {
+            loadImpl(existing.get());
+        } else {
             // Synthesise a child baseline, since none has been saved yet
             String prefix = child.getIdPath().toString();
             int count = 0;
+            Directory childDir;
             do {
                 // Avoid name collisions
                 String name = count == 0 ? prefix : prefix + "_" + count;
-                childDir = new Directory(parentDir.getPath().resolve(name));
+                childDir = new Directory(parentDir.get().getPath().resolve(name));
                 ++count;
             } while (Files.isDirectory(childDir.getPath()));
             UndoState state = undo.get();
-            Item systemOfInterest = state.getAllocated().getStore().get(
+            Optional<Item> systemOfInterest = state.getAllocated().getStore().get(
                     child.getUuid(), Item.class);
-            state = state.setFunctional(new FunctionalBaseline(
-                    systemOfInterest, state.getAllocated()));
-            state = state.setAllocated(AllocatedBaseline.create(child));
-            currentDirectory.set(childDir);
-            undo.reset(state);
-            savedState.set(state);
-        } else {
-            loadImpl(childDir);
+            if (systemOfInterest.isPresent()) {
+                state = state.setFunctional(new FunctionalBaseline(
+                        systemOfInterest.get(), state.getAllocated()));
+                state = state.setAllocated(AllocatedBaseline.create(child));
+                currentDirectory.set(Optional.of(childDir));
+                undo.reset(state);
+                savedState.set(state);
+            } else {
+                throw new IOException("No such child");
+            }
         }
         if (!lastChild.isEmpty()) {
             if (child.equals(lastChild.peek())) {
@@ -152,15 +159,15 @@ public class EditState {
 
     private void loadImpl(Directory dir) throws IOException {
         UndoState state = UndoState.load(dir);
-        currentDirectory.set(dir);
+        currentDirectory.set(Optional.of(dir));
         undo.reset(state);
         savedState.set(state);
 
         // Fix id
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional != null) {
-            Identity correctedId = functional.getSystemOfInterest().asIdentity(
-                    functional.getStore());
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (functional.isPresent()) {
+            Identity correctedId = functional.get().getSystemOfInterest().asIdentity(
+                    functional.get().getStore());
             AllocatedBaseline allocated = state.getAllocated();
             if (!correctedId.equals(allocated.getIdentity())) {
                 // Identity mismatch - autofix.
@@ -174,23 +181,25 @@ public class EditState {
     }
 
     public void save() throws IOException {
-        saveTo(currentDirectory.get());
+        Optional<Directory> dir = currentDirectory.get();
+        if (dir.isPresent()) {
+            saveTo(dir.get());
+        } else {
+            throw new IOException("Model has not been saved yet");
+        }
     }
 
     public void saveTo(Directory dir) throws IOException {
-        if (dir == null) {
-            throw new IOException("Cannot load from null directory");
-        }
         UndoState state = undo.get();
         try (SaveTransaction transaction = new SaveTransaction()) {
             state.saveTo(transaction, dir);
             transaction.commit();
         }
-        currentDirectory.set(dir);
+        currentDirectory.set(Optional.of(dir));
         savedState.set(state);
     }
 
-    private final AtomicReference<Directory> currentDirectory;
+    private final AtomicReference<Optional<Directory>> currentDirectory;
     private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;
     private final AtomicReference<UndoState> savedState;
@@ -205,20 +214,21 @@ public class EditState {
     }
 
     public void rename(Path from, Path to) throws IOException {
-        if (currentDirectory.get().getPath().equals(from)) {
+        Optional<Directory> current = currentDirectory.get();
+        if (current.isPresent() && current.get().getPath().equals(from)) {
             Files.move(from, to);
-            currentDirectory.set(new Directory(to));
+            currentDirectory.set(Optional.of(new Directory(to)));
             changed.changed();
         }
     }
 
     public void updateFunctional(UnaryOperator<FunctionalBaseline> update) {
         undo.update(state -> {
-            FunctionalBaseline functional = state.getFunctional();
-            if (functional == null) {
-                return state;
+            Optional<FunctionalBaseline> functional = state.getFunctional();
+            if (functional.isPresent()) {
+                return state.setFunctional(update.apply(functional.get()));
             } else {
-                return state.setFunctional(update.apply(functional));
+                return state;
             }
         });
     }

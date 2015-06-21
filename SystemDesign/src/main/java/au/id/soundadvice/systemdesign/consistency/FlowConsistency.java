@@ -38,6 +38,7 @@ import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -50,11 +51,11 @@ import java.util.stream.Stream;
 public class FlowConsistency {
 
     private static Map<UUID, Map<String, Direction>> getFlowTypes(
-            UUID fromUUID, Stream<Flow> flows, UnaryOperator<UUID> uuidFixer) {
+            UUID fromUUID, Stream<Flow> flows, UnaryOperator<Optional<UUID>> uuidFixer) {
         return flows
                 .filter(flow -> flow.getScope().hasEnd(fromUUID))
                 .collect(Collectors.groupingBy(
-                                flow -> uuidFixer.apply(flow.getScope().otherEnd(fromUUID)),
+                                flow -> uuidFixer.apply(Optional.of(flow.getScope().otherEnd(fromUUID))),
                                 Collectors.groupingBy(
                                         Flow::getType,
                                         Collectors.mapping(
@@ -62,7 +63,10 @@ public class FlowConsistency {
                                                 Collectors.collectingAndThen(
                                                         Collectors.toSet(),
                                                         Direction::valueOf
-                                                )))));
+                                                )))))
+                .entrySet().stream()
+                .filter(entry -> entry.getKey().isPresent())
+                .collect(Collectors.toMap(entry -> entry.getKey().get(), Map.Entry::getValue));
     }
 
     private static Stream<Map.Entry<String, Direction>> getDifferenceByType(
@@ -118,11 +122,11 @@ public class FlowConsistency {
             String externalFunctionDescription) {
         RelationStore parentStore;
         {
-            FunctionalBaseline functional = state.getFunctional();
-            if (functional == null) {
+            Optional<FunctionalBaseline> functional = state.getFunctional();
+            if (!functional.isPresent()) {
                 return Stream.empty();
             }
-            parentStore = functional.getStore();
+            parentStore = functional.get().getStore();
         }
         RelationStore childStore = state.getAllocated().getStore();
 
@@ -131,23 +135,29 @@ public class FlowConsistency {
                 externalParentFunctionUUID,
                 parentStore.getReverse(iface.getUuid(), Flow.class)
                 .filter(flow -> flow.getScope().hasEnd(externalParentFunctionUUID)),
-                uuid -> uuid);
+                optionalUUID -> optionalUUID);
         Map<UUID, Map<String, Direction>> childFlows = getFlowTypes(
                 externalParentFunctionUUID,
                 childStore.getReverse(externalParentFunctionUUID, Flow.class),
-                uuid -> {
-                    Function childFunction = childStore.get(uuid, Function.class);
-                    return childFunction == null ? null : childFunction.getTrace();
-                });
+                optionalUUID -> {
+                    if (optionalUUID.isPresent()) {
+                        Optional<Function> function = childStore.get(optionalUUID.get(), Function.class);
+                        if (function.isPresent()) {
+                            return function.get().getTrace();
+                        }
+                    }
+                    return Optional.empty();
+                }
+        );
 
         Stream<Problem> missingFromParent = getDifferenceByFunction(childFlows, parentFlows)
                 .flatMap(byFunction -> {
                     UUID functionUUID = byFunction.getKey();
-                    Function systemFunction = parentStore.get(functionUUID, Function.class);
-                    if (systemFunction == null) {
+                    Optional<Function> systemFunction = parentStore.get(functionUUID, Function.class);
+                    if (!systemFunction.isPresent()) {
                         return Stream.empty();
                     }
-                    String systemFunctionDescription = systemFunction.getName();
+                    String systemFunctionDescription = systemFunction.get().getName();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();
@@ -189,11 +199,11 @@ public class FlowConsistency {
         Stream<Problem> missingFromChild = getDifferenceByFunction(parentFlows, childFlows)
                 .flatMap(byFunction -> {
                     UUID functionUUID = byFunction.getKey();
-                    Function systemFunction = parentStore.get(functionUUID, Function.class);
-                    if (systemFunction == null) {
+                    Optional<Function> systemFunction = parentStore.get(functionUUID, Function.class);
+                    if (!systemFunction.isPresent()) {
                         return Stream.empty();
                     }
-                    String systemFunctionDescription = systemFunction.getName();
+                    String systemFunctionDescription = systemFunction.get().getName();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();
@@ -253,9 +263,16 @@ public class FlowConsistency {
             DirectedPair directions,
             String type) {
         RelationStore store = allocated.getStore();
-        Function left = store.get(directions.getLeft(), Function.class);
-        Function right = store.get(directions.getRight(), Function.class);
-        return allocated.addFlow(left, right, type, directions.getDirection()).getValue();
+        Optional<Function> left = store.get(directions.getLeft(), Function.class);
+        Optional<Function> right = store.get(directions.getRight(), Function.class);
+        if (left.isPresent() && right.isPresent()) {
+            return allocated.addFlow(
+                    left.get(), right.get(),
+                    type,
+                    directions.getDirection()).getValue();
+        } else {
+            return allocated;
+        }
     }
 
     private static AllocatedBaseline removeFlowDirections(
@@ -263,8 +280,15 @@ public class FlowConsistency {
             DirectedPair directions,
             String type) {
         RelationStore store = allocated.getStore();
-        Function left = store.get(directions.getLeft(), Function.class);
-        Function right = store.get(directions.getRight(), Function.class);
-        return allocated.removeFlow(left, right, type, directions.getDirection());
+        Optional<Function> left = store.get(directions.getLeft(), Function.class);
+        Optional<Function> right = store.get(directions.getRight(), Function.class);
+        if (left.isPresent() && right.isPresent()) {
+            return allocated.removeFlow(
+                    left.get(), right.get(),
+                    type,
+                    directions.getDirection());
+        } else {
+            return allocated;
+        }
     }
 }

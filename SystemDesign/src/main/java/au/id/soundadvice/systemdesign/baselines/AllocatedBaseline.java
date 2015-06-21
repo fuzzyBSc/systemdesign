@@ -133,23 +133,22 @@ public class AllocatedBaseline {
     }
 
     public static AllocatedBaseline load(Directory directory) throws IOException {
-        Identity identity = directory.getIdentity();
-        if (identity == null) {
-            throw new IOException("No Item found in directory");
-        }
+        Optional<Identity> identity = directory.getIdentity();
+        identity.orElseThrow(() -> new IOException("No Item found in directory"));
 
         List<Relation> relations = new ArrayList<>();
 
-        relations.add(identity);
+        relations.add(identity.get());
 
         if (Files.exists(directory.getItems())) {
             try (BeanReader<ItemBean> reader = BeanReader.forPath(ItemBean.class, directory.getItems())) {
                 for (;;) {
-                    ItemBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<ItemBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Item(identity.get().getUuid(), bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Item(identity.getUuid(), bean));
                 }
             }
         }
@@ -157,11 +156,12 @@ public class AllocatedBaseline {
         if (Files.exists(directory.getInterfaces())) {
             try (BeanReader<InterfaceBean> reader = BeanReader.forPath(InterfaceBean.class, directory.getInterfaces())) {
                 for (;;) {
-                    InterfaceBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<InterfaceBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Interface(bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Interface(bean));
                 }
             }
         }
@@ -169,11 +169,12 @@ public class AllocatedBaseline {
         if (Files.exists(directory.getFunctions())) {
             try (BeanReader<FunctionBean> reader = BeanReader.forPath(FunctionBean.class, directory.getFunctions())) {
                 for (;;) {
-                    FunctionBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<FunctionBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Function(bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Function(bean));
                 }
             }
         }
@@ -181,11 +182,12 @@ public class AllocatedBaseline {
         if (Files.exists(directory.getFlows())) {
             try (BeanReader<FlowBean> reader = BeanReader.forPath(FlowBean.class, directory.getFlows())) {
                 for (;;) {
-                    FlowBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<FlowBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Flow(bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Flow(bean));
                 }
             }
         }
@@ -193,11 +195,12 @@ public class AllocatedBaseline {
         if (Files.exists(directory.getHazards())) {
             try (BeanReader<HazardBean> reader = BeanReader.forPath(HazardBean.class, directory.getHazards())) {
                 for (;;) {
-                    HazardBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<HazardBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Hazard(bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Hazard(bean));
                 }
             }
         }
@@ -205,11 +208,12 @@ public class AllocatedBaseline {
         if (Files.exists(directory.getRequirements())) {
             try (BeanReader<RequirementBean> reader = BeanReader.forPath(RequirementBean.class, directory.getRequirements())) {
                 for (;;) {
-                    RequirementBean bean = reader.read();
-                    if (bean == null) {
+                    Optional<RequirementBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new Requirement(bean.get()));
+                    } else {
                         break;
                     }
-                    relations.add(new Requirement(bean));
                 }
             }
         }
@@ -257,7 +261,7 @@ public class AllocatedBaseline {
 
     public boolean hasRelation(Relation relation) {
         return relation != null
-                && getStore().get(relation.getUuid(), relation.getClass()) != null;
+                && getStore().get(relation.getUuid(), relation.getClass()).isPresent();
     }
 
     public IDSegment getNextItemId() {

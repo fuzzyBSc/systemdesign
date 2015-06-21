@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.relation.Relation;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
@@ -47,11 +48,12 @@ public class UpdateSolution implements Solution {
     public static UpdateSolution updateFunctional(
             String description, UnaryOperator<FunctionalBaseline> update) {
         return new UpdateSolution(description, state -> {
-            FunctionalBaseline functional = state.getFunctional();
-            if (functional == null) {
+            Optional<FunctionalBaseline> functional = state.getFunctional();
+            if (functional.isPresent()) {
+                return state.setFunctional(update.apply(functional.get()));
+            } else {
                 return state;
             }
-            return state.setFunctional(update.apply(functional));
         });
     }
 
@@ -60,12 +62,13 @@ public class UpdateSolution implements Solution {
             UUID uuid, Class<T> type,
             UnaryOperator<T> update) {
         return updateFunctional(description, baseline -> {
-            T current = baseline.getStore().get(uuid, type);
-            if (current == null) {
+            Optional<T> current = baseline.getStore().get(uuid, type);
+            if (current.isPresent()) {
+                T updated = update.apply(current.get());
+                return baseline.add(updated);
+            } else {
                 return baseline;
             }
-            T updated = update.apply(current);
-            return baseline.add(updated);
         });
     }
 
@@ -82,12 +85,13 @@ public class UpdateSolution implements Solution {
             UUID uuid, Class<T> type,
             UnaryOperator<T> update) {
         return updateAllocated(description, baseline -> {
-            T current = baseline.getStore().get(uuid, type);
-            if (current == null) {
+            Optional<T> current = baseline.getStore().get(uuid, type);
+            if (current.isPresent()) {
+                T updated = update.apply(current.get());
+                return baseline.add(updated);
+            } else {
                 return baseline;
             }
-            T updated = update.apply(current);
-            return baseline.add(updated);
         });
     }
 

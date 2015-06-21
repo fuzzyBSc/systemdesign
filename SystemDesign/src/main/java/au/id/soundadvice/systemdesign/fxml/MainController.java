@@ -34,6 +34,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -155,8 +156,10 @@ public class MainController implements Initializable {
         public void run() {
             undoMenuItem.setDisable(!edit.getUndo().canUndo());
             redoMenuItem.setDisable(!edit.getUndo().canRedo());
-            Directory dir = edit.getCurrentDirectory();
-            upButton.setDisable(dir == null || dir.getParent().getIdentity() == null);
+            Optional<Directory> dir = edit.getCurrentDirectory();
+            upButton.setDisable(
+                    !dir.isPresent()
+                    || !dir.get().getParent().getIdentity().isPresent());
             downButton.setDisable(!edit.hasLastChild());
         }
     }

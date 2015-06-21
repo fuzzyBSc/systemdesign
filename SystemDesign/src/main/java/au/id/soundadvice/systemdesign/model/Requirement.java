@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -106,7 +107,7 @@ public class Requirement implements BeanFactory<RelationContext, RequirementBean
     public RequirementBean toBean(RelationContext context) {
         return new RequirementBean(
                 uuid,
-                null,
+                Optional.empty(),
                 owner.getUuid(),
                 section, text);
 

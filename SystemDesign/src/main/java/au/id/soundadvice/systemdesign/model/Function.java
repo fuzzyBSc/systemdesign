@@ -33,11 +33,11 @@ import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -111,7 +111,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     private static Point2D defaultOrigin = new Point2D(200, 200);
 
     public static Function createNew(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, null, false, name, defaultOrigin);
+        return new Function(UUID.randomUUID(), item, Optional.empty(), false, name, defaultOrigin);
     }
 
     @Override
@@ -123,8 +123,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return item;
     }
 
-    @Nullable
-    public UUID getTrace() {
+    public Optional<UUID> getTrace() {
         return this.trace;
     }
 
@@ -138,14 +137,14 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     public Function(FunctionBean bean) {
         this.uuid = bean.getUuid();
-        this.trace = bean.getTrace();
+        this.trace = Optional.ofNullable(bean.getTrace());
         this.external = bean.isExternal();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
         this.name = bean.getName();
         this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
-    private Function(UUID uuid, UUID item, @Nullable UUID trace, boolean external, String name, Point2D origin) {
+    private Function(UUID uuid, UUID item, Optional<UUID> trace, boolean external, String name, Point2D origin) {
         this.uuid = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
@@ -156,8 +155,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     private final UUID uuid;
     private final Reference<Function, Item> item;
-    @Nullable
-    private final UUID trace;
+    private final Optional<UUID> trace;
     private final boolean external;
     private final String name;
     private final Point2D origin;
@@ -201,7 +199,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @CheckReturnValue
     public Function setTrace(UUID value) {
-        return new Function(uuid, item.getUuid(), value, external, name, origin);
+        return new Function(uuid, item.getUuid(), Optional.of(value), external, name, origin);
     }
 
     @CheckReturnValue
@@ -216,7 +214,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     public Function asExternal(UUID allocateToParentFunction) {
         return new Function(
                 uuid, item.getUuid(),
-                allocateToParentFunction, true,
+                Optional.of(allocateToParentFunction), true,
                 name, origin);
     }
 }

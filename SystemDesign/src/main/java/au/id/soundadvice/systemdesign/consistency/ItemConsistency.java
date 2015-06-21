@@ -35,6 +35,7 @@ import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -50,20 +51,17 @@ public class ItemConsistency implements ProblemFactory {
     }
 
     private static UndoState flowItemDown(UndoState state, UUID interfaceUUID) {
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional == null) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
             return state;
         }
-        RelationStore parentStore = functional.getStore();
-        Item system = functional.getSystemOfInterest();
-        Interface iface = parentStore.get(interfaceUUID, Interface.class);
-        if (iface == null) {
+        RelationStore parentStore = functional.get().getStore();
+        Item system = functional.get().getSystemOfInterest();
+        Optional<Interface> iface = parentStore.get(interfaceUUID, Interface.class);
+        if (!iface.isPresent()) {
             return state;
         }
-        Item parentItem = iface.otherEnd(parentStore, system);
-        if (parentItem == null) {
-            return state;
-        }
+        Item parentItem = iface.get().otherEnd(parentStore, system);
 
         Item externalItem = parentItem.asExternal(parentStore);
         state = state.setAllocated(state.getAllocated().add(externalItem));
@@ -92,24 +90,40 @@ public class ItemConsistency implements ProblemFactory {
      * @return The list of identified problems and solutions
      */
     public static Stream<Problem> checkConsistency(UndoState state) {
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional == null) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
             return Stream.empty();
         }
-        Item system = functional.getSystemOfInterest();
-        RelationStore parentStore = functional.getStore();
+        Item system = functional.get().getSystemOfInterest();
+        RelationStore parentStore = functional.get().getStore();
         RelationStore childStore = state.getAllocated().getStore();
 
         Stream<Problem> downProblems = getInterfaces(parentStore, system)
                 .flatMap(iface -> {
                     Item parentItem = iface.otherEnd(parentStore, system);
-                    if (parentItem == null) {
-                        return Stream.empty();
-                    }
-                    Item childItem = childStore.get(parentItem.getUuid(), Item.class);
-                    if (childItem == null) {
+                    Optional<Item> childItem = childStore.get(parentItem.getUuid(), Item.class);
+                    if (childItem.isPresent()) {
+                        Stream<Problem> consistency;
+                        Item parentItemAsExternal = parentItem.asExternal(parentStore);
+                        if (!childItem.get().isConsistent(parentItemAsExternal)) {
+                            String name = parentItemAsExternal.getDisplayName();
+                            consistency = Stream.of(
+                                    new Problem(
+                                            name + " differs between baselines", Stream.of(
+                                                    UpdateSolution.updateAllocatedRelation(
+                                                            "Flow down", childItem.get().getUuid(), Item.class,
+                                                            relation -> relation.makeConsistent(parentItemAsExternal)),
+                                                    UpdateSolution.updateFunctionalRelation(
+                                                            "Flow up", parentItem.getUuid(), Item.class,
+                                                            relation -> relation.makeConsistent(childItem.get())))));
+                        } else {
+                            consistency = Stream.empty();
+                        }
+                        Stream<Problem> flows = FunctionConsistency.checkConsistency(state, iface);
+                        return Stream.concat(consistency, flows);
+                    } else {
                         String name = parentItem.getDisplayName();
-                        String parentId = functional.getSystemOfInterest().getIdPath(parentStore).toString();
+                        String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(
                                                 UpdateSolution.update("Flow down", solutionState
@@ -117,25 +131,6 @@ public class ItemConsistency implements ProblemFactory {
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional
                                                         -> solutionFunctional.remove(iface.getUuid())
                                                 ))));
-                    } else {
-                        Stream<Problem> consistency;
-                        Item parentItemAsExternal = parentItem.asExternal(parentStore);
-                        if (!childItem.isConsistent(parentItemAsExternal)) {
-                            String name = parentItemAsExternal.getDisplayName();
-                            consistency = Stream.of(
-                                    new Problem(
-                                            name + " differs between baselines", Stream.of(
-                                                    UpdateSolution.updateAllocatedRelation(
-                                                            "Flow down", childItem.getUuid(), Item.class,
-                                                            relation -> relation.makeConsistent(parentItemAsExternal)),
-                                                    UpdateSolution.updateFunctionalRelation(
-                                                            "Flow up", parentItem.getUuid(), Item.class,
-                                                            relation -> relation.makeConsistent(childItem)))));
-                        } else {
-                            consistency = Stream.empty();
-                        }
-                        Stream<Problem> flows = FunctionConsistency.checkConsistency(state, iface);
-                        return Stream.concat(consistency, flows);
                     }
                 });
 
@@ -148,19 +143,8 @@ public class ItemConsistency implements ProblemFactory {
                 })
                 .flatMap((item) -> {
                     String name = item.getDisplayName();
-                    String parentId = functional.getSystemOfInterest().getIdPath(parentStore).toString();
-                    if (parentStore.get(item.getUuid(), Item.class) == null) {
-                        /*
-                         * The parent instance of the external item doesn't
-                         * exist at all
-                         */
-                        return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
-                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> solutionAllocated.remove(item.getUuid())
-                                                ),
-                                                new DisabledSolution("Flow up"))));
-                    } else {
+                    String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
+                    if (parentStore.get(item.getUuid(), Item.class).isPresent()) {
                         /*
                          * The parent instance exists, just not the relevant
                          * interface.
@@ -175,6 +159,17 @@ public class ItemConsistency implements ProblemFactory {
                                                     Interface toAdd = Interface.createNew(scope);
                                                     return solutionFunctional.add(toAdd);
                                                 }))));
+                    } else {
+                        /*
+                         * The parent instance of the external item doesn't
+                         * exist at all
+                         */
+                        return Stream.of(new Problem(
+                                        name + " is missing in " + parentId, Stream.of(
+                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                                        -> solutionAllocated.remove(item.getUuid())
+                                                ),
+                                                new DisabledSolution("Flow up"))));
                     }
                 });
 

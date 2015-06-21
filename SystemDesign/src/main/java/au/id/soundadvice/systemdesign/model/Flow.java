@@ -34,6 +34,7 @@ import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
+import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -212,7 +213,8 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
 
     public Function otherEnd(RelationContext store, Function function) {
         UUID otherEndUUID = flowScope.otherEnd(function.getUuid());
-        return store.get(otherEndUUID, Function.class);
+        // Assume referential integrity is guaranteed by store
+        return store.get(otherEndUUID, Function.class).get();
     }
 
     public Function otherEnd(RelationContext store, Item item) {

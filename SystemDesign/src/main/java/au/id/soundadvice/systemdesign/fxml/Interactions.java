@@ -70,6 +70,8 @@ import javax.annotation.CheckReturnValue;
  */
 public class Interactions {
 
+    private static final Logger LOG = Logger.getLogger(Interactions.class.getName());
+
     public Interactions(Window window, EditState edit) {
         this.window = window;
         this.edit = edit;
@@ -229,27 +231,27 @@ public class Interactions {
     }
 
     private String getTypeForNewFlow(UndoState state, DirectedPair scope) {
-        FunctionalBaseline functional = state.getFunctional();
+        Optional<FunctionalBaseline> functional = state.getFunctional();
         AllocatedBaseline allocated = state.getAllocated();
-        if (functional != null) {
+        if (functional.isPresent()) {
             // See if we can pick out a likely type
             RelationStore childStore = allocated.getStore();
-            Function leftFunction = childStore.get(scope.getLeft(), Function.class);
-            Function rightFunction = childStore.get(scope.getRight(), Function.class);
-            if (leftFunction != null && rightFunction != null) {
+            Optional<Function> leftFunction = childStore.get(scope.getLeft(), Function.class);
+            Optional<Function> rightFunction = childStore.get(scope.getRight(), Function.class);
+            if (leftFunction.isPresent() && rightFunction.isPresent()) {
                 Function internal;
                 Function external;
-                if (leftFunction.isExternal()) {
-                    internal = rightFunction;
-                    external = leftFunction;
-                } else if (rightFunction.isExternal()) {
-                    internal = leftFunction;
-                    external = rightFunction;
+                if (leftFunction.get().isExternal()) {
+                    internal = rightFunction.get();
+                    external = leftFunction.get();
+                } else if (rightFunction.get().isExternal()) {
+                    internal = leftFunction.get();
+                    external = rightFunction.get();
                 } else {
                     internal = null;
                     external = null;
                 }
-                if (internal != null && external != null) {
+                if (internal != null && internal.getTrace().isPresent() && external != null) {
                     Set<String> alreadyUsed = childStore.getReverse(scope.getLeft(), Flow.class).parallel()
                             .filter((candidate) -> {
                                 return scope.getRight().equals(candidate.getRight().getUuid());
@@ -257,8 +259,8 @@ public class Interactions {
                             .map(Flow::getType)
                             .collect(Collectors.toSet());
 
-                    Map<Boolean, List<String>> types = functional.getStore().getReverse(external.getUuid(), Flow.class)
-                            .filter(flow -> flow.getScope().hasEnd(internal.getTrace()))
+                    Map<Boolean, List<String>> types = functional.get().getStore().getReverse(external.getUuid(), Flow.class)
+                            .filter(flow -> flow.getScope().hasEnd(internal.getTrace().get()))
                             .filter(flow -> flow.getDirectionFrom(external).contains(
                                             scope.getDirectionFrom(external.getUuid())))
                             .map(Flow::getType)
@@ -281,13 +283,17 @@ public class Interactions {
     public void addFlow(UUID source, UUID target) {
         edit.getUndo().update(state -> {
             AllocatedBaseline allocated = state.getAllocated();
+            RelationStore store = allocated.getStore();
+            Optional<Function> left = store.get(source, Function.class);
+            Optional<Function> right = store.get(target, Function.class);
             DirectedPair flowScope = new DirectedPair(source, target, Direction.Normal);
             String flowType = getTypeForNewFlow(state, flowScope);
-            RelationStore store = allocated.getStore();
-            Function left = store.get(source, Function.class);
-            Function right = store.get(target, Function.class);
-            return state.setAllocated(
-                    allocated.addFlow(left, right, flowType, Direction.Normal).getValue());
+            if (left.isPresent() && right.isPresent()) {
+                return state.setAllocated(
+                        allocated.addFlow(left.get(), right.get(), flowType, Direction.Normal).getValue());
+            } else {
+                return state;
+            }
         });
     }
 
@@ -339,7 +345,7 @@ public class Interactions {
                 edit.loadParent();
             }
         } catch (IOException ex) {
-            Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
+            LOG.log(Level.SEVERE, null, ex);
         }
     }
 
@@ -393,10 +399,10 @@ public class Interactions {
 
     public boolean trySave() {
         try {
-            if (edit.getCurrentDirectory() == null) {
-                return trySaveAs();
-            } else {
+            if (edit.getCurrentDirectory().isPresent()) {
                 edit.save();
+            } else {
+                return trySaveAs();
             }
             return true;
         } catch (IOException ex) {

@@ -32,10 +32,10 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nullable;
 
 /**
  * Given a base directory, compute paths to well-known files and other useful
@@ -78,27 +78,25 @@ public class Directory {
         return identityFile;
     }
 
-    @Nullable
-    public static Identity getIdentity(Path path) {
+    public static Optional<Identity> getIdentity(Path path) {
         if (Files.isDirectory(path)) {
             path = path.resolve("identity.csv");
         }
         if (Files.exists(path)) {
             try (BeanReader<IdentityBean> reader = BeanReader.forPath(IdentityBean.class, path)) {
                 // Only read the first entry
-                IdentityBean bean = reader.read();
-                return bean == null ? null : new Identity(bean);
+                return reader.read().map(bean -> new Identity(bean));
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
-                return null;
+                return Optional.empty();
             }
         } else {
             // A nonexistent file is treated as empty
-            return null;
+            return Optional.empty();
         }
     }
 
-    public Identity getIdentity() {
+    public Optional<Identity> getIdentity() {
         return getIdentity(identityFile);
     }
 
@@ -139,11 +137,11 @@ public class Directory {
         Directory last = root;
         Path projectRoot = null;
         while (projectRoot == null) {
-            if (current.getIdentity() == null) {
-                projectRoot = last.getPath();
-            } else {
+            if (current.getIdentity().isPresent()) {
                 // Keep looping
                 last = current;
+            } else {
+                projectRoot = last.getPath();
             }
         }
         return projectRoot.resolve("dictionary.csv");
@@ -156,30 +154,28 @@ public class Directory {
 
     public DirectoryStream<Path> getChildren() throws IOException {
         return Files.newDirectoryStream(
-                root, path -> Directory.getIdentity(path) != null);
+                root, path -> Directory.getIdentity(path).isPresent());
     }
 
     public Directory getParent() {
         return new Directory(root.getParent());
     }
 
-    @Nullable
-    private static Directory getChild(Directory parent, UUID uuid) throws IOException {
+    private static Optional<Directory> getChild(Directory parent, UUID uuid) throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(parent.root)) {
             for (Path path : stream) {
                 if (Files.isDirectory(path)) {
-                    Identity identity = Directory.getIdentity(path);
-                    if (identity != null && uuid.equals(identity.getUuid())) {
-                        return new Directory(path);
+                    Optional<Identity> identity = Directory.getIdentity(path);
+                    if (identity.isPresent() && uuid.equals(identity.get().getUuid())) {
+                        return Optional.of(new Directory(path));
                     }
                 }
             }
-            return null;
+            return Optional.empty();
         }
     }
 
-    @Nullable
-    public Directory getChild(UUID uuid) throws IOException {
+    public Optional<Directory> getChild(UUID uuid) throws IOException {
         // Call out via static to avoid accidental references to this
         return getChild(this, uuid);
     }

@@ -39,7 +39,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javafx.scene.control.ChoiceDialog;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -55,8 +54,8 @@ public class FunctionCreator {
     private final AtomicReference<UUID> mostRecentItem = new AtomicReference<>();
 
     void add(Function nearby) {
-        FunctionalBaseline functional = edit.getUndo().get().getFunctional();
-        if (functional != null && functional.hasRelation(nearby)) {
+        Optional<FunctionalBaseline> functional = edit.getUndo().get().getFunctional();
+        if (functional.isPresent() && functional.get().hasRelation(nearby)) {
             addToParent();
         } else {
             addToChild();
@@ -66,13 +65,11 @@ public class FunctionCreator {
     void addToParent() {
         UndoBuffer<UndoState> undo = edit.getUndo();
         UndoState state = undo.get();
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional != null) {
-            UUID item = functional.getSystemOfInterest().getUuid();
-            if (item != null) {
-                Function function = createFunction(functional.getContext(), item);
-                undo.set(state.setFunctional(functional.add(function)));
-            }
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (functional.isPresent()) {
+            UUID item = functional.get().getSystemOfInterest().getUuid();
+            Function function = createFunction(functional.get().getContext(), item);
+            undo.set(state.setFunctional(functional.get().add(function)));
         }
     }
 
@@ -80,15 +77,14 @@ public class FunctionCreator {
         UndoBuffer<UndoState> undo = edit.getUndo();
         UndoState state = undo.get();
         AllocatedBaseline allocated = state.getAllocated();
-        UUID item = chooseItem(allocated);
-        if (item != null) {
-            Function function = createFunction(allocated, item);
+        Optional<UUID> item = chooseItem(allocated);
+        if (item.isPresent()) {
+            Function function = createFunction(allocated, item.get());
             undo.set(state.setAllocated(allocated.add(function)));
         }
     }
 
-    @Nullable
-    private UUID chooseItem(AllocatedBaseline baseline) {
+    private Optional<UUID> chooseItem(AllocatedBaseline baseline) {
         List<Item> choices = baseline.getItems().parallel()
                 .filter(item -> !item.isExternal())
                 .sorted((left, right) -> left.toString().compareTo(right.toString()))
@@ -96,16 +92,12 @@ public class FunctionCreator {
         if (!choices.isEmpty()) {
             Item selected = choices.get(0);
             if (choices.size() == 1) {
-                return selected.getUuid();
+                return Optional.of(selected.getUuid());
             } else {
-                try {
-                    Item mostRecent = baseline.getStore().get(
-                            mostRecentItem.get(), Item.class);
-                    if (mostRecent != null) {
-                        selected = mostRecent;
-                    }
-                } catch (ClassCastException ex) {
-                    // Leave default as is
+                Optional<Item> mostRecent = baseline.getStore().get(
+                        mostRecentItem.get(), Item.class);
+                if (mostRecent.isPresent()) {
+                    selected = mostRecent.get();
                 }
 
                 ChoiceDialog<Item> dialog = new ChoiceDialog<>(selected, choices);
@@ -116,11 +108,11 @@ public class FunctionCreator {
                 if (result.isPresent()) {
                     UUID uuid = result.get().getUuid();
                     mostRecentItem.set(uuid);
-                    return uuid;
+                    return Optional.of(uuid);
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     private Function createFunction(AllocatedBaseline baseline, UUID item) {

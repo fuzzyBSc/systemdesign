@@ -41,6 +41,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -144,6 +145,12 @@ public class PhysicalSchematicController {
                 event.consume();
             });
             contextMenu.getItems().add(navigateMenuItem);
+            MenuItem renameMenuItem = new MenuItem("Rename Item");
+            renameMenuItem.setOnAction(event -> {
+                interactions.rename(item);
+                event.consume();
+            });
+            contextMenu.getItems().add(renameMenuItem);
             MenuItem addMenuItem = new MenuItem("Add Function");
             addMenuItem.setOnAction(event -> {
                 interactions.addFunctionToItem(item);
@@ -217,12 +224,12 @@ public class PhysicalSchematicController {
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
             undo.update(state -> {
-                Item toAdd = state.getAllocatedInstance(uuid, Item.class);
-                if (toAdd == null) {
-                    return state;
-                } else {
+                Optional<Item> toAdd = state.getAllocatedInstance(uuid, Item.class);
+                if (toAdd.isPresent()) {
                     return state.setAllocated(
-                            state.getAllocated().add(toAdd.setOrigin(layoutCurrent)));
+                            state.getAllocated().add(toAdd.get().setOrigin(layoutCurrent)));
+                } else {
+                    return state;
                 }
             });
         }

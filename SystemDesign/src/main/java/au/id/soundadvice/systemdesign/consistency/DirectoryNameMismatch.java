@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -76,9 +77,9 @@ public class DirectoryNameMismatch implements ProblemFactory {
 
     @Override
     public Stream<Problem> getProblems(EditState edit) {
-        Directory dir = edit.getCurrentDirectory();
-        if (dir != null) {
-            Path path = dir.getPath();
+        Optional<Directory> dir = edit.getCurrentDirectory();
+        if (dir.isPresent()) {
+            Path path = dir.get().getPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
                 String identity = edit.getUndo().get().getAllocated().getIdentity().toString();

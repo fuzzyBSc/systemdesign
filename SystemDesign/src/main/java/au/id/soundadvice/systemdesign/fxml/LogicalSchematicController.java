@@ -43,6 +43,7 @@ import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.DirectedPair;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;
@@ -59,7 +60,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Polygon;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -72,8 +72,7 @@ class LogicalSchematicController {
     private final EditState edit;
     private final Interactions interactions;
     private final Tab tab;
-    @Nullable
-    private final Function parentFunction;
+    private final Optional<Function> parentFunction;
     private final TabPane tabs;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
@@ -82,7 +81,7 @@ class LogicalSchematicController {
     LogicalSchematicController(
             Interactions interactions, EditState edit,
             TabPane tabs,
-            @Nullable Function parentFunction) {
+            Optional<Function> parentFunction) {
         this.edit = edit;
         this.interactions = interactions;
         this.tab = new Tab();
@@ -339,11 +338,11 @@ class LogicalSchematicController {
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
             edit.getUndo().update(state -> {
-                Function toAdd = state.getAllocatedInstance(uuid, Function.class);
-                if (toAdd == null) {
+                Optional<Function> existing = state.getAllocatedInstance(uuid, Function.class);
+                if (!existing.isPresent()) {
                     return state;
                 }
-                toAdd = toAdd.setOrigin(layoutCurrent);
+                Function toAdd = existing.get().setOrigin(layoutCurrent);
                 return state.setAllocated(state.getAllocated().add(toAdd));
             });
         }
@@ -355,10 +354,10 @@ class LogicalSchematicController {
         @Override
         public void run() {
             String name;
-            if (parentFunction == null) {
-                name = "Logical";
+            if (parentFunction.isPresent()) {
+                name = parentFunction.get().getName();
             } else {
-                name = parentFunction.getName();
+                name = "Unallocated Functions";
             }
             tab.setText(name);
 

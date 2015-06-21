@@ -30,6 +30,8 @@ import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -73,11 +75,11 @@ public class ReferenceFinder<F extends Relation> {
                     try {
                         return (Reference) method.invoke(instance);
                     } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                        LOG.log(Level.SEVERE, null, ex);
-                        return null;
+                        IOException ex2 = new IOException(ex);
+                        // Smuggle the exception of this scope
+                        throw new UncheckedIOException(ex2);
                     }
-                })
-                .filter(reference -> reference != null && reference.getUuid() != null);
+                });
     }
 
 }

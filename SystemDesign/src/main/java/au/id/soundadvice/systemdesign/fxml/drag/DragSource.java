@@ -28,8 +28,8 @@ package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import static au.id.soundadvice.systemdesign.fxml.drag.DragTarget.uuidPrefix;
+import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.logging.Logger;
 import javafx.scene.Node;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
@@ -44,15 +44,16 @@ public class DragSource {
 
     public static void bind(
             Node node, Identifiable source, boolean requireControlDown) {
-        bind(node, () -> source, requireControlDown);
+        Optional<Identifiable> optionalSource = Optional.of(source);
+        bind(node, () -> optionalSource, requireControlDown);
     }
 
     public static void bind(
-            Node node, Supplier<? extends Identifiable> supplier, boolean requireControlDown) {
+            Node node, Supplier<Optional<? extends Identifiable>> supplier, boolean requireControlDown) {
         node.setOnDragDetected(event -> {
-            Identifiable source = supplier.get();
-            if (source != null && !requireControlDown || event.isControlDown()) {
-                startDrag(node, source);
+            Optional<? extends Identifiable> source = supplier.get();
+            if (source.isPresent() && !requireControlDown || event.isControlDown()) {
+                startDrag(node, source.get());
                 event.consume();
             }
         });

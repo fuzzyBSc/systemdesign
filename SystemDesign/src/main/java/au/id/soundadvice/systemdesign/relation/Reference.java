@@ -87,7 +87,11 @@ public class Reference<F, T extends Relation> {
     }
 
     public T getTarget(RelationContext context) {
-        return context.get(to.getUuid(), to.getType());
+        /*
+         * Referential integrity should be guaranteed by the context, so no need
+         * to check isPresent.
+         */
+        return context.get(to.getUuid(), to.getType()).get();
     }
 
     private final F from;

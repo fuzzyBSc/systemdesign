@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
@@ -120,24 +121,28 @@ public class FunctionalBaseline {
     @CheckReturnValue
     public FunctionalBaseline removeAll(Stream<UUID> toRemove) {
         AllocatedBaseline newContext = context.removeAll(toRemove);
-        Item newSystem = newContext.getStore().get(systemOfInterest.getUuid(), Item.class);
-        if (newSystem == null) {
+        Optional<Item> newSystem = newContext.getStore().get(systemOfInterest.getUuid(), Item.class);
+        if (newSystem.isPresent()) {
+            return new FunctionalBaseline(newSystem.get(), newContext);
+        } else {
             // Don't allow deletion of the system of interest
             return this;
-        } else {
-            return new FunctionalBaseline(newSystem, newContext);
         }
     }
 
     public boolean hasRelation(Relation relation) {
         return relation != null
-                && getStore().get(relation.getUuid(), relation.getClass()) != null;
+                && getStore().get(relation.getUuid(), relation.getClass()).isPresent();
     }
 
     @CheckReturnValue
     public FunctionalBaseline setContext(AllocatedBaseline context) {
-        Item system = context.getStore().get(systemOfInterest.getUuid(), Item.class);
-        return new FunctionalBaseline(system, context);
+        Optional<Item> system = context.getStore().get(systemOfInterest.getUuid(), Item.class);
+        if (system.isPresent()) {
+            return new FunctionalBaseline(system.get(), context);
+        } else {
+            return this;
+        }
     }
 
 }

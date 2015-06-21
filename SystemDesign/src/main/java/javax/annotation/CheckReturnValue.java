@@ -24,35 +24,19 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package javax.annotation;
 
-import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
-import java.util.stream.Stream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 
 /**
+ * A class that looks an awful lot like findbugs CheckReturnValue, but doesn't
+ * have/need runtime retention as Debian doesn't put the annotations.jar in
+ * /usr/share/java so we can't depend on it at runtime.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class UntracedFunctions implements ProblemFactory {
-
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getUndo().get();
-        if (state.getFunctional().isPresent()) {
-            boolean anyUntraced = state.getAllocated().getFunctions().parallel()
-                    .anyMatch(function -> !function.getTrace().isPresent());
-            if (anyUntraced) {
-                return Stream.of(
-                        new Problem("Check function allocation",
-                                // No automatic solutions
-                                Stream.empty()));
-            } else {
-                return Stream.empty();
-            }
-        } else {
-            return Stream.empty();
-        }
-    }
+@Target(ElementType.METHOD)
+public @interface CheckReturnValue {
 
 }

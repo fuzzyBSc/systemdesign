@@ -44,8 +44,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 /**
  * Read beans of the specified type from a CSV file.
@@ -92,7 +92,8 @@ public class BeanReader<T> implements Closeable {
             } else {
                 List<StringSetter<T>> tmpHeader = new ArrayList<>(headerNames.length);
                 for (String property : headerNames) {
-                    tmpHeader.add(new StringSetter<>(properties.get(property)));
+                    tmpHeader.add(new StringSetter<>(
+                            Optional.ofNullable(properties.get(property))));
                 }
                 this.header = Collections.unmodifiableList(tmpHeader);
             }
@@ -101,18 +102,17 @@ public class BeanReader<T> implements Closeable {
         }
     }
 
-    @Nullable
-    public T read() throws IOException {
+    public Optional<T> read() throws IOException {
         try {
             String[] line = reader.readNext();
             if (line == null) {
-                return null;
+                return Optional.empty();
             }
             T result = clazz.newInstance();
             for (int ii = 0; ii < header.size(); ++ii) {
                 header.get(ii).setProperty(result, line[ii]);
             }
-            return result;
+            return Optional.of(result);
         } catch (InstantiationException |
                 IllegalAccessException |
                 ArrayIndexOutOfBoundsException ex) {
@@ -127,34 +127,27 @@ public class BeanReader<T> implements Closeable {
 
     private static final class StringSetter<T> {
 
-        public StringSetter(@Nullable PropertyDescriptor property) {
-            if (property == null) {
-                // No-op
-                this.editor = null;
-                this.setter = null;
-            } else {
-                this.editor = PropertyEditorManager.findEditor(
-                        property.getPropertyType());
-                this.setter = property.getWriteMethod();
-            }
+        public StringSetter(Optional<PropertyDescriptor> optionalProperty) {
+            this.editor = optionalProperty.map(
+                    property -> PropertyEditorManager.findEditor(
+                            property.getPropertyType()));
+            this.setter = optionalProperty.map(
+                    property -> property.getWriteMethod());
         }
 
         public void setProperty(T bean, String value) throws IOException {
-            if (setter == null || editor == null) {
-                return;
-            }
-            try {
-                editor.setAsText(value);
-                setter.invoke(bean, editor.getValue());
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw new IOException(ex);
+            if (setter.isPresent() && editor.isPresent()) {
+                try {
+                    editor.get().setAsText(value);
+                    setter.get().invoke(bean, editor.get().getValue());
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                    throw new IOException(ex);
+                }
             }
         }
 
-        @Nullable
-        private final PropertyEditor editor;
-        @Nullable
-        private final Method setter;
+        private final Optional<PropertyEditor> editor;
+        private final Optional<Method> setter;
     }
 
     private final Class<T> clazz;

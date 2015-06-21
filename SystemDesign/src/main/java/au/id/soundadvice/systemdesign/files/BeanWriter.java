@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.annotation.Nullable;
 
 /**
  * Read beans of the specified type to a CSV file.
@@ -89,7 +88,6 @@ public class BeanWriter<T> implements Closeable {
         }
     }
 
-    @Nullable
     public void write(T instance) throws IOException {
         try {
             if (headerPrinted.compareAndSet(false, true)) {

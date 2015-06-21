@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drag;
 
+import java.util.Optional;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
@@ -42,7 +43,7 @@ public class MoveHandler {
     private final StartDrag startDrag = new StartDrag();
     private final Snap snap;
     private final MouseFilter filter;
-    private DragOperation operation = null;
+    private Optional<DragOperation> operation = Optional.empty();
 
     public void start() {
         draggable.setOnMouseDragged(startDrag);
@@ -52,9 +53,9 @@ public class MoveHandler {
     public void stop() {
         draggable.setOnMouseDragged(null);
         draggable.setOnMouseReleased(null);
-        if (operation != null) {
-            operation.cancel();
-            operation = null;
+        if (operation.isPresent()) {
+            operation.get().cancel();
+            operation = Optional.empty();
         }
     }
 
@@ -78,21 +79,21 @@ public class MoveHandler {
         public void handle(MouseEvent event) {
             if (MOUSE_DRAGGED.equals(event.getEventType())) {
                 if (filter.matches(event)) {
-                    if (operation == null) {
+                    if (operation.isPresent()) {
+                        operation.get().handle(event);
+                    } else {
                         Point2D layoutStart = new Point2D(
                                 draggable.getLayoutX(), draggable.getLayoutY());
                         Point2D mouseStart = new Point2D(event.getSceneX(), event.getSceneY());
-                        operation = new DragOperation(layoutStart, mouseStart);
-                    } else {
-                        operation.handle(event);
+                        operation = Optional.of(new DragOperation(layoutStart, mouseStart));
                     }
                     event.consume();
                 }
             } else {
-                if (operation != null) {
-                    operation.handle(event);
-                    operation.commit();
-                    operation = null;
+                if (operation.isPresent()) {
+                    operation.get().handle(event);
+                    operation.get().commit();
+                    operation = Optional.empty();
                     event.consume();
                 }
             }

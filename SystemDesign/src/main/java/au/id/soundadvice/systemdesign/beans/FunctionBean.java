@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -100,11 +101,11 @@ public class FunctionBean implements Identifiable {
         return name;
     }
 
-    public FunctionBean(UUID uuid, UUID item, String description, UUID trace, boolean external, String name, int originX, int originY) {
+    public FunctionBean(UUID uuid, UUID item, String description, Optional<UUID> trace, boolean external, String name, int originX, int originY) {
         this.uuid = uuid;
         this.item = item;
         this.description = description;
-        this.trace = trace;
+        this.trace = trace.orElse(null);
         this.external = external;
         this.name = name;
         this.originX = originX;

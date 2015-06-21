@@ -71,24 +71,24 @@ public class FunctionConsistency {
     }
 
     public static UndoState flowDown(UndoState state, UUID parentFunctionUUID) {
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional == null) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
             return state;
         }
-        RelationStore parentStore = functional.getStore();
-        Item system = functional.getSystemOfInterest();
-        Function parentFunction = parentStore.get(parentFunctionUUID, Function.class);
-        if (parentFunction == null) {
+        RelationStore parentStore = functional.get().getStore();
+        Item system = functional.get().getSystemOfInterest();
+        Optional<Function> parentFunction = parentStore.get(parentFunctionUUID, Function.class);
+        if (!parentFunction.isPresent()) {
             return state;
         }
         // PROBLEM - need to allocate to multiple system function designs
-        Optional<Function> systemFunction = parentStore.getReverse(parentFunction.getUuid(), Flow.class)
-                .map(flow -> flow.otherEnd(parentStore, parentFunction))
+        Optional<Function> systemFunction = parentStore.getReverse(parentFunction.get().getUuid(), Flow.class)
+                .map(flow -> flow.otherEnd(parentStore, parentFunction.get()))
                 .filter(candidate -> system.getUuid().equals(candidate.getItem().getUuid()))
                 .findAny();
         AllocatedBaseline allocated = state.getAllocated();
         if (systemFunction.isPresent()) {
-            allocated = allocated.add(parentFunction.asExternal(systemFunction.get().getUuid()));
+            allocated = allocated.add(parentFunction.get().asExternal(systemFunction.get().getUuid()));
         }
         return state.setAllocated(allocated);
     }
@@ -101,12 +101,12 @@ public class FunctionConsistency {
      * @return The problems and solutions identified
      */
     public static Stream<Problem> checkConsistency(UndoState state, Interface iface) {
-        FunctionalBaseline functional = state.getFunctional();
-        if (functional == null) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
             return Stream.empty();
         }
-        Item system = functional.getSystemOfInterest();
-        RelationStore parentStore = functional.getStore();
+        Item system = functional.get().getSystemOfInterest();
+        RelationStore parentStore = functional.get().getStore();
         RelationStore childStore = state.getAllocated().getStore();
 
         Item externalItem = iface.otherEnd(parentStore, system);
@@ -114,39 +114,20 @@ public class FunctionConsistency {
         Stream<Problem> downProblems = parentStore.getReverse(externalItem.getUuid(), Function.class)
                 .filter(hasFlowsOnInterface(parentStore, iface.getUuid()))
                 .flatMap(parentFunction -> {
-                    Function childFunction = childStore.get(parentFunction.getUuid(), Function.class);
-                    if (childFunction == null) {
-                        String name = parentFunction.getName();
-                        String parentId = functional.getSystemOfInterest().getIdPath(parentStore).toString();
-                        return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
-                                                UpdateSolution.update("Flow down",
-                                                        solutionState -> flowDown(solutionState, parentFunction.getUuid())),
-                                                UpdateSolution.update("Flow up", solutionState -> {
-                                                    FunctionalBaseline solutionFunctional = solutionState.getFunctional();
-                                                    if (solutionFunctional == null) {
-                                                        return solutionState;
-                                                    }
-                                                    RelationStore solutionStore = solutionFunctional.getStore();
-                                                    Stream<UUID> toDelete = getFlowsOnInterface(
-                                                            solutionStore, parentFunction.getUuid(), iface.getUuid())
-                                                    .map(Identifiable::getUuid);
-                                                    return solutionState.setFunctional(
-                                                            solutionFunctional.removeAll(toDelete));
-                                                }))));
-                    } else {
+                    Optional<Function> childFunction = childStore.get(parentFunction.getUuid(), Function.class);
+                    if (childFunction.isPresent()) {
                         Stream<Problem> consistency;
-                        if (!childFunction.isConsistent(parentFunction)) {
+                        if (!childFunction.get().isConsistent(parentFunction)) {
                             String name = parentFunction.getName();
                             consistency = Stream.of(
                                     new Problem(
                                             name + " differs between baselines", Stream.of(
                                                     UpdateSolution.updateAllocatedRelation(
-                                                            "Flow down", childFunction.getUuid(), Function.class,
+                                                            "Flow down", childFunction.get().getUuid(), Function.class,
                                                             relation -> relation.makeConsistent(parentFunction)),
                                                     UpdateSolution.updateFunctionalRelation(
-                                                            "Flow up", childFunction.getUuid(), Function.class,
-                                                            relation -> relation.makeConsistent(childFunction)))));
+                                                            "Flow up", childFunction.get().getUuid(), Function.class,
+                                                            relation -> relation.makeConsistent(childFunction.get())))));
                         } else {
                             consistency = Stream.empty();
                         }
@@ -154,6 +135,25 @@ public class FunctionConsistency {
                                 state, iface, parentFunction.getUuid(),
                                 parentFunction.getName());
                         return Stream.concat(consistency, flows);
+                    } else {
+                        String name = parentFunction.getName();
+                        String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
+                        return Stream.of(new Problem(
+                                        name + " is missing in " + parentId, Stream.of(
+                                                UpdateSolution.update("Flow down",
+                                                        solutionState -> flowDown(solutionState, parentFunction.getUuid())),
+                                                UpdateSolution.update("Flow up", solutionState -> {
+                                                    Optional<FunctionalBaseline> solutionFunctional = solutionState.getFunctional();
+                                                    if (!solutionFunctional.isPresent()) {
+                                                        return solutionState;
+                                                    }
+                                                    RelationStore solutionStore = solutionFunctional.get().getStore();
+                                                    Stream<UUID> toDelete = getFlowsOnInterface(
+                                                            solutionStore, parentFunction.getUuid(), iface.getUuid())
+                                                    .map(Identifiable::getUuid);
+                                                    return solutionState.setFunctional(
+                                                            solutionFunctional.get().removeAll(toDelete));
+                                                }))));
                     }
                 });
 
@@ -167,19 +167,7 @@ public class FunctionConsistency {
                 })
                 .flatMap((function) -> {
                     String name = function.getName();
-                    if (parentStore.get(function.getUuid(), Function.class) == null) {
-                        /*
-                         * The parent instance of the external function doesn't
-                         * exist at all
-                         */
-                        String parentId = functional.getSystemOfInterest().getIdPath(parentStore).toString();
-                        return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
-                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> solutionAllocated.remove(function.getUuid())
-                                                ),
-                                                new DisabledSolution("Flow up"))));
-                    } else {
+                    if (parentStore.get(function.getUuid(), Function.class).isPresent()) {
                         /*
                          * The parent instance exists, just no flows. Hand off
                          * to FlowConsistency.
@@ -187,6 +175,18 @@ public class FunctionConsistency {
                         return FlowConsistency.checkConsistency(
                                 state, iface,
                                 function.getUuid(), function.getName());
+                    } else {
+                        /*
+                         * The parent instance of the external function doesn't
+                         * exist at all
+                         */
+                        String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
+                        return Stream.of(new Problem(
+                                        name + " is missing in " + parentId, Stream.of(
+                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                                        -> solutionAllocated.remove(function.getUuid())
+                                                ),
+                                                new DisabledSolution("Flow up"))));
                     }
 
                 });

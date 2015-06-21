@@ -29,7 +29,6 @@ package au.id.soundadvice.systemdesign.beans;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -39,10 +38,6 @@ public class InterfaceBean implements Identifiable {
 
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
-    }
-
-    public void setParentInterface(UUID parentInterface) {
-        this.parentInterface = parentInterface;
     }
 
     public void setLeftItem(UUID leftItem) {
@@ -61,7 +56,6 @@ public class InterfaceBean implements Identifiable {
     public int hashCode() {
         int hash = 5;
         hash = 89 * hash + Objects.hashCode(this.uuid);
-        hash = 89 * hash + Objects.hashCode(this.parentInterface);
         hash = 89 * hash + Objects.hashCode(this.leftItem);
         hash = 89 * hash + Objects.hashCode(this.rightItem);
         return hash;
@@ -79,9 +73,6 @@ public class InterfaceBean implements Identifiable {
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.parentInterface, other.parentInterface)) {
-            return false;
-        }
         if (!Objects.equals(this.leftItem, other.leftItem)) {
             return false;
         }
@@ -96,10 +87,6 @@ public class InterfaceBean implements Identifiable {
         return uuid;
     }
 
-    public UUID getParentInterface() {
-        return parentInterface;
-    }
-
     public UUID getLeftItem() {
         return leftItem;
     }
@@ -112,9 +99,8 @@ public class InterfaceBean implements Identifiable {
         return description;
     }
 
-    public InterfaceBean(UUID uuid, UUID parentInterface, UUID leftItem, UUID rightItem, String description) {
+    public InterfaceBean(UUID uuid, UUID leftItem, UUID rightItem, String description) {
         this.uuid = uuid;
-        this.parentInterface = parentInterface;
         // Normalise left/right
         if (leftItem.compareTo(rightItem) < 0) {
             this.leftItem = leftItem;
@@ -130,8 +116,6 @@ public class InterfaceBean implements Identifiable {
     }
 
     private UUID uuid;
-    @Nullable
-    private UUID parentInterface;
     private UUID leftItem;
     private UUID rightItem;
     private String description;

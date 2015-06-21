@@ -38,6 +38,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
@@ -62,25 +63,25 @@ public class DropHandlers {
         public Map<TransferMode, BooleanSupplier> getActions(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
-            Function sourceChildFunction = state.getAllocatedInstance(
+            Optional<Function> sourceChildFunction = state.getAllocatedInstance(
                     sourceUUID, Function.class);
-            Function targetChildFunction = state.getAllocatedInstance(
+            Optional<Function> targetChildFunction = state.getAllocatedInstance(
                     targetUUID, Function.class);
-            Function targetTraceFunction = state.getFunctionalInstance(
+            Optional<Function> targetTraceFunction = state.getFunctionalInstance(
                     targetUUID, Function.class);
-            if (targetTraceFunction != null) {
+            if (targetTraceFunction.isPresent()) {
                 // Only use if the function traces to the system of interest
-                FunctionalBaseline functional = state.getFunctional();
-                assert functional != null;
-                if (!targetTraceFunction.getItem().getUuid().equals(
-                        functional.getSystemOfInterest().getUuid())) {
-                    targetTraceFunction = null;
+                Optional<FunctionalBaseline> functional = state.getFunctional();
+                assert functional.isPresent();
+                if (!targetTraceFunction.get().getItem().getUuid().equals(
+                        functional.get().getSystemOfInterest().getUuid())) {
+                    targetTraceFunction = Optional.empty();
                 }
             }
 
             AllocatedBaseline allocated = state.getAllocated();
             RelationStore store = allocated.getStore();
-            if (sourceChildFunction != null && targetTraceFunction != null) {
+            if (sourceChildFunction.isPresent() && targetTraceFunction.isPresent()) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.MOVE, () -> {
@@ -89,11 +90,11 @@ public class DropHandlers {
                             .map(Identifiable::getUuid);
                     edit.getUndo().set(state.setAllocated(
                             allocated.removeAll(toRemove).add(
-                                    sourceChildFunction.setTrace(targetUUID))));
+                                    sourceChildFunction.get().setTrace(targetUUID))));
                     return true;
                 });
             }
-            if (sourceChildFunction != null && targetChildFunction != null) {
+            if (sourceChildFunction.isPresent() && targetChildFunction.isPresent()) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {
@@ -117,12 +118,12 @@ public class DropHandlers {
         public Map<TransferMode, BooleanSupplier> getActions(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
-            Item sourceItem = state.getAllocatedInstance(
+            Optional<Item> sourceItem = state.getAllocatedInstance(
                     sourceUUID, Item.class);
-            Item targetItem = state.getAllocatedInstance(
+            Optional<Item> targetItem = state.getAllocatedInstance(
                     targetUUID, Item.class);
 
-            if (sourceItem != null && targetItem != null) {
+            if (sourceItem.isPresent() && targetItem.isPresent()) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {

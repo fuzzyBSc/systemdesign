@@ -41,6 +41,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -52,7 +53,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javax.annotation.Nullable;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
@@ -116,19 +117,13 @@ public class PhysicalTreeController {
             return true;
         }
 
-        public TreeState(Item systemOfInterest, SortedMap<IDPath, Item> items) {
-            this.systemOfInterest = systemOfInterest;
-            this.items = items;
-        }
-
-        @Nullable
-        private final Item systemOfInterest;
+        private final Optional<Item> systemOfInterest;
         private final SortedMap<IDPath, Item> items;
 
         private TreeState(UndoState state) {
-            FunctionalBaseline functional = state.getFunctional();
+            Optional<FunctionalBaseline> functional = state.getFunctional();
             AllocatedBaseline allocated = state.getAllocated();
-            this.systemOfInterest = functional == null ? null : functional.getSystemOfInterest();
+            this.systemOfInterest = functional.map(FunctionalBaseline::getSystemOfInterest);
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
             RelationContext context = allocated.getStore();
             allocated.getItems()
@@ -158,12 +153,12 @@ public class PhysicalTreeController {
             TreeItem root = new TreeItem();
             root.setExpanded(true);
             TreeItem systemOfInterest;
-            if (state.systemOfInterest == null) {
-                systemOfInterest = root;
-            } else {
-                systemOfInterest = toNode(state.systemOfInterest);
+            if (state.systemOfInterest.isPresent()) {
+                systemOfInterest = toNode(state.systemOfInterest.get());
                 systemOfInterest.setExpanded(true);
                 root.getChildren().add(systemOfInterest);
+            } else {
+                systemOfInterest = root;
             }
             state.items.values().stream().forEach((item) -> {
                 if (item.isExternal()) {
@@ -191,7 +186,7 @@ public class PhysicalTreeController {
     private final class ItemTreeCell extends TreeCell<Item> {
 
         private final UndoBuffer<UndoState> undo;
-        private TextField textField;
+        private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
         public ItemTreeCell(UndoBuffer<UndoState> tmpUndo) {
@@ -217,8 +212,8 @@ public class PhysicalTreeController {
         }
 
         public void start() {
-            DragSource.bind(this, () -> getItem(), false);
-            DragTarget.bind(edit, this, () -> getItem(),
+            DragSource.bind(this, () -> Optional.ofNullable(getItem()), false);
+            DragTarget.bind(edit, this, () -> Optional.ofNullable(getItem()),
                     new ItemDropHandler(interactions));
         }
 
@@ -226,13 +221,13 @@ public class PhysicalTreeController {
         public void startEdit() {
             super.startEdit();
 
-            if (textField == null) {
-                createTextField();
+            if (!textField.isPresent()) {
+                textField = Optional.of(createTextField());
             }
             setText(null);
-            setGraphic(textField);
-            textField.selectAll();
-            textField.requestFocus();
+            setGraphic(textField.get());
+            textField.get().selectAll();
+            textField.get().requestFocus();
         }
 
         @Override
@@ -247,7 +242,9 @@ public class PhysicalTreeController {
                  * If the cancelEdit is due to a loss of focus, override it.
                  * Commit instead.
                  */
-                commitEdit(getItem().setName(textField.getText()));
+                if (textField.isPresent()) {
+                    commitEdit(getItem().setName(textField.get().getText()));
+                }
             }
         }
 
@@ -268,11 +265,11 @@ public class PhysicalTreeController {
                 setGraphic(null);
             } else {
                 if (isEditing()) {
-                    if (textField != null) {
-                        textField.setText(getString());
-                    }
                     setText(null);
-                    setGraphic(textField);
+                    if (textField.isPresent()) {
+                        textField.get().setText(getString());
+                        setGraphic(textField.get());
+                    }
                 } else {
                     setText(getString());
                     setGraphic(getTreeItem().getGraphic());
@@ -281,15 +278,17 @@ public class PhysicalTreeController {
             }
         }
 
-        private void createTextField() {
-            textField = new TextField(getItem().getName());
-            textField.setOnKeyReleased((KeyEvent t) -> {
+        @CheckReturnValue
+        private TextField createTextField() {
+            TextField node = new TextField(getItem().getName());
+            node.setOnKeyReleased((KeyEvent t) -> {
                 if (t.getCode() == KeyCode.ENTER) {
-                    commitEdit(getItem().setName(textField.getText()));
+                    commitEdit(getItem().setName(node.getText()));
                 } else if (t.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
                 }
             });
+            return node;
         }
 
         private String getString() {

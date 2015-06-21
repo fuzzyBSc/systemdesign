@@ -151,7 +151,7 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         builder.append(rightItem.getName());
 
         return new InterfaceBean(
-                uuid, null, left.getUuid(), right.getUuid(), builder.toString());
+                uuid, left.getUuid(), right.getUuid(), builder.toString());
     }
 
     private static final ReferenceFinder<Interface> finder
@@ -164,6 +164,7 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
 
     public Item otherEnd(RelationContext store, Item item) {
         UUID otherEndUUID = scope.otherEnd(item.getUuid());
-        return store.get(otherEndUUID, Item.class);
+        // Referential integrity should be guaranteed by the store
+        return store.get(otherEndUUID, Item.class).get();
     }
 }

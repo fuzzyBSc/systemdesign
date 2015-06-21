@@ -33,9 +33,9 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -70,35 +70,35 @@ public class UndoState {
     }
 
     public static UndoState createNew() {
-        return new UndoState(null, AllocatedBaseline.create(Identity.create()));
+        return new UndoState(Optional.empty(), AllocatedBaseline.create(Identity.create()));
     }
 
     public static UndoState load(Directory directory) throws IOException {
         Directory functionalDirectory = directory.getParent();
-        if (functionalDirectory.getIdentity() == null) {
-            // Top-level design
-            return new UndoState(null, AllocatedBaseline.load(directory));
-        } else {
+        if (functionalDirectory.getIdentity().isPresent()) {
             // Subsystem design - load functional baseline as well
             AllocatedBaseline functionalBaseline = AllocatedBaseline.load(functionalDirectory);
             AllocatedBaseline allocatedBaseline = AllocatedBaseline.load(directory);
-            Item systemOfInterest = functionalBaseline.getStore().get(
+            Optional<Item> systemOfInterest = functionalBaseline.getStore().get(
                     allocatedBaseline.getIdentity().getUuid(), Item.class);
-            return new UndoState(
-                    new FunctionalBaseline(systemOfInterest, functionalBaseline),
-                    allocatedBaseline);
+            if (systemOfInterest.isPresent()) {
+                return new UndoState(
+                        Optional.of(new FunctionalBaseline(systemOfInterest.get(), functionalBaseline)),
+                        allocatedBaseline);
+            }
         }
+        // Top-level design
+        return new UndoState(Optional.empty(), AllocatedBaseline.load(directory));
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        if (functional != null) {
-            functional.saveTo(transaction, directory.getParent());
+        if (functional.isPresent()) {
+            functional.get().saveTo(transaction, directory.getParent());
         }
         allocated.saveTo(transaction, directory);
     }
 
-    @Nullable
-    public FunctionalBaseline getFunctional() {
+    public Optional<FunctionalBaseline> getFunctional() {
         return functional;
     }
 
@@ -106,32 +106,32 @@ public class UndoState {
         return allocated;
     }
 
-    @Nullable
-    public <T extends Relation> T getAllocatedInstance(
+    public <T extends Relation> Optional<T> getAllocatedInstance(
             UUID uuid, Class<T> clazz) {
         return allocated.getStore().get(uuid, clazz);
     }
 
-    @Nullable
-    public <T extends Relation> T getFunctionalInstance(
+    public <T extends Relation> Optional<T> getFunctionalInstance(
             UUID uuid, Class<T> clazz) {
-        if (functional == null) {
-            return null;
+        if (functional.isPresent()) {
+            return functional.get().getStore().get(uuid, clazz);
         } else {
-            return functional.getStore().get(uuid, clazz);
+            return Optional.empty();
         }
     }
 
-    private UndoState(FunctionalBaseline functional, AllocatedBaseline allocated) {
+    private UndoState(
+            Optional<FunctionalBaseline> functional,
+            AllocatedBaseline allocated) {
         this.functional = functional;
         this.allocated = allocated;
     }
-    private final FunctionalBaseline functional;
+    private final Optional<FunctionalBaseline> functional;
     private final AllocatedBaseline allocated;
 
     @CheckReturnValue
     public UndoState setFunctional(FunctionalBaseline value) {
-        return new UndoState(value, allocated);
+        return new UndoState(Optional.of(value), allocated);
     }
 
     @CheckReturnValue

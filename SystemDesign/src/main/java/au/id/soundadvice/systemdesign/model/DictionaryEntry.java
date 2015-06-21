@@ -32,7 +32,7 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;

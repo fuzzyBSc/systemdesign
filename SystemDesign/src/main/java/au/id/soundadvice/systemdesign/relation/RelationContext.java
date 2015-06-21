@@ -26,9 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -44,8 +44,7 @@ public interface RelationContext {
      * @param type The expected relation type
      * @return
      */
-    @Nullable
-    public <T extends Relation> T get(UUID key, Class<T> type);
+    public <T extends Relation> Optional<T> get(UUID key, Class<T> type);
 
     /**
      * Returns a list of objects with references to the given key.

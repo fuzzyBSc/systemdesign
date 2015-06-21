@@ -55,9 +55,7 @@ public class GridSnap implements Snap {
     @Override
     public Point2D snap(Point2D point, double width, double height) {
         point = new Point2D(snap(point.getX()), snap(point.getY()));
-        if (next != null) {
-            point = next.snap(point, width, height);
-        }
+        point = next.snap(point, width, height);
         return point;
     }
 }

@@ -28,8 +28,8 @@ package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 /**
  *
@@ -37,9 +37,9 @@ import javax.annotation.Nullable;
  */
 public class RequirementBean implements Identifiable {
 
-    public RequirementBean(UUID uuid, UUID trace, UUID context, String section, String text) {
+    public RequirementBean(UUID uuid, Optional<UUID> trace, UUID context, String section, String text) {
         this.uuid = uuid;
-        this.trace = trace;
+        this.trace = trace.orElse(null);
         this.context = context;
         this.section = section;
         this.text = text;
@@ -125,7 +125,6 @@ public class RequirementBean implements Identifiable {
      * The cause of this requirement: Null for a top level requirement, or
      * otherwise another requirement or hazard.
      */
-    @Nullable
     private UUID trace;
     /**
      * Either an item (non-functional requirement), a function, or a hazard.
