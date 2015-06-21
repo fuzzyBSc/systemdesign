@@ -6,7 +6,8 @@ within a large engineering organisation rather than being a network
 engineering tool.
 
 This tool is intended to demonstrate basic systems engineering techniques
-suitable for orchestrating the design of large involving multiple teams.
+suitable for orchestrating the design of large systems involving multiple
+teams.
 
 Key concepts include:
 - Physical breakdown of a system onto Items and Interfaces

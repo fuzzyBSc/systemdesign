@@ -1,0 +1,10 @@
+Document: systemdesign
+Title: API Javadoc for SystemDesign
+Author: SystemDesign developers
+Abstract: This is the API Javadoc provided for the
+ systemdesign library.
+Section: Programming
+
+Format: HTML
+Index: /usr/share/doc/systemdesign/api/index.html
+Files: /usr/share/doc/systemdesign/api/*
