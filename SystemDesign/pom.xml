@@ -36,7 +36,8 @@
                             <archive>
                                 <manifest>
                                     <addClasspath>true</addClasspath>
-                                    <classpathPrefix>/usr/share/java</classpathPrefix>
+                                    <classpathLayoutType>custom</classpathLayoutType>
+                                    <customClasspathLayout>/usr/share/java/${artifact.artifactId}${artifact.dashClassifier?}.${artifact.extension}</customClasspathLayout>
                                     <mainClass>au.id.soundadvice.systemdesign.SystemDesign</mainClass>
                                 </manifest>
                             </archive>
