@@ -26,7 +26,26 @@ in real systems development also. The on-disk format is not documented
 at this time but is simple and regular enough for other tools to integrate
 with it if needed.
 
-Build and run with maven.
+Building from sources:
+- mvn clean install
+
+Debian package:
+- Install the package using your preferred tool
+- java -jar /usr/share/java/SystemDesign.jar
+
+Generic binary distribution:
+- Unzip to your preferred location
+- java -jar SytemDesign\*.jar
+
+Legal:
+- The software itself follows the UNLICENCE (public domain)
+- The software relies on dependencies that each have their own licence.
+  If in any doubt please consult the legal documentation for each
+  dependency. Dependencies are listed in the pom.xml file in the source
+  tree.
+- The generic binary distribution includes depedancy binaries drawn from
+  maven. The debian package is built for Ubuntu 15.04 and does not include
+  dependencies.
 
 Development status: Very early
 
