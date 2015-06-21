@@ -232,6 +232,7 @@ public class PhysicalTreeController {
             setText(null);
             setGraphic(textField);
             textField.selectAll();
+            textField.requestFocus();
         }
 
         @Override

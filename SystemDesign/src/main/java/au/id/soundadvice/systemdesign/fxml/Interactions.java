@@ -118,8 +118,8 @@ public class Interactions {
 
             TextInputDialog dialog = new TextInputDialog(
                     item.getShortId().toString());
-            dialog.setTitle("Enter new number for item");
-            dialog.setHeaderText("Enter new number for " + item.getDisplayName());
+            dialog.setTitle("Enter name for item");
+            dialog.setHeaderText("Enter name for " + item.getDisplayName());
 
             result = dialog.showAndWait();
         }
@@ -133,6 +133,73 @@ public class Interactions {
                         .noneMatch((existing) -> path.equals(existing));
                 if (isUnique) {
                     Item toAdd = item.setShortId(path);
+                    return state.setAllocated(allocated.add(toAdd));
+                } else {
+                    return state;
+                }
+            });
+        }
+    }
+
+    public void rename(Item item) {
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            if (item.isExternal() || !undo.get().getAllocated().hasRelation(item)) {
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog(item.getName());
+            dialog.setTitle("Enter name for item");
+            dialog.setHeaderText("Enter name for " + item.getDisplayName());
+
+            result = dialog.showAndWait();
+        }
+        if (result.isPresent()) {
+            String name = result.get();
+            edit.getUndo().update(state -> {
+                AllocatedBaseline allocated = state.getAllocated();
+                boolean isUnique = allocated.getItems().parallel()
+                        .map(Item::getName)
+                        .noneMatch((existing) -> name.equals(existing));
+                if (isUnique) {
+                    Item toAdd = item.setName(name);
+                    return state.setAllocated(allocated.add(toAdd));
+                } else {
+                    return state;
+                }
+            });
+        }
+    }
+
+    public void rename(Function function) {
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            UndoState state = undo.get();
+            AllocatedBaseline allocated = state.getAllocated();
+            if (function.isExternal() || !allocated.hasRelation(function)) {
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog(function.getName());
+            dialog.setTitle("Enter number for function");
+            dialog.setHeaderText("Enter number for "
+                    + function.getDisplayName(allocated.getStore()));
+
+            result = dialog.showAndWait();
+        }
+        if (result.isPresent()) {
+            String name = result.get();
+            edit.getUndo().update(state -> {
+                AllocatedBaseline allocated = state.getAllocated();
+                boolean isUnique = allocated.getFunctions().parallel()
+                        .map(Function::getName)
+                        .noneMatch((existing) -> name.equals(existing));
+                if (isUnique) {
+                    Function toAdd = function.setName(name);
                     return state.setAllocated(allocated.add(toAdd));
                 } else {
                     return state;

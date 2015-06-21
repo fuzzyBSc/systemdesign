@@ -96,7 +96,7 @@ public class LogicalTreeController {
         }
 
         public String getDisplayName() {
-            return parent.getDisplayName();
+            return parent.getName();
         }
 
         private final Function parent;
@@ -137,7 +137,7 @@ public class LogicalTreeController {
                         UUID trace = child.getTrace();
                         Function parent = trace == null ? null : parentFunctions.get(trace);
                         SortedMap<String, Function> map = parent == null ? rawOrphans : rawAllocation.get(parent);
-                        map.put(child.getDisplayName(), child);
+                        map.put(child.getDisplayName(allocated.getStore()), child);
                     });
 
             SortedMap<String, FunctionAllocation> tmpAllocation = new TreeMap<>();
@@ -244,6 +244,7 @@ public class LogicalTreeController {
                 setText(null);
                 setGraphic(textField);
                 textField.selectAll();
+                textField.requestFocus();
             }
         }
 

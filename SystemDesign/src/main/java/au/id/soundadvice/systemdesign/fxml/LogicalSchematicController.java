@@ -107,7 +107,7 @@ class LogicalSchematicController {
 
     private Node toNode(Function function, Item item) {
         Label label = new Label(
-                function.getDisplayName() + '\n'
+                function.getName() + '\n'
                 + '(' + item.getDisplayName() + ')');
         label.getStyleClass().add("text");
 
@@ -138,6 +138,42 @@ class LogicalSchematicController {
         }
         group.setLayoutX(function.getOrigin().getX());
         group.setLayoutY(function.getOrigin().getY());
+
+        ContextMenu contextMenu = new ContextMenu();
+        if (function.isExternal()) {
+            MenuItem deleteMenuItem = new MenuItem("Delete External Function");
+            deleteMenuItem.setOnAction(event -> {
+                edit.remove(function.getUuid());
+                event.consume();
+            });
+            contextMenu.getItems().add(deleteMenuItem);
+        } else {
+            group.setOnMouseClicked(event -> {
+                if (event.getClickCount() > 1) {
+                    interactions.navigateDown(item);
+                    event.consume();
+                }
+            });
+            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
+            navigateMenuItem.setOnAction(event -> {
+                interactions.navigateDown(item);
+                event.consume();
+            });
+            contextMenu.getItems().add(navigateMenuItem);
+            MenuItem addMenuItem = new MenuItem("Rename Function");
+            addMenuItem.setOnAction(event -> {
+                interactions.rename(function);
+                event.consume();
+            });
+            contextMenu.getItems().add(addMenuItem);
+            MenuItem deleteMenuItem = new MenuItem("Delete Function");
+            deleteMenuItem.setOnAction(event -> {
+                edit.remove(function.getUuid());
+                event.consume();
+            });
+            contextMenu.getItems().add(deleteMenuItem);
+        }
+        label.setContextMenu(contextMenu);
 
         return group;
     }
@@ -260,6 +296,7 @@ class LogicalSchematicController {
         group.setRotate(theta);
         group.setLayoutX(midpoint.getX());
         group.setLayoutY(midpoint.getY());
+
         return group;
     }
 

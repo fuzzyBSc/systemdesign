@@ -34,12 +34,10 @@ import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
-import au.id.soundadvice.systemdesign.model.UndirectedPair;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -149,7 +147,7 @@ public class FlowConsistency {
                     if (systemFunction == null) {
                         return Stream.empty();
                     }
-                    String systemFunctionDescription = systemFunction.getDisplayName();
+                    String systemFunctionDescription = systemFunction.getName();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();
@@ -195,7 +193,7 @@ public class FlowConsistency {
                     if (systemFunction == null) {
                         return Stream.empty();
                     }
-                    String systemFunctionDescription = systemFunction.getDisplayName();
+                    String systemFunctionDescription = systemFunction.getName();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();

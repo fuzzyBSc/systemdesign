@@ -154,19 +154,19 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         Function rightEnd = right.getTarget(context);
         switch (flowScope.getDirection()) {
             case Normal:
-                builder.append(leftEnd.getDisplayName());
+                builder.append(leftEnd.getDisplayName(context));
                 builder.append(" --").append(type).append("-> ");
-                builder.append(rightEnd.getDisplayName());
+                builder.append(rightEnd.getDisplayName(context));
                 break;
             case Reverse:
-                builder.append(rightEnd.getDisplayName());
+                builder.append(rightEnd.getDisplayName(context));
                 builder.append(" --").append(type).append("-> ");
-                builder.append(leftEnd.getDisplayName());
+                builder.append(leftEnd.getDisplayName(context));
                 break;
             case Both:
-                builder.append(leftEnd.getDisplayName());
+                builder.append(leftEnd.getDisplayName(context));
                 builder.append(" <-").append(type).append("-> ");
-                builder.append(rightEnd.getDisplayName());
+                builder.append(rightEnd.getDisplayName(context));
                 break;
             default:
                 throw new AssertionError(flowScope.toString());

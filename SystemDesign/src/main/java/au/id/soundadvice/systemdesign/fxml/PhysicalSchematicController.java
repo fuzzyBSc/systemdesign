@@ -48,7 +48,6 @@ import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseButton;
@@ -88,7 +87,7 @@ public class PhysicalSchematicController {
         StringBuilder builder = new StringBuilder();
         builder.append(item);
         String functionsText = functions
-                .map((function) -> function.getDisplayName())
+                .map((function) -> function.getName())
                 .sorted()
                 .collect(Collectors.joining("\n+"));
         if (!functionsText.isEmpty()) {
@@ -124,6 +123,43 @@ public class PhysicalSchematicController {
         group.setLayoutX(item.getOrigin().getX());
         group.setLayoutY(item.getOrigin().getY());
 
+        ContextMenu contextMenu = new ContextMenu();
+        if (item.isExternal()) {
+            MenuItem deleteMenuItem = new MenuItem("Delete External Item");
+            deleteMenuItem.setOnAction(event -> {
+                edit.remove(item.getUuid());
+                event.consume();
+            });
+            contextMenu.getItems().add(deleteMenuItem);
+        } else {
+            group.setOnMouseClicked(event -> {
+                if (event.getClickCount() > 1) {
+                    interactions.navigateDown(item);
+                    event.consume();
+                }
+            });
+            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
+            navigateMenuItem.setOnAction(event -> {
+                interactions.navigateDown(item);
+                event.consume();
+            });
+            contextMenu.getItems().add(navigateMenuItem);
+            MenuItem addMenuItem = new MenuItem("Add Function");
+            addMenuItem.setOnAction(event -> {
+                interactions.addFunctionToItem(item);
+                event.consume();
+            });
+            contextMenu.getItems().add(addMenuItem);
+            MenuItem deleteMenuItem = new MenuItem("Delete Item");
+            deleteMenuItem.setOnAction(event -> {
+                edit.remove(item.getUuid());
+                event.consume();
+            });
+            contextMenu.getItems().add(deleteMenuItem);
+        }
+
+        label.setContextMenu(contextMenu);
+
         return group;
     }
 
@@ -157,46 +193,6 @@ public class PhysicalSchematicController {
             Group result = toNode(
                     item,
                     baseline.getStore().getReverse(item.getUuid(), Function.class));
-
-            ContextMenu contextMenu = new ContextMenu();
-            if (item.isExternal()) {
-                MenuItem deleteMenuItem = new MenuItem("Delete Interface");
-                deleteMenuItem.setOnAction(event -> {
-                    edit.remove(item.getUuid());
-                    event.consume();
-                });
-                contextMenu.getItems().add(deleteMenuItem);
-            } else {
-                result.setOnMouseClicked(event -> {
-                    if (event.getClickCount() > 1) {
-                        interactions.navigateDown(item);
-                        event.consume();
-                    }
-                });
-                MenuItem navigateMenuItem = new MenuItem("Navigate Down");
-                navigateMenuItem.setOnAction(event -> {
-                    interactions.navigateDown(item);
-                    event.consume();
-                });
-                contextMenu.getItems().add(navigateMenuItem);
-                MenuItem addMenuItem = new MenuItem("Add Function");
-                addMenuItem.setOnAction(event -> {
-                    interactions.addFunctionToItem(item);
-                    event.consume();
-                });
-                contextMenu.getItems().add(addMenuItem);
-                MenuItem deleteMenuItem = new MenuItem("Delete Item");
-                deleteMenuItem.setOnAction(event -> {
-                    edit.remove(item.getUuid());
-                    event.consume();
-                });
-                contextMenu.getItems().add(deleteMenuItem);
-            }
-
-            result.getChildren()
-                    .stream()
-                    .filter((member) -> (member instanceof Control))
-                    .forEach((member) -> ((Control) member).setContextMenu(contextMenu));
             new MoveHandler(parent, result,
                     new MoveItem(item.getUuid()),
                     new GridSnap(10), (MouseEvent event)

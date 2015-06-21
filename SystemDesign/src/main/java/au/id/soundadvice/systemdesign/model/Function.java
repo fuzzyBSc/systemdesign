@@ -105,7 +105,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @Override
     public String toString() {
-        return getDisplayName();
+        return name;
     }
 
     private static Point2D defaultOrigin = new Point2D(200, 200);
@@ -169,18 +169,22 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @Override
     public FunctionBean toBean(RelationContext context) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(name);
-        builder.append(" (");
-        builder.append(item.getTarget(context).getDisplayName());
-        builder.append(')');
         return new FunctionBean(
-                uuid, item.getUuid(), builder.toString(), trace, external, name,
+                uuid, item.getUuid(), getDisplayName(context), trace, external, name,
                 (int) origin.getX(), (int) origin.getY());
     }
 
-    public String getDisplayName() {
-        return name;
+    public String getDisplayName(RelationContext context) {
+        return getDisplayName(item.getTarget(context));
+    }
+
+    public String getDisplayName(Item item) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(name);
+        builder.append(" (");
+        builder.append(item.getDisplayName());
+        builder.append(')');
+        return builder.toString();
     }
     private static final ReferenceFinder<Function> finder
             = new ReferenceFinder<>(Function.class);

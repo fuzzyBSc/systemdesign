@@ -116,7 +116,7 @@ public class FunctionConsistency {
                 .flatMap(parentFunction -> {
                     Function childFunction = childStore.get(parentFunction.getUuid(), Function.class);
                     if (childFunction == null) {
-                        String name = parentFunction.getDisplayName();
+                        String name = parentFunction.getName();
                         String parentId = functional.getSystemOfInterest().getIdPath(parentStore).toString();
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(
@@ -137,7 +137,7 @@ public class FunctionConsistency {
                     } else {
                         Stream<Problem> consistency;
                         if (!childFunction.isConsistent(parentFunction)) {
-                            String name = parentFunction.getDisplayName();
+                            String name = parentFunction.getName();
                             consistency = Stream.of(
                                     new Problem(
                                             name + " differs between baselines", Stream.of(
@@ -152,7 +152,7 @@ public class FunctionConsistency {
                         }
                         Stream<Problem> flows = FlowConsistency.checkConsistency(
                                 state, iface, parentFunction.getUuid(),
-                                parentFunction.getDisplayName());
+                                parentFunction.getName());
                         return Stream.concat(consistency, flows);
                     }
                 });
@@ -166,7 +166,7 @@ public class FunctionConsistency {
                                     flow.otherEnd(parentStore, system).getUuid()));
                 })
                 .flatMap((function) -> {
-                    String name = function.getDisplayName();
+                    String name = function.getName();
                     if (parentStore.get(function.getUuid(), Function.class) == null) {
                         /*
                          * The parent instance of the external function doesn't
@@ -186,7 +186,7 @@ public class FunctionConsistency {
                          */
                         return FlowConsistency.checkConsistency(
                                 state, iface,
-                                function.getUuid(), function.getDisplayName());
+                                function.getUuid(), function.getName());
                     }
 
                 });
