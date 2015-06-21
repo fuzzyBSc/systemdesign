@@ -16,7 +16,10 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
-   sodipodi:docname="icon.svg">
+   sodipodi:docname="icon.svg"
+   inkscape:export-filename="/home/fuzzy/git/systemdesign/SystemDesign/src/main/resources/icon.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90">
   <defs
      id="defs4">
     <linearGradient
@@ -32,7 +35,6 @@
          id="stop5623" />
     </linearGradient>
     <linearGradient
-       inkscape:collect="always"
        id="linearGradient4155"
        osb:paint="gradient">
       <stop
@@ -45,7 +47,6 @@
          id="stop4159" />
     </linearGradient>
     <linearGradient
-       inkscape:collect="always"
        id="linearGradient4147"
        osb:paint="gradient">
       <stop
@@ -58,7 +59,6 @@
          id="stop4151" />
     </linearGradient>
     <linearGradient
-       inkscape:collect="always"
        id="linearGradient4137"
        osb:paint="gradient">
       <stop
@@ -114,9 +114,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.99394531"
-     inkscape:cx="-14.128366"
-     inkscape:cy="213.23962"
+     inkscape:zoom="2.8226494"
+     inkscape:cx="-74.001194"
+     inkscape:cy="114.04204"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"

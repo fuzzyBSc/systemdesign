@@ -35,6 +35,7 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
@@ -46,6 +47,9 @@ public class SystemDesign extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        Image icon = new Image(SystemDesign.class.getResource("/icon.png").toString());
+        stage.getIcons().add(icon);
+
         EditState edit = EditState.init(Executors.newCachedThreadPool());
         Interactions interactions = new Interactions(stage, edit);
 
