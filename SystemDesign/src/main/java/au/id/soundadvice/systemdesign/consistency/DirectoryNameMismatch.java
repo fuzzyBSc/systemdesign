@@ -62,7 +62,7 @@ public class DirectoryNameMismatch implements ProblemFactory {
         @Override
         public void solve(EditState edit) {
             try {
-                edit.rename(from, to);
+                edit.renameDirectory(from, to);
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
             }

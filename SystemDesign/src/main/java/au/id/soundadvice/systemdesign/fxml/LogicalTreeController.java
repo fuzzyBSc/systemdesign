@@ -34,7 +34,6 @@ import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import java.util.Collections;
@@ -52,7 +51,6 @@ import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -83,11 +81,7 @@ public class LogicalTreeController {
     }
 
     private void addContextMenu() {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem addMenuItem = new MenuItem("Add Function");
-        contextMenu.getItems().add(addMenuItem);
-        addMenuItem.setOnAction(event -> functionCreator.addToChild());
-        view.setContextMenu(contextMenu);
+        view.setContextMenu(ContextMenus.logicalTreeBackgroundMenu(functionCreator));
     }
 
     public static final class FunctionAllocation {
@@ -145,8 +139,8 @@ public class LogicalTreeController {
 
             SortedMap<String, FunctionAllocation> tmpAllocation = new TreeMap<>();
             rawAllocation.entrySet().stream()
-                    .map((entry) -> new FunctionAllocation(Optional.of(entry.getKey()), Collections.unmodifiableSortedMap(entry.getValue())))
-                    .forEach((alloc) -> {
+                    .map(entry -> new FunctionAllocation(Optional.of(entry.getKey()), Collections.unmodifiableSortedMap(entry.getValue())))
+                    .forEach(alloc -> {
                         tmpAllocation.put(alloc.getDisplayName(), alloc);
                     });
             this.allocation = Collections.unmodifiableSortedMap(tmpAllocation);
@@ -177,8 +171,8 @@ public class LogicalTreeController {
             root.setExpanded(true);
             root.getChildren().addAll(
                     state.allocation.values().stream()
-                    .filter((allocation) -> allocation.parent.isPresent())
-                    .map((allocation) -> {
+                    .filter(allocation -> allocation.parent.isPresent())
+                    .map(allocation -> {
                         TreeItem parent = new TreeItem(allocation.parent.get());
                         parent.setExpanded(true);
                         parent.getChildren().addAll(allocation.children.values().stream()
@@ -205,7 +199,7 @@ public class LogicalTreeController {
             view.setShowRoot(false);
             view.setEditable(true);
             view.setCellFactory(view -> {
-                FunctionTreeCell cell = new FunctionTreeCell(edit.getUndo());
+                FunctionTreeCell cell = new FunctionTreeCell();
                 cell.start();
                 return cell;
             });
@@ -214,18 +208,16 @@ public class LogicalTreeController {
 
     private final class FunctionTreeCell extends TreeCell<Function> {
 
-        private final UndoBuffer<UndoState> undo;
         private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
-        public FunctionTreeCell(UndoBuffer<UndoState> tmpUndo) {
-            this.undo = tmpUndo;
+        public FunctionTreeCell() {
             MenuItem addMenuItem = new MenuItem("Add Function");
             contextMenu.getItems().add(addMenuItem);
             addMenuItem.setOnAction(event -> functionCreator.add(getItem()));
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> edit.remove(getItem().getUuid()));
+            deleteMenuItem.setOnAction(event -> edit.removeAllocatedRelation(getItem().getUuid()));
             this.editableProperty().bind(this.itemProperty().isNotNull());
         }
 
@@ -285,8 +277,8 @@ public class LogicalTreeController {
         }
 
         @Override
-        public void updateItem(Function item, boolean empty) {
-            super.updateItem(item, empty);
+        public void updateItem(Function function, boolean empty) {
+            super.updateItem(function, empty);
 
             if (empty) {
                 setText(null);
@@ -309,11 +301,13 @@ public class LogicalTreeController {
         @CheckReturnValue
         private TextField createTextField(Function function) {
             TextField node = new TextField(function.getName());
-            node.setOnKeyReleased((KeyEvent t) -> {
-                if (t.getCode() == KeyCode.ENTER) {
+            node.setOnKeyReleased(event -> {
+                if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(function.setName(node.getText()));
-                } else if (t.getCode() == KeyCode.ESCAPE) {
+                    event.consume();
+                } else if (event.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
+                    event.consume();
                 }
             });
             return node;

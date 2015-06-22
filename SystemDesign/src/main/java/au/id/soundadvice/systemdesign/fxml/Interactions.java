@@ -56,6 +56,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import javafx.geometry.Point2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextInputDialog;
@@ -79,7 +80,7 @@ public class Interactions {
     private final Window window;
     private final EditState edit;
 
-    public Item addItem() {
+    public Item addItem(Point2D origin) {
         AtomicReference<Item> result = new AtomicReference<>();
         edit.getUndo().update(state -> {
             AllocatedBaseline allocated = state.getAllocated();
@@ -90,7 +91,7 @@ public class Interactions {
             Item item = Item.newItem(
                     allocated.getIdentity().getUuid(),
                     allocated.getNextItemId(),
-                    name, "", false);
+                    name, origin);
             result.set(item);
             return state.setAllocated(allocated.add(item));
         });

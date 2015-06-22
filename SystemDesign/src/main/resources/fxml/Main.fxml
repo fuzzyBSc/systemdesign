@@ -89,9 +89,9 @@
               <tabs>
                 <Tab text="Physical">
                      <content>
-                        <ScrollPane prefHeight="200.0" prefWidth="200.0">
+                        <ScrollPane fx:id="physicalDrawing">
                           <content>
-                            <AnchorPane fx:id="physicalDrawing" minHeight="0.0" minWidth="0.0" prefHeight="200.0" prefWidth="200.0" />
+                            <AnchorPane minHeight="0.0" minWidth="0.0" />
                           </content>
                         </ScrollPane>
                      </content>

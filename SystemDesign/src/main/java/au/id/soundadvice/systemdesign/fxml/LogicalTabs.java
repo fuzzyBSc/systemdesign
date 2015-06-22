@@ -87,7 +87,11 @@ public class LogicalTabs {
                         function -> Optional.of(function.getUuid()),
                         java.util.function.Function.identity()));
             } else {
-                parentFunctions = Collections.singletonMap(Optional.empty(), null);
+                if (state.getAllocated().getFunctions().findAny().isPresent()) {
+                    parentFunctions = Collections.singletonMap(Optional.empty(), null);
+                } else {
+                    parentFunctions = Collections.emptyMap();
+                }
             }
             parentFunctions.entrySet().stream()
                     .filter(entry -> !controllers.containsKey(entry.getKey()))

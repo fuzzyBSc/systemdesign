@@ -35,7 +35,6 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
-import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
@@ -52,7 +51,6 @@ import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -85,7 +83,10 @@ public class PhysicalTreeController {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem addMenuItem = new MenuItem("Add Item");
         contextMenu.getItems().add(addMenuItem);
-        addMenuItem.setOnAction(event -> interactions.addItem());
+        addMenuItem.setOnAction(event -> {
+            interactions.addItem(Item.defaultOrigin);
+            event.consume();
+        });
         view.setContextMenu(contextMenu);
     }
 
@@ -171,7 +172,7 @@ public class PhysicalTreeController {
             view.setShowRoot(false);
             view.setEditable(true);
             view.setCellFactory(view -> {
-                ItemTreeCell cell = new ItemTreeCell(edit.getUndo());
+                ItemTreeCell cell = new ItemTreeCell();
                 cell.start();
                 return cell;
             });
@@ -185,16 +186,14 @@ public class PhysicalTreeController {
 
     private final class ItemTreeCell extends TreeCell<Item> {
 
-        private final UndoBuffer<UndoState> undo;
         private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
-        public ItemTreeCell(UndoBuffer<UndoState> tmpUndo) {
-            this.undo = tmpUndo;
+        public ItemTreeCell() {
             MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
             addMenuItem.setOnAction(event -> {
-                interactions.addItem();
+                interactions.addItem(Item.defaultOrigin);
                 event.consume();
             });
             MenuItem renameMenuItem = new MenuItem("Renumber");
@@ -206,7 +205,7 @@ public class PhysicalTreeController {
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction(event -> {
-                edit.remove(getItem().getUuid());
+                edit.removeAllocatedRelation(getItem().getUuid());
                 event.consume();
             });
         }
@@ -250,10 +249,9 @@ public class PhysicalTreeController {
 
         @Override
         public void commitEdit(Item item) {
-            UndoState state = undo.get();
             super.commitEdit(item);
-            undo.set(state.setAllocated(
-                    state.getAllocated().add(item)));
+            edit.updateAllocatedRelation(item.getUuid(), Item.class,
+                    relation -> relation.setName(item.getName()));
         }
 
         @Override
@@ -281,11 +279,13 @@ public class PhysicalTreeController {
         @CheckReturnValue
         private TextField createTextField() {
             TextField node = new TextField(getItem().getName());
-            node.setOnKeyReleased((KeyEvent t) -> {
-                if (t.getCode() == KeyCode.ENTER) {
+            node.setOnKeyReleased(event -> {
+                if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(getItem().setName(node.getText()));
-                } else if (t.getCode() == KeyCode.ESCAPE) {
+                    event.consume();
+                } else if (event.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
+                    event.consume();
                 }
             });
             return node;

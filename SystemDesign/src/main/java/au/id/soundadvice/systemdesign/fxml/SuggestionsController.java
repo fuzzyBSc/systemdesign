@@ -34,7 +34,6 @@ import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -105,8 +104,9 @@ public class SuggestionsController {
         problem.getSolutions()
                 .map((solution) -> {
                     Button button = new Button(solution.getDescription());
-                    button.setOnAction((ActionEvent e) -> {
+                    button.setOnAction(event -> {
                         solution.solve(edit);
+                        event.consume();
                     });
                     button.setDisable(!solution.isEnabled());
                     return button;

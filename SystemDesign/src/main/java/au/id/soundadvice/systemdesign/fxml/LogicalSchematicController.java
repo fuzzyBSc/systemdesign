@@ -51,7 +51,7 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.MouseButton;
@@ -138,41 +138,18 @@ class LogicalSchematicController {
         group.setLayoutX(function.getOrigin().getX());
         group.setLayoutY(function.getOrigin().getY());
 
-        ContextMenu contextMenu = new ContextMenu();
-        if (function.isExternal()) {
-            MenuItem deleteMenuItem = new MenuItem("Delete External Function");
-            deleteMenuItem.setOnAction(event -> {
-                edit.remove(function.getUuid());
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        } else {
+        ContextMenu contextMenu = ContextMenus.functionContextMenu(
+                item, function, interactions, edit);
+        label.setContextMenu(contextMenu);
+
+        if (!function.isExternal()) {
             group.setOnMouseClicked(event -> {
                 if (event.getClickCount() > 1) {
                     interactions.navigateDown(item);
                     event.consume();
                 }
             });
-            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
-            navigateMenuItem.setOnAction(event -> {
-                interactions.navigateDown(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(navigateMenuItem);
-            MenuItem addMenuItem = new MenuItem("Rename Function");
-            addMenuItem.setOnAction(event -> {
-                interactions.rename(function);
-                event.consume();
-            });
-            contextMenu.getItems().add(addMenuItem);
-            MenuItem deleteMenuItem = new MenuItem("Delete Function");
-            deleteMenuItem.setOnAction(event -> {
-                edit.remove(function.getUuid());
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
         }
-        label.setContextMenu(contextMenu);
 
         return group;
     }
@@ -230,19 +207,7 @@ class LogicalSchematicController {
         });
         label.getStyleClass().add("text");
 
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem typeMenuItem = new MenuItem("Set Type");
-        typeMenuItem.setOnAction((event) -> {
-            interactions.setFlowType(flow);
-            event.consume();
-        });
-        contextMenu.getItems().add(typeMenuItem);
-        MenuItem deleteMenuItem = new MenuItem("Delete");
-        deleteMenuItem.setOnAction((event) -> {
-            edit.remove(flow.getUuid());
-            event.consume();
-        });
-        contextMenu.getItems().add(deleteMenuItem);
+        ContextMenu contextMenu = ContextMenus.flowContextMenu(flow, interactions, edit);
         label.setContextMenu(contextMenu);
 
         Group group = new Group(path, label, normalArrow, reverseArrow);
@@ -325,7 +290,12 @@ class LogicalSchematicController {
                     new FunctionDropHandler(interactions, edit));
             pane.getChildren().add(node);
         });
-        tab.setContent(pane);
+        ScrollPane scrollPane = new ScrollPane(pane);
+        scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
+            pane.setMinWidth(bounds.getWidth());
+            pane.setMinHeight(bounds.getHeight());
+        });
+        tab.setContent(scrollPane);
     }
 
     private class Move implements Dragged {

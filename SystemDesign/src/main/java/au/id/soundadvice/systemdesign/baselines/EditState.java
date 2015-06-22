@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.relation.Relation;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -213,7 +214,14 @@ public class EditState {
         changed.unsubscribe(subscriber);
     }
 
-    public void rename(Path from, Path to) throws IOException {
+    /**
+     * Rename the current directory.
+     *
+     * @param from The expected current directory value
+     * @param to The new current directory value
+     * @throws java.io.IOException
+     */
+    public void renameDirectory(Path from, Path to) throws IOException {
         Optional<Directory> current = currentDirectory.get();
         if (current.isPresent() && current.get().getPath().equals(from)) {
             Files.move(from, to);
@@ -222,6 +230,11 @@ public class EditState {
         }
     }
 
+    /**
+     * Modify the functional (ie parent) baseline.
+     *
+     * @param update A function to update the baseline.
+     */
     public void updateFunctional(UnaryOperator<FunctionalBaseline> update) {
         undo.update(state -> {
             Optional<FunctionalBaseline> functional = state.getFunctional();
@@ -233,8 +246,33 @@ public class EditState {
         });
     }
 
+    /**
+     * Modify the allocated (ie child) baseline.
+     *
+     * @param update A function to update the baseline.
+     */
     public void updateAllocated(UnaryOperator<AllocatedBaseline> update) {
         undo.update(state -> state.setAllocated(update.apply(state.getAllocated())));
+    }
+
+    /**
+     * Modify an existing relation within the allocated baseline, if it exists.
+     *
+     * @param <T> The type of the relation to update
+     * @param uuid The uuid of the relation to update
+     * @param type The type of the relation to update
+     * @param update The function to update the relation.
+     */
+    public <T extends Relation> void updateAllocatedRelation(
+            UUID uuid, Class<T> type, UnaryOperator<T> update) {
+        updateAllocated(allocated -> {
+            Optional<T> relation = allocated.getStore().get(uuid, type);
+            if (relation.isPresent()) {
+                return allocated.add(update.apply(relation.get()));
+            } else {
+                return allocated;
+            }
+        });
     }
 
     /**
@@ -242,7 +280,7 @@ public class EditState {
      *
      * @param uuid The identifier of the relation to remove
      */
-    public void remove(UUID uuid) {
+    public void removeAllocatedRelation(UUID uuid) {
         undo.update(state -> state.setAllocated(state.getAllocated().remove(uuid)));
     }
 }

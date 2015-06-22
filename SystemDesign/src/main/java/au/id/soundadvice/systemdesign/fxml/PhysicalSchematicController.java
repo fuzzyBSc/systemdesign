@@ -43,6 +43,7 @@ import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
@@ -51,6 +52,8 @@ import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -65,23 +68,50 @@ public class PhysicalSchematicController {
 
     private final EditState edit;
     private final UndoBuffer<UndoState> undo;
-    private final Pane drawing;
+    private final Pane pane;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
     private final Interactions interactions;
 
     PhysicalSchematicController(
             Interactions interactions, EditState edit,
-            Pane drawing) {
+            ScrollPane scrollPane) {
         this.edit = edit;
         this.undo = edit.getUndo();
-        this.drawing = drawing;
+        this.pane = (Pane) scrollPane.getContent();
         this.interactions = interactions;
+
+        scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
+            pane.setMinWidth(bounds.getWidth());
+            pane.setMinHeight(bounds.getHeight());
+        });
     }
 
     void start() {
         undo.getChanged().subscribe(onChange);
         onChange.run();
+
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem addMenuItem = new MenuItem("Add Item");
+        contextMenu.getItems().add(addMenuItem);
+        AtomicReference<ContextMenuEvent> lastContextMenuClick = new AtomicReference<>();
+        addMenuItem.setOnAction(event -> {
+            Optional<ContextMenuEvent> click = Optional.ofNullable(
+                    lastContextMenuClick.get());
+            Point2D origin = click
+                    .map(evt -> new Point2D(evt.getX(), evt.getY()))
+                    .orElse(Item.defaultOrigin);
+            interactions.addItem(origin);
+            event.consume();
+        });
+        pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
+            lastContextMenuClick.set(event);
+            contextMenu.show(pane, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+        pane.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            contextMenu.hide();
+        });
     }
 
     private Group toNode(Item item, Stream<Function> functions) {
@@ -124,48 +154,17 @@ public class PhysicalSchematicController {
         group.setLayoutX(item.getOrigin().getX());
         group.setLayoutY(item.getOrigin().getY());
 
-        ContextMenu contextMenu = new ContextMenu();
-        if (item.isExternal()) {
-            MenuItem deleteMenuItem = new MenuItem("Delete External Item");
-            deleteMenuItem.setOnAction(event -> {
-                edit.remove(item.getUuid());
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        } else {
+        ContextMenu contextMenu = ContextMenus.itemContextMenu(item, interactions, edit);
+        label.setContextMenu(contextMenu);
+
+        if (!item.isExternal()) {
             group.setOnMouseClicked(event -> {
                 if (event.getClickCount() > 1) {
                     interactions.navigateDown(item);
                     event.consume();
                 }
             });
-            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
-            navigateMenuItem.setOnAction(event -> {
-                interactions.navigateDown(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(navigateMenuItem);
-            MenuItem renameMenuItem = new MenuItem("Rename Item");
-            renameMenuItem.setOnAction(event -> {
-                interactions.rename(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(renameMenuItem);
-            MenuItem addMenuItem = new MenuItem("Add Function");
-            addMenuItem.setOnAction(event -> {
-                interactions.addFunctionToItem(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(addMenuItem);
-            MenuItem deleteMenuItem = new MenuItem("Delete Item");
-            deleteMenuItem.setOnAction(event -> {
-                edit.remove(item.getUuid());
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
         }
-
-        label.setContextMenu(contextMenu);
 
         return group;
     }
@@ -174,13 +173,13 @@ public class PhysicalSchematicController {
 
         @Override
         public void run() {
-            drawing.getChildren().clear();
+            pane.getChildren().clear();
             AllocatedBaseline baseline = undo.get().getAllocated();
             baseline.getInterfaces().forEach((iface) -> {
-                addNode(drawing, baseline, iface);
+                addNode(pane, baseline, iface);
             });
             baseline.getItems().forEach((item) -> {
-                addNode(drawing, baseline, item);
+                addNode(pane, baseline, item);
             });
         }
 

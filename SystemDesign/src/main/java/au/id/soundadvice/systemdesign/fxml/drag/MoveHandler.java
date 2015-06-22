@@ -127,6 +127,7 @@ public class MoveHandler {
             layoutCurrent = snap.snap(layoutCurrent, bounds.getWidth(), bounds.getHeight());
             draggable.setLayoutX(layoutCurrent.getX());
             draggable.setLayoutY(layoutCurrent.getY());
+            event.consume();
         }
 
         private void done() {
