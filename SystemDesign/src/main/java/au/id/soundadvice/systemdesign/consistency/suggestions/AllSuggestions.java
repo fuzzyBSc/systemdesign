@@ -24,39 +24,29 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import java.util.Collections;
+import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.consistency.Problem;
+import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Problem {
+public class AllSuggestions implements ProblemFactory {
+
+    private final List<ProblemFactory> factories = Arrays.asList(
+            new DirectoryNameMismatch(),
+            new ItemConsistency(),
+            new UntracedFunctions());
 
     @Override
-    public String toString() {
-        return description + ": " + solutions;
+    public Stream<Problem> getProblems(EditState state) {
+        return factories.parallelStream()
+                .flatMap(factory -> factory.getProblems(state).parallel());
     }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public Stream<Solution> getSolutions() {
-        return solutions.stream();
-    }
-
-    private final String description;
-    private final List<Solution> solutions;
-
-    public Problem(String description, Stream<Solution> solutions) {
-        this.description = description;
-        this.solutions = Collections.unmodifiableList(
-                solutions.collect(Collectors.toList()));
-    }
-
 }

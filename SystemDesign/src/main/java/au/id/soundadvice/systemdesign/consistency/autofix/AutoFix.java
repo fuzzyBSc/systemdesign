@@ -24,35 +24,22 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package au.id.soundadvice.systemdesign.consistency.autofix;
 
-import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import java.util.stream.Stream;
+import java.util.function.UnaryOperator;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class UntracedFunctions implements ProblemFactory {
+public class AutoFix {
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getUndo().get();
-        if (state.getFunctional().isPresent()) {
-            boolean anyUntraced = state.getAllocated().getFunctions().parallel()
-                    .anyMatch(function -> !function.getTrace().isPresent());
-            if (anyUntraced) {
-                return Stream.of(
-                        new Problem("Check function allocation",
-                                // No automatic solutions
-                                Stream.empty()));
-            } else {
-                return Stream.empty();
-            }
-        } else {
-            return Stream.empty();
-        }
+    public static UnaryOperator<UndoState> all() {
+        return state -> {
+            state = IdentityMismatchAutoFix.fix(state);
+            return state;
+        };
     }
-
+    
 }

@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.baselines;
 
 import au.id.soundadvice.systemdesign.concurrent.Changed;
+import au.id.soundadvice.systemdesign.consistency.autofix.AutoFix;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
@@ -164,17 +165,8 @@ public class EditState {
         undo.reset(state);
         savedState.set(state);
 
-        // Fix id
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (functional.isPresent()) {
-            Identity correctedId = functional.get().getSystemOfInterest().asIdentity(
-                    functional.get().getStore());
-            AllocatedBaseline allocated = state.getAllocated();
-            if (!correctedId.equals(allocated.getIdentity())) {
-                // Identity mismatch - autofix.
-                undo.set(state.setAllocated(allocated.setIdentity(correctedId)));
-            }
-        }
+        // Set undo again here to allow automatic changes to be undone
+        undo.update(AutoFix.all());
     }
 
     public boolean saveNeeded() {

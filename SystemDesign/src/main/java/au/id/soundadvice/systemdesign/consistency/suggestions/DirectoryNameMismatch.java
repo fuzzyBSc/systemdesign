@@ -24,9 +24,12 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.consistency.Problem;
+import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import au.id.soundadvice.systemdesign.consistency.Solution;
 import au.id.soundadvice.systemdesign.files.Directory;
 import java.io.IOException;
 import java.nio.file.Files;

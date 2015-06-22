@@ -29,7 +29,7 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.consistency.AllProblems;
+import au.id.soundadvice.systemdesign.consistency.suggestions.AllSuggestions;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -110,7 +110,7 @@ public class MainController implements Initializable {
         logicalController = new LogicalTabs(interactions, edit, tabs);
         logicalController.start();
         suggestionsController = new SuggestionsController(
-                edit, suggestions, new AllProblems());
+                edit, suggestions, new AllSuggestions());
         suggestionsController.start();
 
         upButton.setOnAction(event -> {

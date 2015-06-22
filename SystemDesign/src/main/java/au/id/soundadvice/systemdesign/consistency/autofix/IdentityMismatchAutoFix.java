@@ -24,27 +24,33 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package au.id.soundadvice.systemdesign.consistency.autofix;
 
-import au.id.soundadvice.systemdesign.baselines.EditState;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
+import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.Identity;
+import java.util.Optional;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class AllProblems implements ProblemFactory {
+public class IdentityMismatchAutoFix {
 
-    private final List<ProblemFactory> factories = Arrays.asList(
-            new DirectoryNameMismatch(),
-            new ItemConsistency(),
-            new UntracedFunctions());
-
-    @Override
-    public Stream<Problem> getProblems(EditState state) {
-        return factories.parallelStream()
-                .flatMap(factory -> factory.getProblems(state).parallel());
+    static UndoState fix(UndoState state) {
+        // Fix id
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (functional.isPresent()) {
+            Identity correctedId = functional.get().getSystemOfInterest().asIdentity(
+                    functional.get().getStore());
+            AllocatedBaseline allocated = state.getAllocated();
+            if (!correctedId.equals(allocated.getIdentity())) {
+                // Identity mismatch - autofix.
+                return state.setAllocated(allocated.setIdentity(correctedId));
+            }
+        }
+        return state;
     }
+
 }

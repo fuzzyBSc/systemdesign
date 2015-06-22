@@ -24,39 +24,37 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency;
+package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.consistency.Problem;
+import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import java.util.stream.Stream;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Problem {
+public class UntracedFunctions implements ProblemFactory {
 
     @Override
-    public String toString() {
-        return description + ": " + solutions;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public Stream<Solution> getSolutions() {
-        return solutions.stream();
-    }
-
-    private final String description;
-    private final List<Solution> solutions;
-
-    public Problem(String description, Stream<Solution> solutions) {
-        this.description = description;
-        this.solutions = Collections.unmodifiableList(
-                solutions.collect(Collectors.toList()));
+    public Stream<Problem> getProblems(EditState edit) {
+        UndoState state = edit.getUndo().get();
+        if (state.getFunctional().isPresent()) {
+            boolean anyUntraced = state.getAllocated().getFunctions().parallel()
+                    .anyMatch(function -> !function.getTrace().isPresent());
+            if (anyUntraced) {
+                return Stream.of(
+                        new Problem("Check function allocation",
+                                // No automatic solutions
+                                Stream.empty()));
+            } else {
+                return Stream.empty();
+            }
+        } else {
+            return Stream.empty();
+        }
     }
 
 }
