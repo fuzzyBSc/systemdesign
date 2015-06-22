@@ -34,7 +34,6 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.io.FileUtils;
 
 /**
  * A crude two-phase commit. It doesn't guarantee atomicity but will generally
@@ -66,7 +65,7 @@ public class SaveTransaction implements Closeable {
     public void commit() throws IOException {
         for (Job job : jobs) {
             if (Files.exists(job.tempFile)) {
-                if (FileUtils.contentEquals(job.tempFile.toFile(), job.realFile.toFile())) {
+                if (FileUtils.contentEquals(job.tempFile, job.realFile)) {
                     // Don't overwrite if identical. Delete temp file in close.
                 } else {
                     Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);

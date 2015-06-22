@@ -80,7 +80,10 @@ public class ItemConsistency implements ProblemFactory {
 
     @Override
     public Stream<Problem> getProblems(EditState edit) {
-        return checkConsistency(edit.getUndo().get());
+        UndoState state = edit.getUndo().get();
+        return Stream.concat(
+                checkConsistencyDown(state),
+                checkConsistencyUp(state));
     }
 
     /**
@@ -89,7 +92,7 @@ public class ItemConsistency implements ProblemFactory {
      * @param state The undo buffer state to work from
      * @return The list of identified problems and solutions
      */
-    public static Stream<Problem> checkConsistency(UndoState state) {
+    public static Stream<Problem> checkConsistencyDown(UndoState state) {
         Optional<FunctionalBaseline> functional = state.getFunctional();
         if (!functional.isPresent()) {
             return Stream.empty();
@@ -98,7 +101,7 @@ public class ItemConsistency implements ProblemFactory {
         RelationStore parentStore = functional.get().getStore();
         RelationStore childStore = state.getAllocated().getStore();
 
-        Stream<Problem> downProblems = getInterfaces(parentStore, system)
+        return getInterfaces(parentStore, system)
                 .flatMap(iface -> {
                     Item parentItem = iface.otherEnd(parentStore, system);
                     Optional<Item> childItem = childStore.get(parentItem.getUuid(), Item.class);
@@ -119,7 +122,7 @@ public class ItemConsistency implements ProblemFactory {
                         } else {
                             consistency = Stream.empty();
                         }
-                        Stream<Problem> flows = FunctionConsistency.checkConsistency(state, iface);
+                        Stream<Problem> flows = FunctionConsistency.checkConsistencyDown(state, iface);
                         return Stream.concat(consistency, flows);
                     } else {
                         String name = parentItem.getDisplayName();
@@ -133,15 +136,39 @@ public class ItemConsistency implements ProblemFactory {
                                                 ))));
                     }
                 });
+    }
 
-        Stream<Problem> upProblems
-                = childStore.getByClass(Item.class)
-                .filter((item) -> {
-                    return item.isExternal() && parentStore.getReverse(system.getUuid(), Interface.class)
-                    .noneMatch((iface) -> item.getUuid().equals(
-                                    iface.otherEnd(parentStore, system).getUuid()));
-                })
+    /**
+     * Figure out whether external items in the allocated baseline exist in the
+     * functional baseline.
+     *
+     * @param state The undo buffer state to work from
+     * @return The list of identified problems and solutions
+     */
+    public static Stream<Problem> checkConsistencyUp(UndoState state) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
+            return Stream.empty();
+        }
+        Item system = functional.get().getSystemOfInterest();
+        RelationStore parentStore = functional.get().getStore();
+        RelationStore childStore = state.getAllocated().getStore();
+
+        return childStore.getByClass(Item.class)
+                .filter(Item::isExternal)
                 .flatMap((item) -> {
+                    Optional<Interface> interfaceInParent
+                    = parentStore.getReverse(system.getUuid(), Interface.class)
+                    .filter((iface) -> item.getUuid().equals(
+                                    iface.otherEnd(parentStore, system).getUuid()))
+                    .findAny();
+
+                    if (interfaceInParent.isPresent()) {
+                        // This item is fine. Check its functions.
+                        return FunctionConsistency.checkConsistencyUp(
+                                state, interfaceInParent.get(), item.getUuid());
+                    }
+
                     String name = item.getDisplayName();
                     String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
                     if (parentStore.get(item.getUuid(), Item.class).isPresent()) {
@@ -172,7 +199,5 @@ public class ItemConsistency implements ProblemFactory {
                                                 new DisabledSolution("Flow up"))));
                     }
                 });
-
-        return Stream.concat(downProblems, upProblems);
     }
 }

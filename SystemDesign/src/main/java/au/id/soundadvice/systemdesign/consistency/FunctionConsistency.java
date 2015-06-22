@@ -100,7 +100,7 @@ public class FunctionConsistency {
      * @param iface The interface to analyse
      * @return The problems and solutions identified
      */
-    public static Stream<Problem> checkConsistency(UndoState state, Interface iface) {
+    public static Stream<Problem> checkConsistencyDown(UndoState state, Interface iface) {
         Optional<FunctionalBaseline> functional = state.getFunctional();
         if (!functional.isPresent()) {
             return Stream.empty();
@@ -111,7 +111,7 @@ public class FunctionConsistency {
 
         Item externalItem = iface.otherEnd(parentStore, system);
 
-        Stream<Problem> downProblems = parentStore.getReverse(externalItem.getUuid(), Function.class)
+        return parentStore.getReverse(externalItem.getUuid(), Function.class)
                 .filter(hasFlowsOnInterface(parentStore, iface.getUuid()))
                 .flatMap(parentFunction -> {
                     Optional<Function> childFunction = childStore.get(parentFunction.getUuid(), Function.class);
@@ -132,7 +132,7 @@ public class FunctionConsistency {
                             consistency = Stream.empty();
                         }
                         Stream<Problem> flows = FlowConsistency.checkConsistency(
-                                state, iface, parentFunction.getUuid(),
+                                state, iface.getUuid(), parentFunction.getUuid(),
                                 parentFunction.getName());
                         return Stream.concat(consistency, flows);
                     } else {
@@ -156,10 +156,30 @@ public class FunctionConsistency {
                                                 }))));
                     }
                 });
+    }
 
-        Stream<Problem> upProblems
-                = childStore.getByClass(Function.class)
-                .filter((externalFunction) -> {
+    /**
+     * Figure out whether external functions in allocated baseline exist in
+     * functional baseline.
+     *
+     * @param state The undo state to work from
+     * @param parentInterface The parent interface that connects the system of
+     * interest to the externalItem
+     * @param externalItemUUID The item to analyse
+     * @return The problems and solutions identified
+     */
+    public static Stream<Problem> checkConsistencyUp(
+            UndoState state, Interface parentInterface, UUID externalItemUUID) {
+        Optional<FunctionalBaseline> functional = state.getFunctional();
+        if (!functional.isPresent()) {
+            return Stream.empty();
+        }
+        Item system = functional.get().getSystemOfInterest();
+        RelationStore parentStore = functional.get().getStore();
+        RelationStore childStore = state.getAllocated().getStore();
+
+        return childStore.getReverse(externalItemUUID, Function.class)
+                .filter(externalFunction -> {
                     return externalFunction.isExternal() && parentStore.getReverse(system.getUuid(), Function.class)
                     .flatMap(systemFunction -> parentStore.getReverse(systemFunction.getUuid(), Flow.class))
                     .noneMatch((flow) -> externalFunction.getUuid().equals(
@@ -173,7 +193,7 @@ public class FunctionConsistency {
                          * to FlowConsistency.
                          */
                         return FlowConsistency.checkConsistency(
-                                state, iface,
+                                state, parentInterface.getUuid(),
                                 function.getUuid(), function.getName());
                     } else {
                         /*
@@ -190,7 +210,5 @@ public class FunctionConsistency {
                     }
 
                 });
-
-        return Stream.concat(downProblems, upProblems);
     }
 }

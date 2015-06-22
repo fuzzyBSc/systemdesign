@@ -33,7 +33,6 @@ import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Iterator;
@@ -109,7 +108,7 @@ public class FlowConsistency {
      * baseline.
      *
      * @param state The undo buffer state to work from
-     * @param iface The parent interface to scope the analysis to
+     * @param parentInterfaceUUID The parent interface to scope the analysis to
      * @param externalParentFunctionUUID The external parent function to scope
      * analysis to
      * @param externalFunctionDescription The display name of the external
@@ -117,7 +116,7 @@ public class FlowConsistency {
      * @return The list of problems identified
      */
     public static Stream<Problem> checkConsistency(
-            UndoState state, Interface iface,
+            UndoState state, UUID parentInterfaceUUID,
             UUID externalParentFunctionUUID,
             String externalFunctionDescription) {
         RelationStore parentStore;
@@ -133,7 +132,7 @@ public class FlowConsistency {
         // system function -> flow type -> flow direction from external function
         Map<UUID, Map<String, Direction>> parentFlows = getFlowTypes(
                 externalParentFunctionUUID,
-                parentStore.getReverse(iface.getUuid(), Flow.class)
+                parentStore.getReverse(parentInterfaceUUID, Flow.class)
                 .filter(flow -> flow.getScope().hasEnd(externalParentFunctionUUID)),
                 optionalUUID -> optionalUUID);
         Map<UUID, Map<String, Direction>> childFlows = getFlowTypes(

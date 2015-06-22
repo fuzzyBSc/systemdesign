@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -54,5 +55,37 @@ public class FileUtils {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    static boolean contentEquals(Path leftPath, Path rightPath) throws IOException {
+        boolean leftExists = Files.exists(leftPath);
+        boolean rightExists = Files.exists(rightPath);
+        if (!leftExists && !rightExists) {
+            return true;
+        }
+        if (leftExists != rightExists) {
+            return false;
+        }
+        if (Files.isSameFile(leftPath, rightPath)) {
+            return true;
+        }
+        // Both exist
+        try (BufferedReader leftStream = Files.newBufferedReader(leftPath);
+                BufferedReader rightStream = Files.newBufferedReader(rightPath)) {
+            for (;;) {
+                String leftLine = leftStream.readLine();
+                String rightLine = rightStream.readLine();
+                if (leftLine == null && rightLine == null) {
+                    return true;
+                }
+                if ((leftLine == null) != (rightLine == null)) {
+                    return false;
+                }
+                assert leftLine != null && rightLine != null;
+                if (!leftLine.equals(rightLine)) {
+                    return false;
+                }
+            }
+        }
     }
 }
