@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.baselines;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.beans.FlowBean;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
+import au.id.soundadvice.systemdesign.beans.FunctionViewBean;
 import au.id.soundadvice.systemdesign.beans.HazardBean;
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.beans.InterfaceBean;
@@ -41,6 +42,7 @@ import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Hazard;
 import au.id.soundadvice.systemdesign.model.IDSegment;
 import au.id.soundadvice.systemdesign.model.Identity;
@@ -116,6 +118,10 @@ public class AllocatedBaseline {
         return store.getByClass(Function.class);
     }
 
+    public Stream<FunctionView> getFunctionViews() {
+        return store.getByClass(FunctionView.class);
+    }
+
     public Stream<Flow> getFlows() {
         return store.getByClass(Flow.class);
     }
@@ -179,6 +185,19 @@ public class AllocatedBaseline {
             }
         }
 
+        if (Files.exists(directory.getFunctionViews())) {
+            try (BeanReader<FunctionViewBean> reader = BeanReader.forPath(FunctionViewBean.class, directory.getFunctionViews())) {
+                for (;;) {
+                    Optional<FunctionViewBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new FunctionView(bean.get()));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
         if (Files.exists(directory.getFlows())) {
             try (BeanReader<FlowBean> reader = BeanReader.forPath(FlowBean.class, directory.getFlows())) {
                 for (;;) {
@@ -229,6 +248,7 @@ public class AllocatedBaseline {
             BeanFile.saveModel(transaction, context, directory.getItems(), ItemBean.class, store.getByClass(Item.class));
             BeanFile.saveModel(transaction, context, directory.getInterfaces(), InterfaceBean.class, store.getByClass(Interface.class));
             BeanFile.saveModel(transaction, context, directory.getFunctions(), FunctionBean.class, store.getByClass(Function.class));
+            BeanFile.saveModel(transaction, context, directory.getFunctionViews(), FunctionViewBean.class, store.getByClass(FunctionView.class));
             BeanFile.saveModel(transaction, context, directory.getFlows(), FlowBean.class, store.getByClass(Flow.class));
             BeanFile.saveModel(transaction, context, directory.getHazards(), HazardBean.class, store.getByClass(Hazard.class));
             BeanFile.saveModel(transaction, context, directory.getRequirements(), RequirementBean.class, store.getByClass(Requirement.class));

@@ -34,7 +34,7 @@ import java.util.UUID;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FunctionBean implements Identifiable {
+public class FunctionViewBean implements Identifiable {
 
     public String getDescription() {
         return description;
@@ -44,32 +44,36 @@ public class FunctionBean implements Identifiable {
         this.description = description;
     }
 
-    public UUID getTrace() {
-        return trace;
+    public int getOriginX() {
+        return originX;
     }
 
-    public void setTrace(UUID trace) {
-        this.trace = trace;
+    public void setOriginX(int originX) {
+        this.originX = originX;
     }
 
-    public boolean isExternal() {
-        return external;
+    public int getOriginY() {
+        return originY;
     }
 
-    public void setExternal(boolean value) {
-        this.external = value;
+    public void setOriginY(int originY) {
+        this.originY = originY;
+    }
+
+    public UUID getDrawing() {
+        return drawing;
+    }
+
+    public void setDrawing(UUID drawing) {
+        this.drawing = drawing;
     }
 
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
 
-    public void setItem(UUID item) {
-        this.item = item;
-    }
-
-    public void setName(String name) {
-        this.name = name;
+    public void setFunction(UUID function) {
+        this.function = function;
     }
 
     @Override
@@ -77,30 +81,26 @@ public class FunctionBean implements Identifiable {
         return uuid;
     }
 
-    public UUID getItem() {
-        return item;
+    public UUID getFunction() {
+        return function;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public FunctionBean(UUID uuid, UUID item, String description, Optional<UUID> trace, boolean external, String name) {
+    public FunctionViewBean(UUID uuid, UUID function, String description, Optional<UUID> drawing, int originX, int originY) {
         this.uuid = uuid;
-        this.item = item;
+        this.function = function;
         this.description = description;
-        this.trace = trace.orElse(null);
-        this.external = external;
-        this.name = name;
+        this.drawing = drawing.orElse(null);
+        this.originX = originX;
+        this.originY = originY;
     }
 
-    public FunctionBean() {
+    public FunctionViewBean() {
     }
 
     private UUID uuid;
-    private UUID item;
+    private UUID function;
+    private UUID drawing;
+    private int originX;
+    private int originY;
     private String description;
-    private UUID trace;
-    private boolean external;
-    private String name;
 }

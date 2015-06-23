@@ -38,8 +38,9 @@ public class AutoFix {
     public static UnaryOperator<UndoState> all() {
         return state -> {
             state = IdentityMismatchAutoFix.fix(state);
+            state = FunctionViewAutoFix.fix(state);
             return state;
         };
     }
-    
+
 }

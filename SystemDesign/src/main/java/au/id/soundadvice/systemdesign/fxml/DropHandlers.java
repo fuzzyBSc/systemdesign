@@ -34,6 +34,7 @@ import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget.Drop;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.HashMap;
@@ -61,6 +62,21 @@ public class DropHandlers {
 
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
+                UndoState state, UUID sourceUUID, UUID targetUUID) {
+            Optional<FunctionView> sourceView
+                    = state.getAllocatedInstance(sourceUUID, FunctionView.class);
+            if (sourceView.isPresent()) {
+                sourceUUID = sourceView.get().getFunction().getUuid();
+            }
+            Optional<FunctionView> targetView
+                    = state.getAllocatedInstance(targetUUID, FunctionView.class);
+            if (targetView.isPresent()) {
+                targetUUID = targetView.get().getFunction().getUuid();
+            }
+            return getActionsImpl(state, sourceUUID, targetUUID);
+        }
+
+        private Map<TransferMode, BooleanSupplier> getActionsImpl(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
             Optional<Function> sourceChildFunction = state.getAllocatedInstance(

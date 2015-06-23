@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -76,9 +75,6 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
-        if (!Objects.equals(this.origin, other.origin)) {
-            return false;
-        }
         return true;
     }
 
@@ -100,7 +96,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return new Function(
                 other.getUuid(),
                 other.getItem().getUuid(), trace, external,
-                other.name, origin);
+                other.name);
     }
 
     @Override
@@ -108,10 +104,8 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return name;
     }
 
-    private static Point2D defaultOrigin = new Point2D(200, 200);
-
     public static Function createNew(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, Optional.empty(), false, name, defaultOrigin);
+        return new Function(UUID.randomUUID(), item, Optional.empty(), false, name);
     }
 
     @Override
@@ -141,16 +135,14 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         this.external = bean.isExternal();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
         this.name = bean.getName();
-        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
-    private Function(UUID uuid, UUID item, Optional<UUID> trace, boolean external, String name, Point2D origin) {
+    private Function(UUID uuid, UUID item, Optional<UUID> trace, boolean external, String name) {
         this.uuid = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
         this.external = external;
         this.name = name;
-        this.origin = origin;
     }
 
     private final UUID uuid;
@@ -158,7 +150,6 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     private final Optional<UUID> trace;
     private final boolean external;
     private final String name;
-    private final Point2D origin;
 
     @Override
     public RequirementType getRequirementType() {
@@ -168,8 +159,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     @Override
     public FunctionBean toBean(RelationContext context) {
         return new FunctionBean(
-                uuid, item.getUuid(), getDisplayName(context), trace, external, name,
-                (int) origin.getX(), (int) origin.getY());
+                uuid, item.getUuid(), getDisplayName(context), trace, external, name);
     }
 
     public String getDisplayName(RelationContext context) {
@@ -194,27 +184,18 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
 
     @CheckReturnValue
     public Function setName(String value) {
-        return new Function(uuid, item.getUuid(), trace, external, value, origin);
+        return new Function(uuid, item.getUuid(), trace, external, value);
     }
 
     @CheckReturnValue
     public Function setTrace(UUID value) {
-        return new Function(uuid, item.getUuid(), Optional.of(value), external, name, origin);
-    }
-
-    @CheckReturnValue
-    public Function setOrigin(Point2D value) {
-        return new Function(uuid, item.getUuid(), trace, external, name, value);
-    }
-
-    public Point2D getOrigin() {
-        return origin;
+        return new Function(uuid, item.getUuid(), Optional.of(value), external, name);
     }
 
     public Function asExternal(UUID allocateToParentFunction) {
         return new Function(
                 uuid, item.getUuid(),
                 Optional.of(allocateToParentFunction), true,
-                name, origin);
+                name);
     }
 }

@@ -40,7 +40,8 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.model.Flow;
-import au.id.soundadvice.systemdesign.model.DirectedPair;
+import au.id.soundadvice.systemdesign.model.FunctionView;
+import au.id.soundadvice.systemdesign.model.UndirectedPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,7 +105,7 @@ class LogicalSchematicController {
         }
     }
 
-    private Node toNode(Function function, Item item) {
+    private Node toNode(FunctionView view, Function function, Item item) {
         Label label = new Label(
                 function.getName() + '\n'
                 + '(' + item.getDisplayName() + ')');
@@ -135,8 +136,8 @@ class LogicalSchematicController {
         if (function.isExternal()) {
             group.getStyleClass().add("external");
         }
-        group.setLayoutX(function.getOrigin().getX());
-        group.setLayoutY(function.getOrigin().getY());
+        group.setLayoutX(view.getOrigin().getX());
+        group.setLayoutY(view.getOrigin().getY());
 
         ContextMenu contextMenu = ContextMenus.functionContextMenu(
                 item, function, interactions, edit);
@@ -215,7 +216,7 @@ class LogicalSchematicController {
         return group;
     }
 
-    private Node toNode(Function left, Function right, List<Flow> flows) {
+    private Node toNode(FunctionView left, FunctionView right, List<Flow> flows) {
         Point2D leftOrigin = left.getOrigin();
         Point2D rightOrigin = right.getOrigin();
         boolean reverseDirection = false;
@@ -266,27 +267,44 @@ class LogicalSchematicController {
 
     public void populate(
             AllocatedBaseline allocated,
-            Map<UUID, Function> functions,
-            Map<DirectedPair, List<Flow>> flows) {
+            Optional<UUID> drawing,
+            Map<UUID, FunctionView> drawingFunctionViews,
+            Map<UndirectedPair, List<Flow>> flows) {
         Pane pane = new AnchorPane();
         flows.entrySet().forEach(entry -> {
-            Function left = functions.get(entry.getKey().getLeft());
-            Function right = functions.get(entry.getKey().getRight());
+            FunctionView left = drawingFunctionViews.get(entry.getKey().getLeft());
+            FunctionView right = drawingFunctionViews.get(entry.getKey().getRight());
             if (left != null && right != null) {
+                /*
+                 * The ordering of function view UUIDs and the ordering of the
+                 * function UUIDs may differ. This will affect the direction
+                 * drawn for the flows. We need to correct that here.
+                 */
+                {
+                    UUID leftFunctionUUID = left.getFunction().getUuid();
+                    UUID rightFunctionUUID = right.getFunction().getUuid();
+                    if (leftFunctionUUID.compareTo(rightFunctionUUID)
+                            != left.getUuid().compareTo(right.getUuid())) {
+                        FunctionView tmp = left;
+                        left = right;
+                        right = tmp;
+                    }
+                }
                 Node node = toNode(left, right, entry.getValue());
                 pane.getChildren().add(node);
             }
         });
-        functions.values().forEach(function -> {
+        drawingFunctionViews.values().forEach(functionView -> {
+            Function function = functionView.getFunction().getTarget(allocated.getStore());
             Item item = function.getItem().getTarget(allocated.getStore());
-            Node node = toNode(function, item);
+            Node node = toNode(functionView, function, item);
 
-            new MoveHandler(pane, node, new Move(function.getUuid()),
+            new MoveHandler(pane, node, new Move(functionView.getUuid()),
                     new GridSnap(10),
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
-            DragSource.bind(node, function, true);
-            DragTarget.bind(edit, node, function,
+            DragSource.bind(node, functionView, true);
+            DragTarget.bind(edit, node, functionView,
                     new FunctionDropHandler(interactions, edit));
             pane.getChildren().add(node);
         });
@@ -308,11 +326,11 @@ class LogicalSchematicController {
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
             edit.getUndo().update(state -> {
-                Optional<Function> existing = state.getAllocatedInstance(uuid, Function.class);
+                Optional<FunctionView> existing = state.getAllocatedInstance(uuid, FunctionView.class);
                 if (!existing.isPresent()) {
                     return state;
                 }
-                Function toAdd = existing.get().setOrigin(layoutCurrent);
+                FunctionView toAdd = existing.get().setOrigin(layoutCurrent);
                 return state.setAllocated(state.getAllocated().add(toAdd));
             });
         }
