@@ -13,7 +13,7 @@ Homepage: http://maven.apache.org
 
 Package: systemdesign
 Architecture: all
-Depends: ${misc:Depends}, ${maven:Depends}
+Depends: ${misc:Depends}, ${maven:Depends}, java8-runtime, openjfx
 Suggests: ${maven:OptionalDepends}, systemdesign-doc
 Description: SystemDesign
  A simple modelling tool for INCOSE-style systems engineering. That is,
