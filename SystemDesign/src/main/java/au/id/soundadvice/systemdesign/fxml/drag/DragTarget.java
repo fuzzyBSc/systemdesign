@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.Map;
 import java.util.Optional;

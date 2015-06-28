@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
@@ -122,9 +122,9 @@ public class FunctionConsistency {
                         return Stream.concat(consistency, flows);
                     } else {
                         String name = parentFunction.getName();
-                        String parentId = system.get().getIdPath(problemFunctional).toString();
+                        String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
+                                        name + " is missing in\n" + parentId, Stream.of(
                                                 UpdateSolution.update("Flow down",
                                                         solutionState -> flowDown(solutionState, parentFunction)),
                                                 UpdateSolution.update("Flow up", solutionState -> {
@@ -186,9 +186,9 @@ public class FunctionConsistency {
                          * The parent instance of the external function doesn't
                          * exist at all
                          */
-                        String parentId = system.get().getIdPath(problemFunctional).toString();
+                        String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
+                                        name + " is missing in\n" + parentId, Stream.of(
                                                 UpdateSolution.updateAllocated("Flow down", solutionAllocated
                                                         -> allocatedExternalFunction.removeFrom(solutionAllocated)
                                                 ),

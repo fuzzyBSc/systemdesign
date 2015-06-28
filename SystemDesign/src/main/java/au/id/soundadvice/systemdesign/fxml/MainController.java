@@ -40,7 +40,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
@@ -61,7 +61,7 @@ public class MainController implements Initializable {
     @FXML
     private Button downButton;
     @FXML
-    private ScrollPane physicalDrawing;
+    private Tab physicalDrawing;
     @FXML
     private Pane suggestions;
     @FXML

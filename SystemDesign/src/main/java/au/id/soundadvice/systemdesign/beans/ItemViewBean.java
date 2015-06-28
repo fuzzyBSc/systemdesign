@@ -81,6 +81,7 @@ public class ItemViewBean implements Identifiable {
             double originX, double originY) {
         this.uuid = uuid;
         this.item = item;
+        this.description = description;
         this.originX = originX;
         this.originY = originY;
     }

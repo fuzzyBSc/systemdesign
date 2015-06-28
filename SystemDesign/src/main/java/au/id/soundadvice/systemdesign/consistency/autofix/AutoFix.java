@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.function.UnaryOperator;
 
 /**
@@ -39,6 +39,7 @@ public class AutoFix {
         return state -> {
             state = IdentityMismatchAutoFix.fix(state);
             state = FunctionViewAutoFix.fix(state);
+            state = ItemViewAutoFix.fix(state);
             return state;
         };
     }

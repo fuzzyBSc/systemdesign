@@ -28,7 +28,7 @@ package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.function.UnaryOperator;
 
 /**

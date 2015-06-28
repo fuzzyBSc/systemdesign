@@ -85,6 +85,25 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         return true;
     }
 
+    /**
+     * Create a new item view.
+     *
+     * @param baseline The baseline to update
+     * @param item The item this view refers to
+     * @param origin The location for the item on the screen
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<ItemView> create(Baseline baseline, Item item, Point2D origin) {
+        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin);
+        return baseline.add(view).and(view);
+    }
+
+    @CheckReturnValue
+    public Baseline removeFrom(Baseline baseline) {
+        return baseline.remove(uuid);
+    }
+
     @Override
     public String toString() {
         return origin.toString();
@@ -128,7 +147,7 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         return finder.getReferences(this);
     }
 
-    ItemView(UUID uuid, UUID item, Point2D origin) {
+    private ItemView(UUID uuid, UUID item, Point2D origin) {
         this.uuid = uuid;
         this.item = new Reference(this, item, Item.class);
         this.origin = origin;
@@ -136,7 +155,7 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
 
     @CheckReturnValue
     public BaselineAnd<ItemView> setOrigin(Baseline baseline, Point2D origin) {
-        if (origin.equals(origin)) {
+        if (this.origin.equals(origin)) {
             return baseline.and(this);
         } else {
             ItemView result = new ItemView(uuid, item.getUuid(), origin);

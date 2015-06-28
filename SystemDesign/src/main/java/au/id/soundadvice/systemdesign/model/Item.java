@@ -26,8 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.baselines.UndoState;
-import au.id.soundadvice.systemdesign.baselines.UndoState.StateAnd;
+import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.ItemBean;
 import au.id.soundadvice.systemdesign.fxml.UniqueName;
@@ -141,9 +140,10 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
                 UUID.randomUUID(),
                 baseline.getIdentity().getUuid(),
                 getNextItemId(baseline), name, false);
+        baseline = baseline.add(item);
         // Also add the coresponding view
-        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin);
-        return baseline.add(item).add(view).and(item);
+        baseline = ItemView.create(baseline, item, origin).getBaseline();
+        return baseline.and(item);
     }
 
     /**
@@ -182,9 +182,8 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         allocated = allocated.add(item);
         // Also add the coresponding view
         ItemView viewTemplate = template.getView(functional);
-        ItemView view = new ItemView(
-                UUID.randomUUID(), item.getUuid(), viewTemplate.getOrigin());
-        allocated = allocated.add(view);
+        allocated = ItemView.create(allocated, item, viewTemplate.getOrigin())
+                .getBaseline();
         return state.setAllocated(allocated).and(item);
     }
 
@@ -338,7 +337,10 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
     }
 
     public ItemView getView(Baseline baseline) {
-        Stream<ItemView> result = baseline.getReverse(uuid, ItemView.class);
-        return result.findAny().get();
+        return getViews(baseline).findAny().get();
+    }
+
+    public Stream<ItemView> getViews(Baseline baseline) {
+        return baseline.getReverse(uuid, ItemView.class);
     }
 }

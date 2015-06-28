@@ -27,39 +27,47 @@
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.model.UndoState;
-import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.model.Baseline;
-import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
+import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.model.UndoState;
+import java.util.Optional;
+import java.util.concurrent.Executors;
+import javafx.geometry.Point2D;
+import org.junit.Test;
+import static org.junit.Assert.*;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class UntracedFunctions implements ProblemFactory {
+public class UntracedFunctionsTest {
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getUndo().get();
-        if (state.getSystemOfInterest().isPresent()) {
+    /**
+     * Test of getProblems method, of class UntracedFunctions.
+     */
+    @Test
+    public void testGetProblems() {
+        System.out.println("getProblems");
+        EditState edit = EditState.init(Executors.newCachedThreadPool());
+        edit.update(state -> {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
-            boolean anyUntraced = allocated.getFunctions().parallel()
-                    .anyMatch(function
-                            -> !function.isExternal()
-                            && !function.getTrace(functional).isPresent());
-            if (anyUntraced) {
-                return Stream.of(
-                        new Problem("Check function allocation",
-                                // No automatic solutions
-                                Stream.empty()));
-            } else {
-                return Stream.empty();
-            }
-        } else {
-            return Stream.empty();
-        }
+            BaselineAnd<Item> itemTuple = Item.create(functional, Point2D.ZERO);
+            functional = itemTuple.getBaseline();
+            allocated = allocated.setIdentity(itemTuple.getRelation().asIdentity(functional));
+
+            System.out.println("Create an item with unallocated function");
+            itemTuple = Item.create(allocated, Point2D.ZERO);
+            allocated = itemTuple.getBaseline();
+            BaselineAnd<Function> functionTuple = Function.create(allocated, itemTuple.getRelation(), Optional.empty(), "Function", Point2D.ZERO);
+            allocated = functionTuple.getBaseline();
+
+            return new UndoState(functional, allocated);
+        });
+        UntracedFunctions instance = new UntracedFunctions();
+        assertEquals(1, instance.getProblems(edit).count());
     }
 
 }

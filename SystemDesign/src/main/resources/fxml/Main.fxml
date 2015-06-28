@@ -87,9 +87,9 @@
          <center>
             <TabPane fx:id="tabs" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
               <tabs>
-                <Tab text="Physical">
+                <Tab fx:id="physicalDrawing" text="Physical">
                      <content>
-                        <ScrollPane fx:id="physicalDrawing">
+                        <ScrollPane>
                           <content>
                             <AnchorPane minHeight="0.0" minWidth="0.0" />
                           </content>

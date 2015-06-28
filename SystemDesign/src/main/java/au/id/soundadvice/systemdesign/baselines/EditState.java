@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.baselines;
 
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.consistency.autofix.AutoFix;

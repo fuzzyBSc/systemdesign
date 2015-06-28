@@ -28,7 +28,7 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
@@ -41,6 +41,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -53,6 +54,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -68,6 +70,7 @@ public class PhysicalSchematicController {
 
     private final EditState edit;
     private final UndoBuffer<UndoState> undo;
+    private final Tab tab;
     private final Pane pane;
     private final SingleRunnable onChange = new SingleRunnable(
             JFXExecutor.instance(), new OnChange());
@@ -75,9 +78,11 @@ public class PhysicalSchematicController {
 
     PhysicalSchematicController(
             Interactions interactions, EditState edit,
-            ScrollPane scrollPane) {
+            Tab tab) {
         this.edit = edit;
         this.undo = edit.getUndo();
+        this.tab = tab;
+        ScrollPane scrollPane = (ScrollPane) tab.getContent();
         this.pane = (Pane) scrollPane.getContent();
         this.interactions = interactions;
 
@@ -175,6 +180,12 @@ public class PhysicalSchematicController {
         public void run() {
             pane.getChildren().clear();
             Baseline baseline = undo.get().getAllocated();
+            Identity identity = baseline.getIdentity();
+            if (identity.getIdPath().isEmpty()) {
+                tab.setText("Physical");
+            } else {
+                tab.setText(identity.toString());
+            }
             baseline.getInterfaces().forEach(iface -> {
                 addNode(pane, baseline, iface);
             });

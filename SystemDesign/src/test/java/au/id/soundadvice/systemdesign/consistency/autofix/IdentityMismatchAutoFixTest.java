@@ -27,30 +27,46 @@
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.model.UndoState;
-import au.id.soundadvice.systemdesign.model.Identity;
+import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
-import java.util.Optional;
+import au.id.soundadvice.systemdesign.model.UndoState;
+import java.util.concurrent.atomic.AtomicReference;
+import javafx.geometry.Point2D;
+import org.junit.Test;
+import static org.junit.Assert.*;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class IdentityMismatchAutoFix {
+public class IdentityMismatchAutoFixTest {
 
-    static UndoState fix(UndoState state) {
-        // Fix id
-        Optional<Item> systemOfInterest = state.getSystemOfInterest();
-        if (systemOfInterest.isPresent()) {
-            Identity correctedId = systemOfInterest.get().asIdentity(
-                    state.getFunctional());
+    /**
+     * Test of fix method, of class IdentityMismatchAutoFix.
+     */
+    @Test
+    public void testFix() {
+        System.out.println("fix");
+
+        UndoState state = UndoState.createNew();
+        AtomicReference<Item> systemOfInterest = new AtomicReference<>();
+        {
+            Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
-            if (!correctedId.equals(allocated.getIdentity())) {
-                // Identity mismatch - autofix.
-                return state.setAllocated(allocated.setIdentity(correctedId));
-            }
+            Baseline.BaselineAnd<Item> pair = Item.create(functional, Point2D.ZERO);
+            functional = pair.getBaseline();
+            Item item = pair.getRelation();
+            systemOfInterest.set(item);
+            // Create a mismatched identity
+            allocated = allocated.setIdentity(
+                    item.asIdentity(functional).setId(
+                            IDPath.valueOfDotted("wrong.id")));
+
+            state = new UndoState(functional, allocated);
+            assertEquals("wrong.id", state.getAllocated().getIdentity().getIdPath().toString());
         }
-        return state;
+        UndoState result = IdentityMismatchAutoFix.fix(state);
+        assertEquals("1", result.getAllocated().getIdentity().getIdPath().toString());
     }
 
 }

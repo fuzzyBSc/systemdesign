@@ -24,16 +24,14 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.baselines;
+package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.model.Identity;
-import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -136,7 +134,7 @@ public class UndoState {
         return functional.getItemForIdentity(identity);
     }
 
-    private UndoState(Baseline functional, Baseline allocated) {
+    public UndoState(Baseline functional, Baseline allocated) {
         this.functional = functional;
         this.allocated = allocated;
     }
@@ -159,5 +157,41 @@ public class UndoState {
         } else {
             return new UndoState(functional, value);
         }
+    }
+
+    /**
+     * Modify the functional (ie parent) baseline. If no such baseline exists
+     * this method is a no-op.
+     *
+     * @param update A function to update the baseline.
+     * @return The updated state
+     */
+    @CheckReturnValue
+    public UndoState updateFunctional(UnaryOperator<Baseline> update) {
+        return update(state -> state.setFunctional(
+                update.apply(state.getFunctional())));
+    }
+
+    /**
+     * Modify the allocated (ie child) baseline.
+     *
+     * @param update A function to update the baseline.
+     * @return The updated state
+     */
+    @CheckReturnValue
+    public UndoState updateAllocated(UnaryOperator<Baseline> update) {
+        return update(state -> state.setAllocated(
+                update.apply(state.getAllocated())));
+    }
+
+    /**
+     * Modify both baselines
+     *
+     * @param update A function to update the baseline.
+     * @return The updated state
+     */
+    @CheckReturnValue
+    public UndoState update(UnaryOperator<UndoState> update) {
+        return update.apply(this);
     }
 }

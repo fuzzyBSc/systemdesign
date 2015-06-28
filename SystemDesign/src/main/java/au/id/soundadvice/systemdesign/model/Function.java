@@ -26,7 +26,6 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
 import au.id.soundadvice.systemdesign.fxml.UniqueName;

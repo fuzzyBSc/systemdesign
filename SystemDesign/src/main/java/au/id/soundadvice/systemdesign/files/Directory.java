@@ -56,6 +56,7 @@ public class Directory {
         this.root = root;
         this.identityFile = root.resolve("identity.csv");
         this.itemsFile = root.resolve("items.csv");
+        this.itemViewsFile = root.resolve("itemViews.csv");
         this.interfacesFile = root.resolve("interfaces.csv");
         this.functionsFile = root.resolve("functions.csv");
         this.functionViewsFile = root.resolve("functionViews.csv");
@@ -65,6 +66,7 @@ public class Directory {
     private final Path root;
     private final Path identityFile;
     private final Path itemsFile;
+    private final Path itemViewsFile;
     private final Path interfacesFile;
     private final Path functionsFile;
     private final Path functionViewsFile;
@@ -102,6 +104,10 @@ public class Directory {
 
     public Path getItems() {
         return itemsFile;
+    }
+
+    public Path getItemViews() {
+        return itemViewsFile;
     }
 
     public Path getInterfaces() {

@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
@@ -103,7 +103,7 @@ public class ItemConsistency implements ProblemFactory {
                     Optional<Item> childItem = problemAllocated.get(parentItem);
                     if (childItem.isPresent()) {
                         Stream<Problem> consistency;
-                        Item parentItemAsExternal = parentItem.asExternal(problemAllocated);
+                        Item parentItemAsExternal = parentItem.asExternal(problemFunctional);
                         if (!childItem.get().isConsistent(parentItemAsExternal)) {
                             String name = parentItemAsExternal.getDisplayName();
                             consistency = Stream.of(
@@ -122,9 +122,9 @@ public class ItemConsistency implements ProblemFactory {
                         return Stream.concat(consistency, flows);
                     } else {
                         String name = parentItem.getDisplayName();
-                        String parentId = system.get().getIdPath(problemAllocated).toString();
+                        String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
+                                        name + " is missing in\n" + parentId, Stream.of(
                                                 UpdateSolution.update("Flow down", solutionState
                                                         -> flowItemDown(solutionState, iface)),
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional
@@ -151,32 +151,33 @@ public class ItemConsistency implements ProblemFactory {
 
         return problemAllocated.getItems()
                 .filter(Item::isExternal)
-                .flatMap(item -> {
+                .flatMap(externalAllocatedItem -> {
                     Optional<Interface> functionalInterface
                     = system.get().getInterfaces(problemFunctional)
-                    .filter(iface -> system.get().equals(iface.otherEnd(problemFunctional, item)))
+                    .filter(iface -> externalAllocatedItem.getUuid().equals(
+                                    iface.otherEnd(problemFunctional, system.get()).getUuid()))
                     .findAny();
 
                     if (functionalInterface.isPresent()) {
                         // This item is fine. Check its functions.
                         return FunctionConsistency.checkConsistencyUp(
-                                state, functionalInterface.get(), item);
+                                state, functionalInterface.get(), externalAllocatedItem);
                     }
 
-                    String name = item.getDisplayName();
-                    String parentId = system.get().getIdPath(problemFunctional).toString();
-                    if (problemFunctional.get(item).isPresent()) {
+                    String name = externalAllocatedItem.getDisplayName();
+                    String parentId = system.get().getDisplayName();
+                    if (problemFunctional.get(externalAllocatedItem).isPresent()) {
                         /*
                          * The parent instance exists, just not the relevant
                          * interface.
                          */
                         return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> item.removeFrom(solutionAllocated)
+                                        name + " is missing in\n" + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
                                                 ),
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional -> {
                                                     return Interface.create(
-                                                            solutionFunctional, item, system.get())
+                                                            solutionFunctional, externalAllocatedItem, system.get())
                                                     .getBaseline();
                                                 }))));
                     } else {
@@ -187,7 +188,7 @@ public class ItemConsistency implements ProblemFactory {
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(
                                                 UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> item.removeFrom(solutionAllocated)
+                                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
                                                 ),
                                                 new DisabledSolution("Flow up"))));
                     }

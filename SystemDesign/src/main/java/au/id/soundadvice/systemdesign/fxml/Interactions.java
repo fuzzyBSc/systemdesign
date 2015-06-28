@@ -28,7 +28,7 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -36,6 +36,7 @@ import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
 import java.io.File;
@@ -80,9 +81,32 @@ public class Interactions {
     }
 
     void addFunctionToItem(Item item) {
-        edit.updateAllocated(baseline -> {
-            return Function.create(baseline, item).getBaseline();
-        });
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoState state = edit.getUndo().get();
+            Baseline allocated = state.getAllocated();
+            if (item.isExternal() || !allocated.get(item).isPresent()) {
+                return;
+            }
+
+            String name = allocated.getFunctions().parallel()
+                    .map(Function::getName)
+                    .collect(new UniqueName("New Function"));
+
+            TextInputDialog dialog = new TextInputDialog(name);
+            dialog.setTitle("Enter name for function");
+            dialog.setHeaderText("Enter name for function");
+
+            result = dialog.showAndWait();
+        }
+        if (result.isPresent()) {
+            edit.updateAllocated(baseline -> {
+                return Function.create(
+                        baseline, item, Optional.empty(), result.get(), FunctionView.defaultOrigin)
+                        .getBaseline();
+            });
+        }
     }
 
     void renumber(Item item) {

@@ -28,28 +28,50 @@ package au.id.soundadvice.systemdesign.consistency.autofix;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.UndoState;
-import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
-import java.util.Optional;
+import au.id.soundadvice.systemdesign.model.ItemView;
+import java.util.Iterator;
+import java.util.stream.Stream;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class IdentityMismatchAutoFix {
+public class ItemViewAutoFix {
 
     static UndoState fix(UndoState state) {
-        // Fix id
-        Optional<Item> systemOfInterest = state.getSystemOfInterest();
-        if (systemOfInterest.isPresent()) {
-            Identity correctedId = systemOfInterest.get().asIdentity(
-                    state.getFunctional());
+        final UndoState preRemoveState = state;
+        Stream<ItemView> removals = preRemoveState.getAllocated().getItems()
+                .flatMap(item -> {
+                    return item.getViews(preRemoveState.getAllocated())
+                    // One view should exist for each item, so skip that one
+                    .skip(1);
+                });
+        {
+            Iterator<ItemView> it = removals.iterator();
             Baseline allocated = state.getAllocated();
-            if (!correctedId.equals(allocated.getIdentity())) {
-                // Identity mismatch - autofix.
-                return state.setAllocated(allocated.setIdentity(correctedId));
+            while (it.hasNext()) {
+                ItemView view = it.next();
+                allocated = view.removeFrom(allocated);
             }
+            state = state.setAllocated(allocated);
         }
+
+        final UndoState preAddState = state;
+        Stream<Item> additions = preAddState.getAllocated().getItems()
+                .filter(item -> !item.getViews(preAddState.getAllocated()).findAny().isPresent());
+        {
+            Iterator<Item> it = additions.iterator();
+            Baseline allocated = state.getAllocated();
+            while (it.hasNext()) {
+                Item item = it.next();
+
+                allocated = ItemView.create(allocated, item, ItemView.defaultOrigin)
+                        .getBaseline();
+            }
+            state = state.setAllocated(allocated);
+        }
+
         return state;
     }
 

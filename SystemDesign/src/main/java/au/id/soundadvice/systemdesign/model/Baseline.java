@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.beans.FunctionViewBean;
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.beans.InterfaceBean;
 import au.id.soundadvice.systemdesign.beans.ItemBean;
+import au.id.soundadvice.systemdesign.beans.ItemViewBean;
 import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.BeanReader;
 import au.id.soundadvice.systemdesign.files.Directory;
@@ -243,6 +244,19 @@ public class Baseline {
             }
         }
 
+        if (Files.exists(directory.getItemViews())) {
+            try (BeanReader<ItemViewBean> reader = BeanReader.forPath(ItemViewBean.class, directory.getItemViews())) {
+                for (;;) {
+                    Optional<ItemViewBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        relations.add(new ItemView(bean.get()));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
         if (Files.exists(directory.getInterfaces())) {
             try (BeanReader<InterfaceBean> reader = BeanReader.forPath(InterfaceBean.class, directory.getInterfaces())) {
                 for (;;) {
@@ -312,6 +326,7 @@ public class Baseline {
             Files.createDirectories(directory.getPath());
             BeanFile.saveModel(transaction, this, directory.getIdentityFile(), IdentityBean.class, store.getByClass(Identity.class));
             BeanFile.saveModel(transaction, this, directory.getItems(), ItemBean.class, store.getByClass(Item.class));
+            BeanFile.saveModel(transaction, this, directory.getItemViews(), ItemViewBean.class, store.getByClass(ItemView.class));
             BeanFile.saveModel(transaction, this, directory.getInterfaces(), InterfaceBean.class, store.getByClass(Interface.class));
             BeanFile.saveModel(transaction, this, directory.getFunctions(), FunctionBean.class, store.getByClass(Function.class));
             BeanFile.saveModel(transaction, this, directory.getFunctionViews(), FunctionViewBean.class, store.getByClass(FunctionView.class));
