@@ -24,13 +24,73 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.model;
+package au.id.soundadvice.systemdesign.beans;
+
+import au.id.soundadvice.systemdesign.files.Identifiable;
+import java.util.UUID;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum RequirementType {
+public class ItemViewBean implements Identifiable {
 
-    Functional, NonFunctional, Interface;
+    public double getOriginX() {
+        return originX;
+    }
+
+    public void setOriginX(double originX) {
+        this.originX = originX;
+    }
+
+    public double getOriginY() {
+        return originY;
+    }
+
+    public void setOriginY(double originY) {
+        this.originY = originY;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public void setItem(UUID item) {
+        this.item = item;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    @Override
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public UUID getItem() {
+        return item;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public ItemViewBean(
+            UUID uuid, UUID item, String description,
+            double originX, double originY) {
+        this.uuid = uuid;
+        this.item = item;
+        this.originX = originX;
+        this.originY = originY;
+    }
+
+    public ItemViewBean() {
+    }
+
+    private UUID uuid;
+    private UUID item;
+    private String description;
+    private double originX;
+    private double originY;
 }

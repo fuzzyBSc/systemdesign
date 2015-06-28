@@ -26,19 +26,17 @@
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
+import au.id.soundadvice.systemdesign.model.Item;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.util.Pair;
 
 /**
  *
@@ -48,119 +46,125 @@ public class FunctionViewAutoFix {
 
     static UndoState fix(UndoState state) {
         final UndoState preRemoveState = state;
-        Stream<UUID> removals = preRemoveState.getAllocated().getFunctions()
+        Stream<FunctionView> removals = preRemoveState.getAllocated().getFunctions()
                 .flatMap(function -> {
-                    return preRemoveState.getAllocated().getStore().getReverse(function.getUuid(), FunctionView.class)
+                    return function.getViews(preRemoveState.getAllocated())
                     .flatMap(view -> {
+                        Baseline functional = preRemoveState.getFunctional();
                         if (function.isExternal()) {
-                            Optional<FunctionalBaseline> functional = preRemoveState.getFunctional();
-                            if (!functional.isPresent()) {
+                            Optional<Item> systemOfInterest = preRemoveState.getSystemOfInterest();
+                            if (!systemOfInterest.isPresent()) {
                                 // The function shouldn't even be there. Manual fix.
                                 return Stream.empty();
                             }
-                            Optional<UUID> drawing = view.getDrawing();
+                            Optional<Function> drawing = view.getDrawing(functional);
                             if (!drawing.isPresent()) {
                                 /*
                                  * Unallocated function in child baseline.
                                  */
-                                return Stream.of(view.getUuid());
+                                return Stream.of(view);
                             }
-                            RelationStore parentStore = functional.get().getStore();
-                            UUID systemFunctionUUID = drawing.get();
-                            boolean flowsExist = parentStore.getReverse(systemFunctionUUID, Flow.class)
-                            .map(flow -> flow.getScope().otherEnd(systemFunctionUUID))
+                            Function systemFunction = drawing.get();
+                            boolean flowsExist = systemFunction.getFlows(functional)
+                            .map(flow -> flow.otherEnd(functional, systemFunction).getUuid())
                             .anyMatch(externalFunctionUUID -> externalFunctionUUID.equals(function.getUuid()));
                             if (flowsExist) {
                                 // Keep it
                                 return Stream.empty();
                             } else {
                                 // Toss it
-                                return Stream.of(view.getUuid());
+                                return Stream.of(view);
                             }
                         } else {
                             /*
                              * Delete this view if its drawing does not match
                              * the function trace
                              */
-                            Optional<UUID> functionTrace = function.getTrace();
-                            Optional<UUID> drawing = view.getDrawing();
+                            Optional<Function> functionTrace = function.getTrace(functional);
+                            Optional<Function> drawing = view.getDrawing(functional);
                             if (functionTrace.equals(drawing)) {
                                 // No problem
                                 return Stream.empty();
                             } else {
-                                return Stream.of(view.getUuid());
+                                return Stream.of(view);
                             }
                         }
                     });
                 });
-        state = preRemoveState.setAllocated(preRemoveState.getAllocated().removeAll(removals));
+        {
+            Iterator<FunctionView> it = removals.iterator();
+            Baseline allocated = state.getAllocated();
+            while (it.hasNext()) {
+                FunctionView view = it.next();
+                allocated = view.removeFrom(allocated);
+            }
+            state = state.setAllocated(allocated);
+        }
 
         final UndoState preAddState = state;
-        Stream<FunctionView> additions = preAddState.getAllocated().getFunctions()
+        Stream<Pair<Function, Optional<Function>>> additions = preAddState.getAllocated().getFunctions()
                 .flatMap(function -> {
-                    Map<Optional<UUID>, FunctionView> views
-                    = preAddState.getAllocated().getStore().getReverse(
-                            function.getUuid(), FunctionView.class)
+                    Baseline functional = preAddState.getFunctional();
+                    Baseline allocated = preAddState.getAllocated();
+                    Map<Optional<Function>, FunctionView> views
+                    = function.getViews(allocated)
                     .collect(Collectors.toMap(
-                                    FunctionView::getDrawing,
+                                    functionView -> functionView.getDrawing(functional),
                                     java.util.function.Function.identity()));
 
                     if (function.isExternal()) {
-                        Optional<FunctionalBaseline> functional = preAddState.getFunctional();
-                        if (!functional.isPresent()) {
+                        Optional<Item> systemOfInterest = preAddState.getSystemOfInterest();
+                        if (!systemOfInterest.isPresent()) {
                             // The function shouldn't even be there. Manual fix.
                             return Stream.empty();
                         }
-                        RelationStore parentStore = functional.get().getStore();
                         // Get the flows to/from the external function
-                        return parentStore.getReverse(function.getUuid(), Flow.class)
-                        .map(flow -> {
-                            // Identify the other end of each flow
-                            UUID otherEndUUID = flow.getScope().otherEnd(function.getUuid());
-                            return parentStore.get(otherEndUUID, Function.class).get();
-                        })
+                        return function.getFlows(functional)
+                        .map(flow -> flow.otherEnd(functional, function))
                         .filter(otherEndFunction -> {
                             /*
                              * Narrow down to functions that belong to the
                              * system of interest and for which no view exists
                              */
                             FunctionView viewForFunction = views.get(
-                                    Optional.of(otherEndFunction.getUuid()));
+                                    Optional.of(otherEndFunction));
                             return viewForFunction == null
-                            && functional.get().getSystemOfInterest().getUuid().equals(
+                            && systemOfInterest.get().getUuid().equals(
                                     otherEndFunction.getItem().getUuid());
                         })
                         // The UUIDs of functions of the system of interest that have flows with this external function
-                        .map(Function::getUuid)
                         .distinct()
-                        .map(drawingUUID -> FunctionView.createNew(
-                                        function.getUuid(), Optional.of(drawingUUID), FunctionView.defaultOrigin));
+                        .map(drawing -> new Pair<>(
+                                        function, Optional.of(drawing)));
                     } else {
                         /*
-                         * Delete this view if its drawing does not match the
-                         * function trace
+                         * Create a view if none exists for the function's trace
                          */
-                        Optional<UUID> functionTrace = function.getTrace();
-                        FunctionView view = views.get(functionTrace);
+                        Optional<Function> systemFunction = function.getTrace(functional);
+                        FunctionView view = views.get(systemFunction);
                         if (view == null) {
                             // We need to add this view
-                            return Stream.of(FunctionView.createNew(
-                                            function.getUuid(), functionTrace,
-                                            FunctionView.defaultOrigin));
+                            return Stream.of(new Pair<>(function, systemFunction));
                         } else {
                             return Stream.empty();
                         }
                     }
                 }
                 );
-        AllocatedBaseline allocated = state.getAllocated();
-        Iterator<FunctionView> it = additions.iterator();
+        {
+            Iterator<Pair<Function, Optional<Function>>> it = additions.iterator();
+            Baseline allocated = state.getAllocated();
+            while (it.hasNext()) {
+                Pair<Function, Optional<Function>> view = it.next();
 
-        while (it.hasNext()) {
-            allocated = allocated.add(it.next());
+                allocated = FunctionView.create(
+                        allocated, view.getKey(), view.getValue(), FunctionView.defaultOrigin)
+                        .getBaseline();
+            }
+            state = state.setAllocated(allocated);
         }
 
-        return state.setAllocated(allocated);
+        return state;
     }
 
 }

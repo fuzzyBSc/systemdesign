@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -35,62 +34,6 @@ import java.util.UUID;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class ItemBean implements Identifiable {
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 47 * hash + Objects.hashCode(this.uuid);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final ItemBean other = (ItemBean) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.id, other.id)) {
-            return false;
-        }
-        if (!Objects.equals(this.name, other.name)) {
-            return false;
-        }
-        if (!Objects.equals(this.description, other.description)) {
-            return false;
-        }
-        if (this.external != other.external) {
-            return false;
-        }
-        if (this.originX != other.originX) {
-            return false;
-        }
-        if (this.originY != other.originY) {
-            return false;
-        }
-        return true;
-    }
-
-    public double getOriginX() {
-        return originX;
-    }
-
-    public void setOriginX(double originX) {
-        this.originX = originX;
-    }
-
-    public double getOriginY() {
-        return originY;
-    }
-
-    public void setOriginY(double originY) {
-        this.originY = originY;
-    }
 
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
@@ -102,10 +45,6 @@ public class ItemBean implements Identifiable {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
     }
 
     public void setExternal(boolean value) {
@@ -125,25 +64,17 @@ public class ItemBean implements Identifiable {
         return name;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
     public boolean isExternal() {
         return external;
     }
 
     public ItemBean(
             UUID uuid, String id,
-            String name, String description,
-            double originX, double originY,
+            String name,
             boolean external) {
         this.uuid = uuid;
         this.id = id;
         this.name = name;
-        this.description = description;
-        this.originX = originX;
-        this.originY = originY;
         this.external = external;
     }
 
@@ -153,8 +84,5 @@ public class ItemBean implements Identifiable {
     private UUID uuid;
     private String id;
     private String name;
-    private String description;
     private boolean external;
-    private double originX;
-    private double originY;
 }

@@ -26,26 +26,39 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
+import au.id.soundadvice.systemdesign.baselines.UndoState;
+import au.id.soundadvice.systemdesign.baselines.UndoState.StateAnd;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.ItemBean;
+import au.id.soundadvice.systemdesign.fxml.UniqueName;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
-import javafx.geometry.Point2D;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
 
 /**
+ * A physical Item. Item is used as a fairly loose term in the model and could
+ * mean system, subsystem, configuration item, or correspond to a number of
+ * standards-based concepts. As far as the model goes it identifies something
+ * that exists rather than dealing with what a thing does. Items are at the root
+ * of how the model is put together. Each item either is or has the potential to
+ * be a whole director unto itself containing other conceptual elements.
+ *
+ * An item is typically an entire system, an assembly of parts, or a hardware or
+ * software configuration item. The kind of existence required of it can be
+ * abstract. For software it could end up a unit of software installed under a
+ * single software package, a name space or class.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Item implements RequirementContext, BeanFactory<RelationContext, ItemBean>, Relation {
-
-    public static Point2D defaultOrigin = new Point2D(200, 200);
+public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
 
     @Override
     public int hashCode() {
@@ -75,13 +88,7 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
-        if (!Objects.equals(this.description, other.description)) {
-            return false;
-        }
         if (this.external != other.external) {
-            return false;
-        }
-        if (!Objects.equals(this.origin, other.origin)) {
             return false;
         }
         return true;
@@ -97,10 +104,119 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
-        if (!Objects.equals(this.description, other.description)) {
-            return false;
-        }
         return true;
+    }
+
+    public static IDPath getNextItemId(Baseline baseline) {
+        Optional<Integer> currentMax = baseline.getItems().parallel()
+                .filter(item -> !item.isExternal())
+                .map(item -> {
+                    try {
+                        return Integer.parseInt(item.getShortId().toString());
+                    } catch (NumberFormatException ex) {
+                        return 0;
+                    }
+                })
+                .collect(Collectors.maxBy(Integer::compareTo));
+        int nextId;
+        if (currentMax.isPresent()) {
+            nextId = currentMax.get() + 1;
+        } else {
+            nextId = 1;
+        }
+        return IDPath.valueOfSegment(Integer.toString(nextId));
+    }
+
+    /**
+     * Create a new item.
+     *
+     * @param baseline The baseline to update
+     * @param name The name of the item
+     * @param origin The location for the item on the screen
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Item> create(Baseline baseline, String name, Point2D origin) {
+        Item item = new Item(
+                UUID.randomUUID(),
+                baseline.getIdentity().getUuid(),
+                getNextItemId(baseline), name, false);
+        // Also add the coresponding view
+        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin);
+        return baseline.add(item).add(view).and(item);
+    }
+
+    /**
+     * Create a new item with a default name.
+     *
+     * @param baseline The baseline to update
+     * @param origin The location for the item on the screen
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Item> create(Baseline baseline, Point2D origin) {
+        String name = baseline.getItems().parallel()
+                .filter(item -> !item.isExternal())
+                .map(Item::getName)
+                .collect(new UniqueName("New Item"));
+        return create(baseline, name, origin);
+    }
+
+    /**
+     * Flow an external item down from the functional baseline to the allocated
+     * baseline.
+     *
+     * @param state The state to update
+     * @param template The item to flow down from the state's functional
+     * baseline
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static StateAnd<Item> flowDownExternal(UndoState state, Item template) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        Item item = new Item(
+                template.uuid,
+                allocated.getIdentity().getUuid(),
+                template.getIdPath(functional), template.name, true);
+        allocated = allocated.add(item);
+        // Also add the coresponding view
+        ItemView viewTemplate = template.getView(functional);
+        ItemView view = new ItemView(
+                UUID.randomUUID(), item.getUuid(), viewTemplate.getOrigin());
+        allocated = allocated.add(view);
+        return state.setAllocated(allocated).and(item);
+    }
+
+    /**
+     * Remove an item from a baseline.
+     *
+     * @param baseline The baseline to update
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public Baseline removeFrom(Baseline baseline) {
+        return baseline.remove(uuid);
+    }
+
+    /**
+     * Return the list of functions that this item implements directly.
+     *
+     * @param baseline This item's baseline
+     * @return
+     */
+    public Stream<Function> getOwnedFunctions(Baseline baseline) {
+        return baseline.getReverse(uuid, Function.class);
+    }
+
+    /**
+     * Return the interfaces related to this time within the specified baseline.
+     *
+     * @param baseline The level of the system to search within
+     * @return
+     */
+    public Stream<Interface> getInterfaces(Baseline baseline) {
+        return baseline.getReverse(uuid, Interface.class);
     }
 
     @Override
@@ -113,20 +229,16 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return uuid;
     }
 
-    public IDPath getIdPath(RelationContext context) {
+    public IDPath getIdPath(Baseline baseline) {
         if (external) {
             return id;
         } else {
-            return parent.getTarget(context).getIdPath().getChild(id);
+            return parent.getTarget(baseline.getStore()).getIdPath().resolve(id);
         }
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     public boolean isExternal() {
@@ -141,32 +253,22 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
      */
     private final IDPath id;
     private final String name;
-    private final String description;
     private final boolean external;
-    private final Point2D origin;
 
     public Item(UUID parent, ItemBean bean) {
         this.uuid = bean.getUuid();
         this.parent = new Reference(this, parent, Identity.class);
-        this.id = IDPath.valueOf(bean.getId());
+        this.id = IDPath.valueOfDotted(bean.getId());
         this.name = bean.getName();
-        this.description = bean.getDescription();
         this.external = bean.isExternal();
-        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
     @Override
-    public ItemBean toBean(RelationContext context) {
+    public ItemBean toBean(Baseline context) {
         return new ItemBean(
                 uuid, id.toString(),
-                name, description,
-                origin.getX(), origin.getY(),
+                name,
                 external);
-    }
-
-    @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.NonFunctional;
     }
 
     public String getDisplayName() {
@@ -181,48 +283,24 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
         return finder.getReferences(this);
     }
 
-    public static Item newItem(
-            UUID parent, IDSegment shortId, String name, Point2D origin) {
-        IDPath id = IDPath.empty().getChild(shortId);
-        return new Item(
-                UUID.randomUUID(), parent, id, name, "", false, origin);
-    }
-
     private Item(
-            UUID uuid, UUID parent, IDPath id, String name, String description, boolean external,
-            Point2D origin) {
+            UUID uuid, UUID parent, IDPath id, String name, boolean external) {
         this.uuid = uuid;
         this.parent = new Reference(this, parent, Identity.class);
         this.id = id;
         this.name = name;
-        this.description = description;
         this.external = external;
-        this.origin = origin;
     }
 
-    @CheckReturnValue
-    public Item setName(String value) {
-        return new Item(uuid, parent.getUuid(), id, value, description, external, origin);
+    public Identity asIdentity(Baseline baseline) {
+        return new Identity(uuid, getIdPath(baseline), name);
     }
 
-    @CheckReturnValue
-    public Item setOrigin(Point2D value) {
-        return new Item(uuid, parent.getUuid(), id, name, description, external, value);
-    }
-
-    public Point2D getOrigin() {
-        return origin;
-    }
-
-    public Identity asIdentity(RelationStore context) {
-        return new Identity(uuid, getIdPath(context), name);
-    }
-
-    public Item asExternal(RelationStore context) {
+    public Item asExternal(Baseline baseline) {
         if (external) {
             return this;
         } else {
-            return new Item(uuid, parent.getUuid(), getIdPath(context), name, description, true, origin);
+            return new Item(uuid, parent.getUuid(), getIdPath(baseline), name, true);
         }
     }
 
@@ -231,14 +309,36 @@ public class Item implements RequirementContext, BeanFactory<RelationContext, It
     }
 
     @CheckReturnValue
-    public Item setShortId(IDPath value) {
-        return new Item(
-                uuid, parent.getUuid(), value, name, description, external, origin);
+    public BaselineAnd<Item> setName(Baseline baseline, String name) {
+        if (this.name.equals(name)) {
+            return baseline.and(this);
+        } else {
+            Item result = new Item(
+                    uuid, parent.getUuid(), id, name, external);
+            return baseline.add(result).and(result);
+        }
     }
 
     @CheckReturnValue
-    public Item makeConsistent(Item allocated) {
-        return new Item(
-                uuid, parent.getUuid(), id, allocated.getName(), allocated.getDescription(), external, origin);
+    public BaselineAnd<Item> setShortId(Baseline baseline, IDPath id) {
+        if (this.id.equals(id)) {
+            return baseline.and(this);
+        } else {
+            Item result = new Item(
+                    uuid, parent.getUuid(), id, name, external);
+            return baseline.add(result).and(result);
+        }
+    }
+
+    @CheckReturnValue
+    public BaselineAnd<Item> makeConsistent(Baseline baseline, Item other) {
+        Item result = new Item(
+                uuid, parent.getUuid(), other.getShortId(), other.getName(), external);
+        return baseline.add(result).and(result);
+    }
+
+    public ItemView getView(Baseline baseline) {
+        Stream<ItemView> result = baseline.getReverse(uuid, ItemView.class);
+        return result.findAny().get();
     }
 }

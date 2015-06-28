@@ -27,16 +27,24 @@
 package au.id.soundadvice.systemdesign.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
 
 /**
+ * A hierarchical identifier suitable for items.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class IDPath implements Comparable<IDPath> {
+
+    private static final char sep = '.';
+    private static final char notSep = '_';
 
     @Override
     public int hashCode() {
@@ -60,79 +68,100 @@ public class IDPath implements Comparable<IDPath> {
         return true;
     }
 
-    public String getDotted() {
-        return dotted;
-    }
-
-    public String getRelativeId() {
-        int dotPos = dotted.indexOf(IDSegment.sep);
-        if (dotPos >= 0) {
-            return dotted.substring(dotPos + 1);
-        } else {
-            return dotted;
-        }
-    }
-
     @Override
     public String toString() {
         return dotted;
     }
 
-    public List<IDSegment> getSegments() {
-        return segments;
-    }
-
-    public static IDPath valueOf(String dotted) {
+    /**
+     * Build an IDPath from a dotted representation
+     *
+     * @param dotted A string containing '.' separator for path segments
+     * @return
+     */
+    public static IDPath valueOfDotted(String dotted) {
         if (dotted == null || dotted.isEmpty()) {
-            return new IDPath(Collections.<IDSegment>emptyList(), "");
+            return empty;
         } else {
-            List<IDSegment> segments = new ArrayList<>();
-            for (String text : dotted.split("\\.")) {
-                segments.add(new IDSegment(text));
-            }
+            List<String> segments = Collections.unmodifiableList(
+                    Arrays.asList(dotted.split("\\.")));
             return new IDPath(segments, dotted);
         }
     }
 
-    public static IDPath valueOf(List<IDSegment> segments) {
-        segments = Collections.unmodifiableList(new ArrayList<>(segments));
-        return new IDPath(segments, buildDotted(segments));
+    /**
+     * Build an IDPath from a single path segment. All '.' characters will be
+     * replaced.
+     *
+     * @param segment A segment of the path
+     * @return
+     */
+    public static IDPath valueOfSegment(String segment) {
+        return valueOf(Stream.of(segment));
+    }
+
+    /**
+     * Build an IDPath from a series of path segments. '.' characters in each
+     * segment will be replaced.
+     *
+     * @param stream A stream of path segments
+     * @return
+     */
+    public static IDPath valueOf(Stream<String> stream) {
+        List<String> segments = Collections.unmodifiableList(
+                stream.map(segment -> segment.replace(sep, notSep))
+                .collect(Collectors.toList()));
+        String dotted = segments.stream().collect(Collectors.joining("."));
+
+        return new IDPath(segments, dotted);
     }
 
     private static final IDPath empty = new IDPath(
-            Collections.<IDSegment>emptyList(), "");
+            Collections.<String>emptyList(), "");
 
+    /**
+     * Return the empty path. This is the identity of a model's top level
+     * context.
+     *
+     * @return
+     */
     public static IDPath empty() {
         return empty;
     }
 
-    private static String buildDotted(List<IDSegment> segments) {
-        StringBuilder builder = new StringBuilder();
-        String sep = "";
-        for (IDSegment segment : segments) {
-            builder.append(sep);
-            builder.append(segment);
-            sep = ".";
-        }
-        return builder.toString();
-    }
-
-    private IDPath(List<IDSegment> unmodifiableSegments, String dotted) {
+    private IDPath(List<String> unmodifiableSegments, String dotted) {
         this.segments = unmodifiableSegments;
         this.dotted = dotted;
     }
 
+    /**
+     * Return true if this path has a non-empty parent path.
+     *
+     * @return
+     */
     public boolean hasParent() {
         return segments.size() > 1;
     }
 
+    /**
+     * Return true if this path is the empty path.
+     *
+     * @return
+     */
     public boolean isEmpty() {
         return segments.isEmpty();
     }
 
+    /**
+     * Return the parent of this path. The last segment of this path will be
+     * returned. Repeated invocations of this function will eventually lead to
+     * the empty path. The parent of the empty path is the empty path.
+     *
+     * @return
+     */
     public IDPath getParent() {
         if (hasParent()) {
-            List<IDSegment> parentSegments = segments.subList(0, segments.size() - 1);
+            List<String> parentSegments = segments.subList(0, segments.size() - 1);
             int lastDot = dotted.lastIndexOf('.');
             return new IDPath(parentSegments, dotted.substring(0, lastDot));
         } else {
@@ -140,34 +169,41 @@ public class IDPath implements Comparable<IDPath> {
         }
     }
 
-    public IDPath getChild(IDSegment childSegment) {
-        if (segments.isEmpty()) {
-            return new IDPath(
-                    Collections.singletonList(childSegment),
-                    childSegment.toString());
-        } else {
-            List<IDSegment> childSegments = new ArrayList<>(segments.size() + 1);
-            childSegments.addAll(segments);
-            childSegments.add(childSegment);
-            return new IDPath(childSegments, dotted + "." + childSegment);
-        }
+    /**
+     * Return a direct child of this path. The specified segment has its '.'
+     * characters replaced and is placed at the end of this path.
+     *
+     * @param segment The segment to add to this path
+     * @return
+     */
+    @CheckReturnValue
+    public IDPath resolveSegment(String segment) {
+        return resolve(valueOfSegment(segment));
     }
 
-    public IDPath getChild(IDPath childSegments) {
-        if (childSegments.isEmpty()) {
+    /**
+     * Return a descendant of this path. The specified path is appended to the
+     * current path.
+     *
+     * @param relativePath The path segments to add
+     * @return
+     */
+    @CheckReturnValue
+    public IDPath resolve(IDPath relativePath) {
+        if (relativePath.isEmpty()) {
             return this;
         } else if (this.isEmpty()) {
-            return childSegments;
+            return relativePath;
         } else {
-            List<IDSegment> newSegments = new ArrayList<>(
-                    segments.size() + childSegments.segments.size());
+            List<String> newSegments = new ArrayList<>(
+                    segments.size() + relativePath.segments.size());
             newSegments.addAll(segments);
-            newSegments.addAll(childSegments.segments);
-            return new IDPath(newSegments, dotted + "." + childSegments.dotted);
+            newSegments.addAll(relativePath.segments);
+            return new IDPath(newSegments, dotted + "." + relativePath.dotted);
         }
     }
 
-    private final List<IDSegment> segments;
+    private final List<String> segments;
     private final String dotted;
 
     @Override
@@ -176,16 +212,29 @@ public class IDPath implements Comparable<IDPath> {
     }
 
     public static int compare(IDPath left, IDPath right) {
-        Iterator<IDSegment> leftIt = left.segments.iterator();
-        Iterator<IDSegment> rightIt = right.segments.iterator();
+        Iterator<String> leftIt = left.segments.iterator();
+        Iterator<String> rightIt = right.segments.iterator();
         for (;;) {
             if (leftIt.hasNext()) {
                 if (rightIt.hasNext()) {
-                    IDSegment leftSegment = leftIt.next();
-                    IDSegment rightSegment = rightIt.next();
-                    int result = leftSegment.compareTo(rightSegment);
-                    if (result != 0) {
-                        return result;
+                    String leftSegment = leftIt.next();
+                    String rightSegment = rightIt.next();
+
+                    // Probably not a true partial ordering, but will do for now
+                    try {
+                        int leftInt = Integer.parseInt(leftSegment);
+                        int rightInt = Integer.parseInt(rightSegment);
+                        if (leftInt < rightInt) {
+                            return -1;
+                        }
+                        if (leftInt > rightInt) {
+                            return 1;
+                        }
+                    } catch (NumberFormatException ex) {
+                        int result = leftSegment.compareTo(rightSegment);
+                        if (result != 0) {
+                            return result;
+                        }
                     }
                 } else {
                     // Right is shorter, so greater

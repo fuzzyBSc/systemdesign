@@ -27,35 +27,40 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.FunctionViewBean;
-import au.id.soundadvice.systemdesign.files.Identifiable;
+import au.id.soundadvice.systemdesign.beans.ItemViewBean;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
+import javafx.geometry.Point2D;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
 
 /**
- * A view of a function within a specific drawing. The separation of the main
- * Function class and the FunctionView class is intended to allow each function
- * to appear independently on multiple drawings while still maintaining some
- * properties between such drawings.
+ * A physical Item. Item is used as a fairly loose term in the model and could
+ * mean system, subsystem, configuration item, or correspond to a number of
+ * standards-based concepts. As far as the model goes it identifies something
+ * that exists rather than dealing with what a thing does. Items are at the root
+ * of how the model is put together. Each item either is or has the potential to
+ * be a whole director unto itself containing other conceptual elements.
+ *
+ * An item is typically an entire system, an assembly of parts, or a hardware or
+ * software configuration item. The kind of existence required of it can be
+ * abstract. For software it could end up a unit of software installed under a
+ * single software package, a name space or class.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Relation {
+public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
 
     public static Point2D defaultOrigin = new Point2D(200, 200);
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 83 * hash + Objects.hashCode(this.uuid);
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -67,14 +72,11 @@ public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Re
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final FunctionView other = (FunctionView) obj;
+        final ItemView other = (ItemView) obj;
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
-        if (!Objects.equals(this.function, other.function)) {
-            return false;
-        }
-        if (!Objects.equals(this.drawing, other.drawing)) {
+        if (!Objects.equals(this.item, other.item)) {
             return false;
         }
         if (!Objects.equals(this.origin, other.origin)) {
@@ -83,21 +85,9 @@ public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Re
         return true;
     }
 
-    public static BaselineAnd<FunctionView> create(
-            Baseline baseline, Function function, Optional<Function> drawing, Point2D origin) {
-        FunctionView view = new FunctionView(
-                UUID.randomUUID(),
-                function.getUuid(), drawing.map(Identifiable::getUuid), origin);
-        return baseline.add(view).and(view);
-    }
-
-    public Baseline removeFrom(Baseline baseline) {
-        return baseline.remove(uuid);
-    }
-
     @Override
     public String toString() {
-        return uuid.toString();
+        return origin.toString();
     }
 
     @Override
@@ -105,59 +95,51 @@ public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Re
         return uuid;
     }
 
-    public Reference<FunctionView, Function> getFunction() {
-        return function;
-    }
-
-    public Optional<Function> getDrawing(Baseline functionalBaseline) {
-        return this.drawing.flatMap(
-                functionUUID -> functionalBaseline.get(functionUUID, Function.class));
-    }
-
-    public FunctionView(FunctionViewBean bean) {
-        this.uuid = bean.getUuid();
-        this.drawing = Optional.ofNullable(bean.getDrawing());
-        this.function = new Reference<>(this, bean.getFunction(), Function.class);
-        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
-    }
-
-    private FunctionView(UUID uuid, UUID function, Optional<UUID> drawing, Point2D origin) {
-        this.uuid = uuid;
-        this.function = new Reference<>(this, function, Function.class);
-        this.drawing = drawing;
-        this.origin = origin;
+    public Reference<ItemView, Item> getItem() {
+        return item;
     }
 
     private final UUID uuid;
-    private final Reference<FunctionView, Function> function;
-    private final Optional<UUID> drawing;
+    private final Reference<ItemView, Item> item;
     private final Point2D origin;
 
+    public ItemView(ItemViewBean bean) {
+        this.uuid = bean.getUuid();
+        this.item = new Reference(this, bean.getItem(), Item.class);
+        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
+    }
+
     @Override
-    public FunctionViewBean toBean(Baseline baseline) {
-        return new FunctionViewBean(
-                uuid, function.getUuid(), getDisplayName(baseline), drawing,
-                (int) origin.getX(), (int) origin.getY());
+    public ItemViewBean toBean(Baseline baseline) {
+        return new ItemViewBean(
+                uuid, item.getUuid(), item.getTarget(baseline.getStore()).getDisplayName(),
+                origin.getX(), origin.getY());
     }
 
-    public String getDisplayName(Baseline baseline) {
-        return function.getTarget(baseline.getStore()).getDisplayName(baseline);
+    public String getDisplayName() {
+        return this.toString();
     }
 
-    private static final ReferenceFinder<FunctionView> finder
-            = new ReferenceFinder<>(FunctionView.class);
+    private static final ReferenceFinder<ItemView> finder
+            = new ReferenceFinder<>(ItemView.class);
 
     @Override
     public Stream<Reference> getReferences() {
         return finder.getReferences(this);
     }
 
+    ItemView(UUID uuid, UUID item, Point2D origin) {
+        this.uuid = uuid;
+        this.item = new Reference(this, item, Item.class);
+        this.origin = origin;
+    }
+
     @CheckReturnValue
-    public BaselineAnd<FunctionView> setOrigin(Baseline baseline, Point2D value) {
-        if (origin.equals(value)) {
+    public BaselineAnd<ItemView> setOrigin(Baseline baseline, Point2D origin) {
+        if (origin.equals(origin)) {
             return baseline.and(this);
         } else {
-            FunctionView result = new FunctionView(uuid, function.getUuid(), drawing, value);
+            ItemView result = new ItemView(uuid, item.getUuid(), origin);
             return baseline.add(result).and(result);
         }
     }

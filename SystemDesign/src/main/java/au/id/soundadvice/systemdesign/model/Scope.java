@@ -26,26 +26,20 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.beans.BeanFactory;
-import au.id.soundadvice.systemdesign.beans.HazardBean;
-import au.id.soundadvice.systemdesign.relation.Reference;
-import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
 import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Stream;
 
 /**
+ * A pair class identifying the scope of a given connection.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Hazard implements BeanFactory<RelationContext, HazardBean>, Relation {
+public class Scope<T> {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 37 * hash + Objects.hashCode(this.uuid);
+        int hash = 7;
+        hash = 83 * hash + Objects.hashCode(this.left);
+        hash = 83 * hash + Objects.hashCode(this.right);
         return hash;
     }
 
@@ -57,51 +51,29 @@ public class Hazard implements BeanFactory<RelationContext, HazardBean>, Relatio
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Hazard other = (Hazard) obj;
-        if (!Objects.equals(this.description, other.description)) {
+        final Scope<?> other = (Scope<?>) obj;
+        if (!Objects.equals(this.left, other.left)) {
             return false;
         }
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.level, other.level)) {
+        if (!Objects.equals(this.right, other.right)) {
             return false;
         }
         return true;
     }
 
-    public String getDescription() {
-        return description;
+    public Scope(T left, T right) {
+        this.left = left;
+        this.right = right;
     }
 
-    @Override
-    public UUID getUuid() {
-        return uuid;
+    public T getLeft() {
+        return left;
     }
 
-    public String getLevel() {
-        return level;
+    public T getRight() {
+        return right;
     }
 
-    private final String description;
-    private final UUID uuid;
-    private final String level;
-
-    public Hazard(HazardBean bean) {
-        this.uuid = bean.getUuid();
-        this.description = bean.getDescription();
-        this.level = bean.getLevel();
-    }
-
-    @Override
-    public HazardBean toBean(RelationContext context) {
-        return new HazardBean(uuid, level, description);
-    }
-    private static final ReferenceFinder<Hazard> finder
-            = new ReferenceFinder<>(Hazard.class);
-
-    @Override
-    public Stream<Reference> getReferences() {
-        return finder.getReferences(this);
-    }
+    private final T left;
+    private final T right;
 }

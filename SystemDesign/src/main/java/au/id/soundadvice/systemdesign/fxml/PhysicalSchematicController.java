@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
@@ -41,8 +41,8 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -100,8 +100,8 @@ public class PhysicalSchematicController {
                     lastContextMenuClick.get());
             Point2D origin = click
                     .map(evt -> new Point2D(evt.getX(), evt.getY()))
-                    .orElse(Item.defaultOrigin);
-            interactions.addItem(origin);
+                    .orElse(ItemView.defaultOrigin);
+            interactions.createItem(origin);
             event.consume();
         });
         pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
@@ -114,7 +114,7 @@ public class PhysicalSchematicController {
         });
     }
 
-    private Group toNode(Item item, Stream<Function> functions) {
+    private Group toNode(ItemView view, Item item, Stream<Function> functions) {
         StringBuilder builder = new StringBuilder();
         builder.append(item);
         String functionsText = functions
@@ -151,8 +151,8 @@ public class PhysicalSchematicController {
         if (item.isExternal()) {
             group.getStyleClass().add("external");
         }
-        group.setLayoutX(item.getOrigin().getX());
-        group.setLayoutY(item.getOrigin().getY());
+        group.setLayoutX(view.getOrigin().getX());
+        group.setLayoutY(view.getOrigin().getY());
 
         ContextMenu contextMenu = ContextMenus.itemContextMenu(item, interactions, edit);
         label.setContextMenu(contextMenu);
@@ -174,33 +174,33 @@ public class PhysicalSchematicController {
         @Override
         public void run() {
             pane.getChildren().clear();
-            AllocatedBaseline baseline = undo.get().getAllocated();
-            baseline.getInterfaces().forEach((iface) -> {
+            Baseline baseline = undo.get().getAllocated();
+            baseline.getInterfaces().forEach(iface -> {
                 addNode(pane, baseline, iface);
             });
-            baseline.getItems().forEach((item) -> {
-                addNode(pane, baseline, item);
+            baseline.getItemViews().forEach(view -> {
+                addNode(pane, baseline, view, view.getItem().getTarget(baseline.getContext()));
             });
         }
 
-        private void addNode(Pane parent, AllocatedBaseline baseline, Interface iface) {
-            Item left = iface.getLeft().getTarget(baseline.getStore());
-            Item right = iface.getRight().getTarget(baseline.getStore());
+        private void addNode(Pane parent, Baseline baseline, Interface iface) {
+            Item left = iface.getLeft().getTarget(baseline.getContext());
+            Item right = iface.getRight().getTarget(baseline.getContext());
+            ItemView leftView = left.getView(baseline);
+            ItemView rightView = right.getView(baseline);
             Line result = new Line(
-                    left.getOrigin().getX(),
-                    left.getOrigin().getY(),
-                    right.getOrigin().getX(),
-                    right.getOrigin().getY());
+                    leftView.getOrigin().getX(),
+                    leftView.getOrigin().getY(),
+                    rightView.getOrigin().getX(),
+                    rightView.getOrigin().getY());
             result.getStyleClass().add("schematicInterface");
             parent.getChildren().add(result);
         }
 
-        private void addNode(Pane parent, AllocatedBaseline baseline, Item item) {
-            Group result = toNode(
-                    item,
-                    baseline.getStore().getReverse(item.getUuid(), Function.class));
+        private void addNode(Pane parent, Baseline baseline, ItemView view, Item item) {
+            Group result = toNode(view, item, item.getOwnedFunctions(baseline));
             new MoveHandler(parent, result,
-                    new MoveItem(item.getUuid()),
+                    new MoveItem(view),
                     new GridSnap(10), (MouseEvent event)
                     -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
@@ -214,21 +214,20 @@ public class PhysicalSchematicController {
 
     private class MoveItem implements Dragged {
 
-        public MoveItem(UUID item) {
-            this.uuid = item;
+        public MoveItem(ItemView view) {
+            this.view = view;
         }
 
-        private final UUID uuid;
+        private final ItemView view;
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            undo.update(state -> {
-                Optional<Item> toAdd = state.getAllocatedInstance(uuid, Item.class);
-                if (toAdd.isPresent()) {
-                    return state.setAllocated(
-                            state.getAllocated().add(toAdd.get().setOrigin(layoutCurrent)));
+            edit.updateAllocated(allocated -> {
+                Optional<ItemView> current = allocated.get(view);
+                if (current.isPresent()) {
+                    return current.get().setOrigin(allocated, layoutCurrent).getBaseline();
                 } else {
-                    return state;
+                    return allocated;
                 }
             });
         }

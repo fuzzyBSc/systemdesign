@@ -26,23 +26,19 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget.Drop;
-import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Stream;
 import javafx.scene.input.TransferMode;
 
 /**
@@ -63,13 +59,14 @@ public class DropHandlers {
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
+            Baseline allocated = state.getAllocated();
             Optional<FunctionView> sourceView
-                    = state.getAllocatedInstance(sourceUUID, FunctionView.class);
+                    = allocated.get(sourceUUID, FunctionView.class);
             if (sourceView.isPresent()) {
                 sourceUUID = sourceView.get().getFunction().getUuid();
             }
             Optional<FunctionView> targetView
-                    = state.getAllocatedInstance(targetUUID, FunctionView.class);
+                    = allocated.get(targetUUID, FunctionView.class);
             if (targetView.isPresent()) {
                 targetUUID = targetView.get().getFunction().getUuid();
             }
@@ -78,35 +75,43 @@ public class DropHandlers {
 
         private Map<TransferMode, BooleanSupplier> getActionsImpl(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
+            Baseline functional = state.getFunctional();
+            Baseline allocated = state.getAllocated();
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
-            Optional<Function> sourceChildFunction = state.getAllocatedInstance(
+            Optional<Function> sourceChildFunction = allocated.get(
                     sourceUUID, Function.class);
-            Optional<Function> targetChildFunction = state.getAllocatedInstance(
+            Optional<Function> targetChildFunction = allocated.get(
                     targetUUID, Function.class);
-            Optional<Function> targetTraceFunction = state.getFunctionalInstance(
-                    targetUUID, Function.class);
-            if (targetTraceFunction.isPresent()) {
-                // Only use if the function traces to the system of interest
-                Optional<FunctionalBaseline> functional = state.getFunctional();
-                assert functional.isPresent();
-                if (!targetTraceFunction.get().getItem().getUuid().equals(
-                        functional.get().getSystemOfInterest().getUuid())) {
-                    targetTraceFunction = Optional.empty();
-                }
-            }
+            Optional<Function> targetTraceFunction = functional.get(
+                    targetUUID, Function.class)
+                    .flatMap(candidate -> {
+                        // Only use if the candidate is owned by the system of interest
+                        Optional<Item> systemOfInterest = state.getSystemOfInterest();
+                        if (systemOfInterest.isPresent()
+                        && !candidate.getItem().getUuid().equals(
+                                systemOfInterest.get().getUuid())) {
+                            return Optional.empty();
+                        } else {
+                            return Optional.of(candidate);
+                        }
+                    });
 
-            AllocatedBaseline allocated = state.getAllocated();
-            RelationStore store = allocated.getStore();
             if (sourceChildFunction.isPresent() && targetTraceFunction.isPresent()) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.MOVE, () -> {
-                    Stream<UUID> toRemove
-                            = store.getReverse(sourceUUID, Flow.class).parallel()
-                            .map(Identifiable::getUuid);
-                    edit.getUndo().set(state.setAllocated(
-                            allocated.removeAll(toRemove).add(
-                                    sourceChildFunction.get().setTrace(targetUUID))));
+                    edit.updateAllocated(actionAllocated -> {
+                        final Baseline beforeMoveBaseline = actionAllocated;
+                        Optional<Function> toMove = sourceChildFunction.flatMap(
+                                function -> beforeMoveBaseline.get(function));
+                        if (!toMove.isPresent()) {
+                            return actionAllocated;
+                        }
+                        actionAllocated = toMove.get().setTrace(
+                                actionAllocated, targetTraceFunction.get())
+                                .getBaseline();
+                        return actionAllocated;
+                    });
                     return true;
                 });
             }
@@ -114,7 +119,8 @@ public class DropHandlers {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {
-                    interactions.addFlow(sourceUUID, targetUUID);
+                    interactions.addFlow(
+                            sourceChildFunction.get(), targetChildFunction.get());
                     return true;
                 });
             }
@@ -133,17 +139,34 @@ public class DropHandlers {
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
                 UndoState state, UUID sourceUUID, UUID targetUUID) {
+            Baseline allocated = state.getAllocated();
+            Optional<ItemView> sourceView
+                    = allocated.get(sourceUUID, ItemView.class);
+            if (sourceView.isPresent()) {
+                sourceUUID = sourceView.get().getItem().getUuid();
+            }
+            Optional<ItemView> targetView
+                    = allocated.get(targetUUID, ItemView.class);
+            if (targetView.isPresent()) {
+                targetUUID = targetView.get().getItem().getUuid();
+            }
+            return getActionsImpl(state, sourceUUID, targetUUID);
+        }
+
+        public Map<TransferMode, BooleanSupplier> getActionsImpl(
+                UndoState state, UUID sourceUUID, UUID targetUUID) {
+            Baseline allocated = state.getAllocated();
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
-            Optional<Item> sourceItem = state.getAllocatedInstance(
+            Optional<Item> sourceItem = allocated.get(
                     sourceUUID, Item.class);
-            Optional<Item> targetItem = state.getAllocatedInstance(
+            Optional<Item> targetItem = allocated.get(
                     targetUUID, Item.class);
 
             if (sourceItem.isPresent() && targetItem.isPresent()) {
                 // Trace the source function to the parent fuction.
                 // This appears as a move in the logical tree.
                 result.put(TransferMode.LINK, () -> {
-                    interactions.addInterface(sourceUUID, targetUUID);
+                    interactions.addInterface(sourceItem.get(), targetItem.get());
                     return true;
                 });
             }

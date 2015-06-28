@@ -31,8 +31,6 @@ import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -42,7 +40,7 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Identity implements BeanFactory<RelationContext, IdentityBean>, Relation {
+public class Identity implements BeanFactory<Baseline, IdentityBean>, Relation {
 
     @Override
     public int hashCode() {
@@ -106,7 +104,7 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
 
     public Identity(IdentityBean bean) {
         this.uuid = bean.getUuid();
-        this.idPath = IDPath.valueOf(bean.getId());
+        this.idPath = IDPath.valueOfDotted(bean.getId());
         this.name = bean.getName();
     }
 
@@ -115,7 +113,7 @@ public class Identity implements BeanFactory<RelationContext, IdentityBean>, Rel
     private final String name;
 
     @Override
-    public IdentityBean toBean(RelationContext context) {
+    public IdentityBean toBean(Baseline context) {
         return new IdentityBean(uuid, idPath.toString(), name);
     }
     private static final ReferenceFinder<Identity> finder

@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
@@ -266,8 +266,7 @@ class LogicalSchematicController {
     }
 
     public void populate(
-            AllocatedBaseline allocated,
-            Optional<UUID> drawing,
+            Baseline allocated,
             Map<UUID, FunctionView> drawingFunctionViews,
             Map<UndirectedPair, List<Flow>> flows) {
         Pane pane = new AnchorPane();
@@ -295,11 +294,11 @@ class LogicalSchematicController {
             }
         });
         drawingFunctionViews.values().forEach(functionView -> {
-            Function function = functionView.getFunction().getTarget(allocated.getStore());
-            Item item = function.getItem().getTarget(allocated.getStore());
+            Function function = functionView.getFunction().getTarget(allocated.getContext());
+            Item item = function.getItem().getTarget(allocated.getContext());
             Node node = toNode(functionView, function, item);
 
-            new MoveHandler(pane, node, new Move(functionView.getUuid()),
+            new MoveHandler(pane, node, new Move(functionView),
                     new GridSnap(10),
                     event -> MouseButton.PRIMARY.equals(event.getButton())
                     && !event.isControlDown()).start();
@@ -318,20 +317,19 @@ class LogicalSchematicController {
 
     private class Move implements Dragged {
 
-        public Move(UUID uuid) {
-            this.uuid = uuid;
+        public Move(FunctionView view) {
+            this.view = view;
         }
-        private final UUID uuid;
+        private final FunctionView view;
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            edit.getUndo().update(state -> {
-                Optional<FunctionView> existing = state.getAllocatedInstance(uuid, FunctionView.class);
+            edit.updateAllocated(allocated -> {
+                Optional<FunctionView> existing = allocated.get(view);
                 if (!existing.isPresent()) {
-                    return state;
+                    return allocated;
                 }
-                FunctionView toAdd = existing.get().setOrigin(layoutCurrent);
-                return state.setAllocated(state.getAllocated().add(toAdd));
+                return existing.get().setOrigin(allocated, layoutCurrent).getBaseline();
             });
         }
 

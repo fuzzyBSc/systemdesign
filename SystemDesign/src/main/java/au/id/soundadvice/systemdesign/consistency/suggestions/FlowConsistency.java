@@ -26,22 +26,20 @@
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
-import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
+import au.id.soundadvice.systemdesign.model.Interface;
+import au.id.soundadvice.systemdesign.model.Item;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -52,16 +50,16 @@ import java.util.stream.Stream;
  */
 public class FlowConsistency {
 
-    private static Map<UUID, Map<String, Direction>> getFlowTypes(
-            UUID fromUUID, Stream<Flow> flows, UnaryOperator<Optional<UUID>> uuidFixer) {
+    private static Map<Function, Map<String, Direction>> getFlowTypes(
+            Baseline baseline, Function fromFunction, Stream<Flow> flows, UnaryOperator<Optional<Function>> functionFixer) {
         return flows
-                .filter(flow -> flow.getScope().hasEnd(fromUUID))
+                .filter(flow -> flow.hasEnd(fromFunction))
                 .collect(Collectors.groupingBy(
-                                flow -> uuidFixer.apply(Optional.of(flow.getScope().otherEnd(fromUUID))),
+                                flow -> functionFixer.apply(Optional.of(flow.otherEnd(baseline, fromFunction))),
                                 Collectors.groupingBy(
                                         Flow::getType,
                                         Collectors.mapping(
-                                                flow -> flow.getScope().getDirectionFrom(fromUUID),
+                                                flow -> flow.getDirectionFrom(fromFunction),
                                                 Collectors.collectingAndThen(
                                                         Collectors.toSet(),
                                                         Direction::valueOf
@@ -88,9 +86,9 @@ public class FlowConsistency {
                 .filter(entry -> entry.getValue() != Direction.None);
     }
 
-    private static Stream<Map.Entry<UUID, Stream<Map.Entry<String, Direction>>>> getDifferenceByFunction(
-            Map<UUID, Map<String, Direction>> subtractFrom,
-            Map<UUID, Map<String, Direction>> toSubtract) {
+    private static Stream<Map.Entry<Function, Stream<Map.Entry<String, Direction>>>> getDifferenceByFunction(
+            Map<Function, Map<String, Direction>> subtractFrom,
+            Map<Function, Map<String, Direction>> toSubtract) {
         return subtractFrom.entrySet().stream()
                 .map(entry -> {
                     Map<String, Direction> toSubtractByType
@@ -111,63 +109,49 @@ public class FlowConsistency {
      * baseline.
      *
      * @param state The undo buffer state to work from
-     * @param parentInterfaceUUID The parent interface to scope the analysis to
-     * @param externalParentFunctionUUID The external parent function to scope
-     * analysis to
-     * @param externalFunctionDescription The display name of the external
-     * function
+     * @param functionalInterface The interface in the functional baseline to
+     * scope the analysis to
+     * @param externalAllocatedFunction The external function in the allocated
+     * baseline to scope analysis to
      * @return The list of problems identified
      */
     public static Stream<Problem> checkConsistency(
-            UndoState state, UUID parentInterfaceUUID,
-            UUID externalParentFunctionUUID,
-            String externalFunctionDescription) {
-        RelationStore parentStore;
-        {
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            if (!functional.isPresent()) {
-                return Stream.empty();
-            }
-            parentStore = functional.get().getStore();
+            UndoState state, Interface functionalInterface,
+            Function externalAllocatedFunction) {
+        Optional<Item> system = state.getSystemOfInterest();
+        if (!system.isPresent()) {
+            return Stream.empty();
         }
-        RelationStore childStore = state.getAllocated().getStore();
+        Baseline problemFunctional = state.getFunctional();
+        Baseline problemAllocated = state.getAllocated();
 
         // system function -> flow type -> flow direction from external function
-        Map<UUID, Map<String, Direction>> parentFlows = getFlowTypes(
-                externalParentFunctionUUID,
-                parentStore.getReverse(parentInterfaceUUID, Flow.class)
-                .filter(flow -> flow.getScope().hasEnd(externalParentFunctionUUID)),
-                optionalUUID -> optionalUUID);
-        Map<UUID, Map<String, Direction>> childFlows = getFlowTypes(
-                externalParentFunctionUUID,
-                childStore.getReverse(externalParentFunctionUUID, Flow.class),
-                optionalUUID -> {
-                    if (optionalUUID.isPresent()) {
-                        Optional<Function> function = childStore.get(optionalUUID.get(), Function.class);
-                        if (function.isPresent()) {
-                            return function.get().getTrace();
-                        }
-                    }
-                    return Optional.empty();
-                }
+        Map<Function, Map<String, Direction>> parentFlows = getFlowTypes(
+                problemFunctional,
+                externalAllocatedFunction,
+                functionalInterface.getFlows(problemFunctional)
+                .filter(flow -> flow.hasEnd(externalAllocatedFunction)),
+                t -> t);
+        Map<Function, Map<String, Direction>> childFlows = getFlowTypes(
+                problemAllocated,
+                externalAllocatedFunction,
+                externalAllocatedFunction.getFlows(problemAllocated),
+                optionalFunction -> optionalFunction
+                .flatMap(function -> problemAllocated.get(function))
+                .flatMap(function -> function.getTrace(problemFunctional))
         );
 
         Stream<Problem> missingFromParent = getDifferenceByFunction(childFlows, parentFlows)
                 .flatMap(byFunction -> {
-                    UUID functionUUID = byFunction.getKey();
-                    Optional<Function> systemFunction = parentStore.get(functionUUID, Function.class);
-                    if (!systemFunction.isPresent()) {
-                        return Stream.empty();
-                    }
-                    String systemFunctionDescription = systemFunction.get().getName();
+                    Function systemFunction = byFunction.getKey();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();
                         Direction direction = byType.getValue();
                         String description = getDescription(
                                 "Extra",
-                                externalFunctionDescription,
-                                systemFunctionDescription,
+                                externalAllocatedFunction.getDisplayName(problemAllocated),
+                                systemFunction.getDisplayName(problemFunctional),
                                 type, direction);
                         return Stream.of(new Problem(description, Stream.of(
                                                 // Remove from all child functions
@@ -178,56 +162,43 @@ public class FlowConsistency {
                                                                 Function childFunction = it.next();
                                                                 allocated = removeFlowDirections(
                                                                         allocated,
-                                                                        new DirectedPair(
-                                                                                externalParentFunctionUUID,
-                                                                                childFunction.getUuid(),
-                                                                                direction),
-                                                                        type);
+                                                                        externalAllocatedFunction,
+                                                                        childFunction,
+                                                                        type, direction);
                                                             }
                                                             return allocated;
                                                         }),
                                                 UpdateSolution.updateFunctional("Flow up", functional
-                                                        -> functional.setContext(
-                                                                addFlowDirections(
-                                                                        functional.getContext(),
-                                                                        new DirectedPair(
-                                                                                externalParentFunctionUUID,
-                                                                                functionUUID,
-                                                                                direction),
-                                                                        type))))));
+                                                        -> addFlowDirections(
+                                                                functional,
+                                                                externalAllocatedFunction,
+                                                                systemFunction,
+                                                                type, direction)))));
                     });
                 });
 
         Stream<Problem> missingFromChild = getDifferenceByFunction(parentFlows, childFlows)
                 .flatMap(byFunction -> {
-                    UUID functionUUID = byFunction.getKey();
-                    Optional<Function> systemFunction = parentStore.get(functionUUID, Function.class);
-                    if (!systemFunction.isPresent()) {
-                        return Stream.empty();
-                    }
-                    String systemFunctionDescription = systemFunction.get().getName();
+                    Function systemFunction = byFunction.getKey();
                     return byFunction.getValue()
                     .flatMap(byType -> {
                         String type = byType.getKey();
                         Direction direction = byType.getValue();
                         String description = getDescription(
                                 "Missing",
-                                externalFunctionDescription,
-                                systemFunctionDescription,
+                                externalAllocatedFunction.getDisplayName(problemAllocated),
+                                systemFunction.getDisplayName(problemFunctional),
                                 type, direction);
                         return Stream.of(new Problem(description, Stream.of(
                                                 // We don't know which new child flows to add,
                                                 // so can't flow down
                                                 new DisabledSolution("Flow down"),
-                                                UpdateSolution.updateFunctional("Flow up", functional
-                                                        -> functional.setContext(
-                                                                removeFlowDirections(
-                                                                        functional.getContext(),
-                                                                        new DirectedPair(
-                                                                                externalParentFunctionUUID,
-                                                                                functionUUID,
-                                                                                direction),
-                                                                        type))))));
+                                                UpdateSolution.updateFunctional("Flow up", solutionFunctional
+                                                        -> removeFlowDirections(
+                                                                solutionFunctional,
+                                                                externalAllocatedFunction,
+                                                                systemFunction,
+                                                                type, direction)))));
                     });
                 });
 
@@ -260,35 +231,35 @@ public class FlowConsistency {
                 + "to " + to;
     }
 
-    private static AllocatedBaseline addFlowDirections(
-            AllocatedBaseline allocated,
-            DirectedPair directions,
-            String type) {
-        RelationStore store = allocated.getStore();
-        Optional<Function> left = store.get(directions.getLeft(), Function.class);
-        Optional<Function> right = store.get(directions.getRight(), Function.class);
+    private static Baseline addFlowDirections(
+            Baseline allocated,
+            Function leftSample, Function rightSample,
+            String type, Direction directions) {
+        Optional<Function> left = allocated.get(leftSample);
+        Optional<Function> right = allocated.get(rightSample);
         if (left.isPresent() && right.isPresent()) {
-            return allocated.addFlow(
+            return Flow.add(
+                    allocated,
                     left.get(), right.get(),
                     type,
-                    directions.getDirection()).getValue();
+                    directions).getBaseline();
         } else {
             return allocated;
         }
     }
 
-    private static AllocatedBaseline removeFlowDirections(
-            AllocatedBaseline allocated,
-            DirectedPair directions,
-            String type) {
-        RelationStore store = allocated.getStore();
-        Optional<Function> left = store.get(directions.getLeft(), Function.class);
-        Optional<Function> right = store.get(directions.getRight(), Function.class);
+    private static Baseline removeFlowDirections(
+            Baseline allocated,
+            Function leftSample, Function rightSample,
+            String type, Direction directions) {
+        Optional<Function> left = allocated.get(leftSample);
+        Optional<Function> right = allocated.get(rightSample);
         if (left.isPresent() && right.isPresent()) {
-            return allocated.removeFlow(
+            return Flow.remove(
+                    allocated,
                     left.get(), right.get(),
                     type,
-                    directions.getDirection());
+                    directions);
         } else {
             return allocated;
         }

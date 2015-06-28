@@ -131,7 +131,7 @@ public class RelationStore implements RelationContext {
     }
 
     @CheckReturnValue
-    public RelationStore put(Relation value) {
+    public RelationStore add(Relation value) {
         // Check referential integrity
         boolean referencesOK = value.getReferences().parallel()
                 .map((reference) -> reference.getTo())

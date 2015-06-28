@@ -26,7 +26,12 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * An object that has a persistent, globally unique identifier. Multiple
@@ -35,6 +40,14 @@ import java.util.UUID;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public interface Identifiable {
+
+    public static <T extends Identifiable> Collector<T, ?, Map<UUID, T>> toMap() {
+        return Collectors.<T, UUID, T>toMap(Identifiable::getUuid, Function.identity());
+    }
+
+    public static <T extends Identifiable> Collector<T, ?, ConcurrentMap<UUID, T>> toConcurrentMap() {
+        return Collectors.<T, UUID, T>toConcurrentMap(Identifiable::getUuid, Function.identity());
+    }
 
     /**
      * Returns this instances persistent unique identifier.

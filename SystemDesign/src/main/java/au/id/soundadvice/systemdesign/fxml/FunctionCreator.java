@@ -26,16 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javafx.scene.control.ChoiceDialog;
@@ -51,11 +49,11 @@ public class FunctionCreator {
     }
 
     private final EditState edit;
-    private final AtomicReference<UUID> mostRecentItem = new AtomicReference<>();
+    private final AtomicReference<Item> mostRecentItem = new AtomicReference<>();
 
     void add(Function nearby) {
-        Optional<FunctionalBaseline> functional = edit.getUndo().get().getFunctional();
-        if (functional.isPresent() && functional.get().hasRelation(nearby)) {
+        Baseline functional = edit.getUndo().get().getFunctional();
+        if (functional.get(nearby).isPresent()) {
             addToParent();
         } else {
             addToChild();
@@ -65,26 +63,27 @@ public class FunctionCreator {
     void addToParent() {
         UndoBuffer<UndoState> undo = edit.getUndo();
         UndoState state = undo.get();
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (functional.isPresent()) {
-            UUID item = functional.get().getSystemOfInterest().getUuid();
-            Function function = createFunction(functional.get().getContext(), item);
-            undo.set(state.setFunctional(functional.get().add(function)));
+        Optional<Item> systemOfInterest = state.getSystemOfInterest();
+        if (systemOfInterest.isPresent()) {
+            edit.updateFunctional(
+                    functional -> Function.create(
+                            functional, systemOfInterest.get()).getBaseline());
         }
     }
 
     void addToChild() {
         UndoBuffer<UndoState> undo = edit.getUndo();
         UndoState state = undo.get();
-        AllocatedBaseline allocated = state.getAllocated();
-        Optional<UUID> item = chooseItem(allocated);
+        Baseline allocated = state.getAllocated();
+        Optional<Item> item = chooseItem(allocated);
         if (item.isPresent()) {
-            Function function = createFunction(allocated, item.get());
-            undo.set(state.setAllocated(allocated.add(function)));
+            edit.updateAllocated(
+                    functional -> Function.create(
+                            functional, item.get()).getBaseline());
         }
     }
 
-    private Optional<UUID> chooseItem(AllocatedBaseline baseline) {
+    private Optional<Item> chooseItem(Baseline baseline) {
         List<Item> choices = baseline.getItems().parallel()
                 .filter(item -> !item.isExternal())
                 .sorted((left, right) -> left.toString().compareTo(right.toString()))
@@ -92,10 +91,9 @@ public class FunctionCreator {
         if (!choices.isEmpty()) {
             Item selected = choices.get(0);
             if (choices.size() == 1) {
-                return Optional.of(selected.getUuid());
+                return Optional.of(selected);
             } else {
-                Optional<Item> mostRecent = baseline.getStore().get(
-                        mostRecentItem.get(), Item.class);
+                Optional<Item> mostRecent = baseline.get(mostRecentItem.get());
                 if (mostRecent.isPresent()) {
                     selected = mostRecent.get();
                 }
@@ -106,19 +104,11 @@ public class FunctionCreator {
 
                 Optional<Item> result = dialog.showAndWait();
                 if (result.isPresent()) {
-                    UUID uuid = result.get().getUuid();
-                    mostRecentItem.set(uuid);
-                    return Optional.of(uuid);
+                    mostRecentItem.set(result.get());
+                    return result;
                 }
             }
         }
         return Optional.empty();
-    }
-
-    private Function createFunction(AllocatedBaseline baseline, UUID item) {
-        String name = baseline.getFunctions().parallel()
-                .map(Function::getName)
-                .collect(new UniqueName("New Function"));
-        return Function.createNew(item, name);
     }
 }

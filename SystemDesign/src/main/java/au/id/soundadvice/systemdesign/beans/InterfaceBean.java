@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -50,36 +49,6 @@ public class InterfaceBean implements Identifiable {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 89 * hash + Objects.hashCode(this.uuid);
-        hash = 89 * hash + Objects.hashCode(this.leftItem);
-        hash = 89 * hash + Objects.hashCode(this.rightItem);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final InterfaceBean other = (InterfaceBean) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.leftItem, other.leftItem)) {
-            return false;
-        }
-        if (!Objects.equals(this.rightItem, other.rightItem)) {
-            return false;
-        }
-        return true;
     }
 
     @Override

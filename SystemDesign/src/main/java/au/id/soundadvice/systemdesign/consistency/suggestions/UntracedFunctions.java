@@ -30,6 +30,7 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import java.util.stream.Stream;
 
 /**
@@ -41,9 +42,12 @@ public class UntracedFunctions implements ProblemFactory {
     @Override
     public Stream<Problem> getProblems(EditState edit) {
         UndoState state = edit.getUndo().get();
-        if (state.getFunctional().isPresent()) {
-            boolean anyUntraced = state.getAllocated().getFunctions().parallel()
-                    .anyMatch(function -> !function.getTrace().isPresent());
+        if (state.getSystemOfInterest().isPresent()) {
+            Baseline allocated = state.getAllocated();
+            boolean anyUntraced = allocated.getFunctions().parallel()
+                    .anyMatch(function
+                            -> !function.isExternal()
+                            && !function.getTrace(allocated).isPresent());
             if (anyUntraced) {
                 return Stream.of(
                         new Problem("Check function allocation",

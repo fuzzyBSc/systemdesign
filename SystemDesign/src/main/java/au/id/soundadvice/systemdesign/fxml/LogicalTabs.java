@@ -26,19 +26,18 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.model.Flow;
-import au.id.soundadvice.systemdesign.model.DirectedPair;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
+import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.model.Scope;
 import au.id.soundadvice.systemdesign.model.UndirectedPair;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -71,7 +70,7 @@ public class LogicalTabs {
         onChange.run();
     }
 
-    private final Map<Optional<UUID>, LogicalSchematicController> controllers
+    private final Map<Optional<Function>, LogicalSchematicController> controllers
             = new ConcurrentHashMap<>();
     private final Interactions interactions;
     private final EditState edit;
@@ -82,16 +81,17 @@ public class LogicalTabs {
         @Override
         public void run() {
             UndoState state = edit.getUndo().get();
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            Map<Optional<UUID>, Function> parentFunctions;
-            if (functional.isPresent()) {
-                Stream<Function> reverse = functional.get().getStore().getReverse(
-                        functional.get().getSystemOfInterest().getUuid(), Function.class);
-                parentFunctions = reverse.collect(Collectors.toMap(
-                        function -> Optional.of(function.getUuid()),
-                        java.util.function.Function.identity()));
+            Baseline functional = state.getFunctional();
+            Baseline allocated = state.getAllocated();
+            Optional<Item> systemOfInterest = state.getSystemOfInterest();
+            Map<Optional<Function>, Function> parentFunctions;
+            if (systemOfInterest.isPresent()) {
+                parentFunctions = systemOfInterest.get().getOwnedFunctions(functional).collect(
+                        Collectors.toMap(
+                                function -> Optional.of(function),
+                                java.util.function.Function.identity()));
             } else {
-                if (state.getAllocated().getFunctions().findAny().isPresent()) {
+                if (allocated.getFunctions().findAny().isPresent()) {
                     parentFunctions = Collections.singletonMap(Optional.empty(), null);
                 } else {
                     parentFunctions = Collections.emptyMap();
@@ -115,10 +115,10 @@ public class LogicalTabs {
                         newTab.start();
                     });
             {
-                Iterator<Map.Entry<Optional<UUID>, LogicalSchematicController>> it
+                Iterator<Map.Entry<Optional<Function>, LogicalSchematicController>> it
                         = controllers.entrySet().iterator();
                 while (it.hasNext()) {
-                    Map.Entry<Optional<UUID>, LogicalSchematicController> entry = it.next();
+                    Map.Entry<Optional<Function>, LogicalSchematicController> entry = it.next();
                     if (!parentFunctions.containsKey(entry.getKey())) {
                         entry.getValue().stop();
                         it.remove();
@@ -126,20 +126,17 @@ public class LogicalTabs {
                 }
             }
 
-            AllocatedBaseline allocated = state.getAllocated();
-            RelationStore childStore = allocated.getStore();
             // Obtain the flows for each connection scope, ignoring direction
-            Map<DirectedPair, List<Flow>> flows = allocated.getFlows().parallel()
+            Map<Scope<Function>, List<Flow>> flows = allocated.getFlows().parallel()
                     .sorted((left, right) -> left.getType().compareTo(right.getType()))
-                    .collect(Collectors.groupingBy(
-                                    flow -> flow.getScope().setDirection(Direction.Both)));
+                    .collect(Collectors.groupingBy(flow -> flow.getScope(allocated)));
             Map<UndirectedPair, List<Flow>> flowsForViews = flows.entrySet().parallelStream()
                     .flatMap(entry -> {
-                        List<FunctionView> leftViews = childStore.getReverse(
-                                entry.getKey().getLeft(), FunctionView.class)
+                        List<FunctionView> leftViews
+                        = entry.getKey().getLeft().getViews(allocated)
                         .collect(Collectors.toList());
-                        List<FunctionView> rightViews = childStore.getReverse(
-                                entry.getKey().getRight(), FunctionView.class)
+                        List<FunctionView> rightViews
+                        = entry.getKey().getRight().getViews(allocated)
                         .collect(Collectors.toList());
                         // Build up the cross-product of leftViews and right views
                         return leftViews.parallelStream()
@@ -157,20 +154,18 @@ public class LogicalTabs {
                     .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
 
             // Divide up all function views between the various controllers
-            Map<Optional<UUID>, List<FunctionView>> perDrawingFunctionViews
+            Map<Optional<Function>, List<FunctionView>> perDrawingFunctionViews
                     = allocated.getFunctionViews().parallel()
-                    .collect(Collectors.groupingBy(FunctionView::getDrawing));
+                    .collect(Collectors.groupingBy(view -> view.getDrawing(functional)));
             perDrawingFunctionViews.entrySet().stream()
                     .forEach(entry -> {
                         Optional<LogicalSchematicController> controller
                         = Optional.ofNullable(controllers.get(entry.getKey()));
                         if (controller.isPresent()) {
                             Map<UUID, FunctionView> childFunctions = entry.getValue().parallelStream()
-                            .collect(Collectors.toMap(
-                                            FunctionView::getUuid,
-                                            java.util.function.Function.identity()));
+                            .collect(Identifiable.toMap());
                             controller.get().populate(
-                                    allocated, entry.getKey(), childFunctions, flowsForViews);
+                                    allocated, childFunctions, flowsForViews);
                         } else {
                             /*
                              * This is an unallocated function in an allocated
@@ -186,7 +181,7 @@ public class LogicalTabs {
                     .forEach(entry -> {
                         // Clear any controllers whose function list is now empty
                         entry.getValue().populate(
-                                allocated, entry.getKey(), Collections.emptyMap(), flowsForViews);
+                                allocated, Collections.emptyMap(), flowsForViews);
                     });
         }
     }

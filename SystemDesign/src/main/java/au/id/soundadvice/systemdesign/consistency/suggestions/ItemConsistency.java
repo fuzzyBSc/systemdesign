@@ -27,20 +27,17 @@
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
-import au.id.soundadvice.systemdesign.model.UndirectedPair;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
@@ -49,34 +46,30 @@ import java.util.stream.Stream;
  */
 public class ItemConsistency implements ProblemFactory {
 
-    private static Stream<Interface> getInterfaces(
-            RelationStore store, Item item) {
-        return store.getReverse(item.getUuid(), Interface.class);
-    }
-
-    private static UndoState flowItemDown(UndoState state, UUID interfaceUUID) {
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (!functional.isPresent()) {
+    private static UndoState flowItemDown(UndoState state, Interface iface) {
+        Optional<Item> system = state.getSystemOfInterest();
+        if (!system.isPresent()) {
             return state;
         }
-        RelationStore parentStore = functional.get().getStore();
-        Item system = functional.get().getSystemOfInterest();
-        Optional<Interface> iface = parentStore.get(interfaceUUID, Interface.class);
-        if (!iface.isPresent()) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        Optional<Interface> current = functional.get(iface);
+        if (current.isPresent()) {
+            iface = current.get();
+        } else {
             return state;
         }
-        Item parentItem = iface.get().otherEnd(parentStore, system);
+        Item parentItem = iface.otherEnd(functional, system.get());
 
-        Item externalItem = parentItem.asExternal(parentStore);
-        state = state.setAllocated(state.getAllocated().add(externalItem));
+        state = Item.flowDownExternal(state, parentItem).getState();
 
-        Iterator<Function> functionsWithFlowsOnThisInterface = parentStore.getReverse(
-                externalItem.getUuid(), Function.class)
-                .filter(FunctionConsistency.hasFlowsOnInterface(parentStore, interfaceUUID))
+        Iterator<Function> functionsWithFlowsOnThisInterface
+                = parentItem.getOwnedFunctions(functional)
+                .filter(FunctionConsistency.hasFlowsOnInterface(functional, iface))
                 .iterator();
         while (functionsWithFlowsOnThisInterface.hasNext()) {
             Function function = functionsWithFlowsOnThisInterface.next();
-            state = FunctionConsistency.flowDown(state, function.getUuid());
+            state = FunctionConsistency.flowDown(state, function);
         }
 
         return state;
@@ -97,32 +90,31 @@ public class ItemConsistency implements ProblemFactory {
      * @return The list of identified problems and solutions
      */
     public static Stream<Problem> checkConsistencyDown(UndoState state) {
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (!functional.isPresent()) {
+        Optional<Item> system = state.getSystemOfInterest();
+        if (!system.isPresent()) {
             return Stream.empty();
         }
-        Item system = functional.get().getSystemOfInterest();
-        RelationStore parentStore = functional.get().getStore();
-        RelationStore childStore = state.getAllocated().getStore();
+        Baseline problemFunctional = state.getFunctional();
+        Baseline problemAllocated = state.getAllocated();
 
-        return getInterfaces(parentStore, system)
+        return system.get().getInterfaces(problemFunctional)
                 .flatMap(iface -> {
-                    Item parentItem = iface.otherEnd(parentStore, system);
-                    Optional<Item> childItem = childStore.get(parentItem.getUuid(), Item.class);
+                    Item parentItem = iface.otherEnd(problemFunctional, system.get());
+                    Optional<Item> childItem = problemAllocated.get(parentItem);
                     if (childItem.isPresent()) {
                         Stream<Problem> consistency;
-                        Item parentItemAsExternal = parentItem.asExternal(parentStore);
+                        Item parentItemAsExternal = parentItem.asExternal(problemAllocated);
                         if (!childItem.get().isConsistent(parentItemAsExternal)) {
                             String name = parentItemAsExternal.getDisplayName();
                             consistency = Stream.of(
                                     new Problem(
                                             name + " differs between baselines", Stream.of(
-                                                    UpdateSolution.updateAllocatedRelation(
-                                                            "Flow down", childItem.get().getUuid(), Item.class,
-                                                            relation -> relation.makeConsistent(parentItemAsExternal)),
-                                                    UpdateSolution.updateFunctionalRelation(
-                                                            "Flow up", parentItem.getUuid(), Item.class,
-                                                            relation -> relation.makeConsistent(childItem.get())))));
+                                                    UpdateSolution.updateAllocated(
+                                                            "Flow down",
+                                                            baseline -> childItem.get().makeConsistent(baseline, parentItemAsExternal).getBaseline()),
+                                                    UpdateSolution.updateAllocated(
+                                                            "Flow up",
+                                                            baseline -> parentItem.makeConsistent(baseline, childItem.get()).getBaseline()))));
                         } else {
                             consistency = Stream.empty();
                         }
@@ -130,13 +122,13 @@ public class ItemConsistency implements ProblemFactory {
                         return Stream.concat(consistency, flows);
                     } else {
                         String name = parentItem.getDisplayName();
-                        String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
+                        String parentId = system.get().getIdPath(problemAllocated).toString();
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(
                                                 UpdateSolution.update("Flow down", solutionState
-                                                        -> flowItemDown(solutionState, iface.getUuid())),
+                                                        -> flowItemDown(solutionState, iface)),
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional
-                                                        -> solutionFunctional.remove(iface.getUuid())
+                                                        -> iface.remove(solutionFunctional)
                                                 ))));
                     }
                 });
@@ -150,45 +142,42 @@ public class ItemConsistency implements ProblemFactory {
      * @return The list of identified problems and solutions
      */
     public static Stream<Problem> checkConsistencyUp(UndoState state) {
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (!functional.isPresent()) {
+        Optional<Item> system = state.getSystemOfInterest();
+        if (!system.isPresent()) {
             return Stream.empty();
         }
-        Item system = functional.get().getSystemOfInterest();
-        RelationStore parentStore = functional.get().getStore();
-        RelationStore childStore = state.getAllocated().getStore();
+        Baseline problemFunctional = state.getFunctional();
+        Baseline problemAllocated = state.getAllocated();
 
-        return childStore.getByClass(Item.class)
+        return problemAllocated.getItems()
                 .filter(Item::isExternal)
-                .flatMap((item) -> {
-                    Optional<Interface> interfaceInParent
-                    = parentStore.getReverse(system.getUuid(), Interface.class)
-                    .filter((iface) -> item.getUuid().equals(
-                                    iface.otherEnd(parentStore, system).getUuid()))
+                .flatMap(item -> {
+                    Optional<Interface> functionalInterface
+                    = system.get().getInterfaces(problemFunctional)
+                    .filter(iface -> system.get().equals(iface.otherEnd(problemFunctional, item)))
                     .findAny();
 
-                    if (interfaceInParent.isPresent()) {
+                    if (functionalInterface.isPresent()) {
                         // This item is fine. Check its functions.
                         return FunctionConsistency.checkConsistencyUp(
-                                state, interfaceInParent.get(), item.getUuid());
+                                state, functionalInterface.get(), item);
                     }
 
                     String name = item.getDisplayName();
-                    String parentId = functional.get().getSystemOfInterest().getIdPath(parentStore).toString();
-                    if (parentStore.get(item.getUuid(), Item.class).isPresent()) {
+                    String parentId = system.get().getIdPath(problemFunctional).toString();
+                    if (problemFunctional.get(item).isPresent()) {
                         /*
                          * The parent instance exists, just not the relevant
                          * interface.
                          */
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> solutionAllocated.remove(item.getUuid())
+                                                        -> item.removeFrom(solutionAllocated)
                                                 ),
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional -> {
-                                                    UndirectedPair scope = new UndirectedPair(
-                                                            item.getUuid(), system.getUuid());
-                                                    Interface toAdd = Interface.createNew(scope);
-                                                    return solutionFunctional.add(toAdd);
+                                                    return Interface.create(
+                                                            solutionFunctional, item, system.get())
+                                                    .getBaseline();
                                                 }))));
                     } else {
                         /*
@@ -198,7 +187,7 @@ public class ItemConsistency implements ProblemFactory {
                         return Stream.of(new Problem(
                                         name + " is missing in " + parentId, Stream.of(
                                                 UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> solutionAllocated.remove(item.getUuid())
+                                                        -> item.removeFrom(solutionAllocated)
                                                 ),
                                                 new DisabledSolution("Flow up"))));
                     }

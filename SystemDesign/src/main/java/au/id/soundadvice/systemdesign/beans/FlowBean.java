@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -35,46 +34,6 @@ import java.util.UUID;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class FlowBean implements Identifiable {
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 89 * hash + Objects.hashCode(this.uuid);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final FlowBean other = (FlowBean) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        if (!Objects.equals(this.iface, other.iface)) {
-            return false;
-        }
-        if (!Objects.equals(this.left, other.left)) {
-            return false;
-        }
-        if (!Objects.equals(this.right, other.right)) {
-            return false;
-        }
-        if (this.direction != other.direction) {
-            return false;
-        }
-        if (!Objects.equals(this.type, other.type)) {
-            return false;
-        }
-        if (!Objects.equals(this.description, other.description)) {
-            return false;
-        }
-        return true;
-    }
 
     @Override
     public UUID getUuid() {

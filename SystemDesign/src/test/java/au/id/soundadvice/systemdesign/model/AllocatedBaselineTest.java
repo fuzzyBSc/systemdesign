@@ -24,17 +24,14 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.baseline;
+package au.id.soundadvice.systemdesign.model;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.beans.ItemBean;
 import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.FileUtils;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.model.Identity;
-import au.id.soundadvice.systemdesign.model.Item;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,26 +71,22 @@ public class AllocatedBaselineTest {
         }
 
         System.out.println("Load from nonexistant");
-        AllocatedBaseline baseline = AllocatedBaseline.load(subsystemDirectory);
+        Baseline baseline = Baseline.load(subsystemDirectory);
         assertFalse(baseline.getItems().iterator().hasNext());
         assertFalse(baseline.getInterfaces().iterator().hasNext());
         assertFalse(baseline.getFunctions().iterator().hasNext());
         assertFalse(baseline.getFlows().iterator().hasNext());
-        assertFalse(baseline.getHazards().iterator().hasNext());
-        assertFalse(baseline.getRequirements().iterator().hasNext());
 
         System.out.println("Load from empty");
         try (SaveTransaction transaction = new SaveTransaction()) {
             baseline.saveTo(transaction, subsystemDirectory);
             transaction.commit();
         }
-        baseline = AllocatedBaseline.load(subsystemDirectory);
+        baseline = Baseline.load(subsystemDirectory);
         assertFalse(baseline.getItems().iterator().hasNext());
         assertFalse(baseline.getInterfaces().iterator().hasNext());
         assertFalse(baseline.getFunctions().iterator().hasNext());
         assertFalse(baseline.getFlows().iterator().hasNext());
-        assertFalse(baseline.getHazards().iterator().hasNext());
-        assertFalse(baseline.getRequirements().iterator().hasNext());
     }
 
     @Test
@@ -105,28 +98,28 @@ public class AllocatedBaselineTest {
         FileUtils.recursiveDelete(repo);
         Files.createDirectories(subsystemDirectory.getPath());
 
-        AllocatedBaseline model = AllocatedBaseline.create(Identity.create());
+        Baseline model = Baseline.create(Identity.create());
 
         Item systemOfInterest = new Item(
                 model.getIdentity().getUuid(), new ItemBean(
-                        UUID.randomUUID(), "C1234", "system", "The system", 0, 0, false));
+                        UUID.randomUUID(), "C1234", "system", false));
         model = model.add(systemOfInterest);
 
-        AllocatedBaseline system = AllocatedBaseline.create(
-                systemOfInterest.asIdentity(model.getStore()));
+        Baseline system = Baseline.create(
+                systemOfInterest.asIdentity(model));
 
         Item subsystemOfInterest = new Item(
                 system.getIdentity().getUuid(), new ItemBean(
-                        UUID.randomUUID(), "1", "subsystem", "A subsystem", 0, 0, false));
+                        UUID.randomUUID(), "1", "subsystem", false));
         system = system.add(subsystemOfInterest);
 
-        AllocatedBaseline subsystem = AllocatedBaseline.create(
-                subsystemOfInterest.asIdentity(system.getStore()));
+        Baseline subsystem = Baseline.create(
+                subsystemOfInterest.asIdentity(system));
         for (int ii = 0; ii < 10; ++ii) {
             Item item = new Item(
                     subsystem.getIdentity().getUuid(), new ItemBean(
                             UUID.randomUUID(), Integer.toString(ii),
-                            "subsystem " + ii, "subsystem " + ii, 0, 0, false));
+                            "subsystem " + ii, false));
             subsystem = subsystem.add(item);
         }
 

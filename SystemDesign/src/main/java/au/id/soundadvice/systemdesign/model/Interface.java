@@ -28,29 +28,27 @@ package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.InterfaceBean;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
 
 /**
+ * An association between two items that implies Flows may exist between them.
+ * Each pair of Items in an allocated baseline may either have a corresponding
+ * interface or have no corresponding interface. The description of the
+ * interface is compose primarily of the flows across it, the nature of the two
+ * items, and any associated interface requirements.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Interface implements RequirementContext, BeanFactory<RelationContext, InterfaceBean>, Relation {
-
-    public static Optional<Interface> findExisting(
-            RelationStore context, UndirectedPair items) {
-        return context.getReverse(items.getLeft(), Interface.class).parallel()
-                .filter((candidate) -> {
-                    return items.getRight().equals(candidate.getRight().getUuid());
-                }).findAny();
-    }
+public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation {
 
     @Override
     public int hashCode() {
@@ -77,12 +75,73 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         return true;
     }
 
-    public UndirectedPair getScope() {
-        return scope;
+    /**
+     * Create a new Interface.
+     *
+     * @param baseline The baseline to update
+     * @param left An item for this interface to connect to
+     * @param right An item for this interface to connect to
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Interface> create(
+            Baseline baseline, Item left, Item right) {
+        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        Optional<Interface> existing = baseline.getInterface(scope);
+        if (existing.isPresent()) {
+            return baseline.and(existing.get());
+        } else {
+            Interface newInterface = new Interface(UUID.randomUUID(), scope);
+            return baseline.add(newInterface).and(newInterface);
+        }
     }
 
-    public static Interface createNew(UndirectedPair scope) {
-        return new Interface(UUID.randomUUID(), scope);
+    /**
+     * Remove an interface.
+     *
+     * @param baseline The baseline to update
+     * @param left An item the interface is connected to
+     * @param right An item the interface is connected to
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static Baseline remove(
+            Baseline baseline, Item left, Item right) {
+        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        Optional<Interface> existing = baseline.getInterface(scope);
+        if (existing.isPresent()) {
+            return baseline.remove(existing.get().getUuid());
+        } else {
+            return baseline;
+        }
+    }
+
+    public Baseline remove(Baseline baseline) {
+        return baseline.remove(uuid);
+    }
+
+    /**
+     * Find the interface (if any) between the nominated items.
+     *
+     * @param baseline The baseline to query
+     * @param left One of the items for the interface
+     * @param right One of the items for the interface
+     * @return The interface, or Optional.empty() if no such interface exists.
+     */
+    public static Optional<Interface> get(
+            Baseline baseline, Item left, Item right) {
+        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        return baseline.getInterface(scope);
+    }
+
+    public Stream<Flow> getFlows(Baseline baseline) {
+        return baseline.getReverse(uuid, Flow.class);
+    }
+
+    public Scope<Item> getScope(Baseline baseline) {
+        Optional<Item> leftFunction = baseline.get(scope.getLeft(), Item.class);
+        Optional<Item> rightFunction = baseline.get(scope.getRight(), Item.class);
+        return new Scope<>(leftFunction.get(), rightFunction.get());
     }
 
     public Interface(InterfaceBean bean) {
@@ -117,16 +176,12 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
     private final UndirectedPair scope;
 
     @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Interface;
-    }
-
-    @Override
-    public InterfaceBean toBean(RelationContext context) {
-        Item leftItem = this.left.getTarget(context);
-        Item rightItem = this.right.getTarget(context);
-        IDPath leftPath = leftItem.getIdPath(context);
-        IDPath rightPath = rightItem.getIdPath(context);
+    public InterfaceBean toBean(Baseline baseline) {
+        RelationStore store = baseline.getStore();
+        Item leftItem = this.left.getTarget(store);
+        Item rightItem = this.right.getTarget(store);
+        IDPath leftPath = leftItem.getIdPath(baseline);
+        IDPath rightPath = rightItem.getIdPath(baseline);
         if (leftPath.compareTo(rightPath) > 0) {
             // Invert
             {
@@ -162,9 +217,9 @@ public class Interface implements RequirementContext, BeanFactory<RelationContex
         return finder.getReferences(this);
     }
 
-    public Item otherEnd(RelationContext store, Item item) {
+    public Item otherEnd(Baseline baseline, Item item) {
         UUID otherEndUUID = scope.otherEnd(item.getUuid());
         // Referential integrity should be guaranteed by the store
-        return store.get(otherEndUUID, Item.class).get();
+        return baseline.get(otherEndUUID, Item.class).get();
     }
 }

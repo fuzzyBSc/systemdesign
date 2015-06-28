@@ -26,16 +26,17 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
+import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.model.Item;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -109,32 +110,30 @@ public class LogicalTreeController {
         private final FunctionAllocation orphans;
 
         private TreeState(UndoState state) {
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            AllocatedBaseline allocated = state.getAllocated();
+            Optional<Item> systemOfInterest = state.getSystemOfInterest();
+            Baseline functional = state.getFunctional();
+            Baseline allocated = state.getAllocated();
 
             Map<UUID, Function> parentFunctions;
-            if (functional.isPresent()) {
-                UUID systemUuid = functional.get().getSystemOfInterest().getUuid();
-                parentFunctions = new HashMap<>();
-                functional.get().getStore().getReverse(systemUuid, Function.class)
-                        .forEach((function) -> parentFunctions.put(function.getUuid(), function));
+            if (systemOfInterest.isPresent()) {
+                parentFunctions = systemOfInterest.get().getOwnedFunctions(functional)
+                        .collect(Identifiable.toMap());
             } else {
                 parentFunctions = Collections.emptyMap();
             }
 
             Map<Function, SortedMap<String, Function>> rawAllocation = new HashMap<>();
             parentFunctions.values()
-                    .forEach((parent) -> rawAllocation.put(parent, new TreeMap<>()));
+                    .forEach(parent -> rawAllocation.put(parent, new TreeMap<>()));
             // Keep orphans separate to avoid null pointers in TreeMap
             SortedMap<String, Function> rawOrphans = new TreeMap<>();
             allocated.getFunctions()
                     .forEach(child -> {
                         // Parent may be null, ie child is orphaned
-                        Optional<UUID> trace = child.getTrace();
-                        Optional<Function> parent = trace.map(uuid -> parentFunctions.get(uuid));
-                        SortedMap<String, Function> map = parent.isPresent()
-                                ? rawAllocation.get(parent.get()) : rawOrphans;
-                        map.put(child.getDisplayName(allocated.getStore()), child);
+                        Optional<Function> trace = child.getTrace(functional);
+                        SortedMap<String, Function> map = trace.isPresent()
+                                ? rawAllocation.get(trace.get()) : rawOrphans;
+                        map.put(child.getDisplayName(allocated), child);
                     });
 
             SortedMap<String, FunctionAllocation> tmpAllocation = new TreeMap<>();
@@ -214,10 +213,18 @@ public class LogicalTreeController {
         public FunctionTreeCell() {
             MenuItem addMenuItem = new MenuItem("Add Function");
             contextMenu.getItems().add(addMenuItem);
-            addMenuItem.setOnAction(event -> functionCreator.add(getItem()));
+            addMenuItem.setOnAction(event -> {
+                functionCreator.add(getItem());
+                event.consume();
+            });
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> edit.removeAllocatedRelation(getItem().getUuid()));
+            deleteMenuItem.setOnAction(event -> {
+                edit.updateAllocated(baseline -> {
+                    return getItem().removeFrom(baseline);
+                });
+                event.consume();
+            });
             this.editableProperty().bind(this.itemProperty().isNotNull());
         }
 
@@ -256,22 +263,22 @@ public class LogicalTreeController {
                  * Commit instead.
                  */
                 if (textField.isPresent()) {
-                    commitEdit(getItem().setName(textField.get().getText()));
+                    commitEdit(getItem());
                 }
             }
         }
 
         @Override
         public void commitEdit(Function function) {
-            super.commitEdit(function);
-            edit.getUndo().update(state -> {
-                Optional<FunctionalBaseline> functional = state.getFunctional();
-                if (functional.isPresent() && functional.get().hasRelation(function)) {
-                    // This function is a member of the functional baseline
-                    return state.setFunctional(functional.get().add(function));
+            edit.updateAllocated(allocated -> {
+                Optional<Function> current = allocated.get(function);
+                if (current.isPresent()) {
+                    Baseline.BaselineAnd<Function> result = current.get().setName(
+                            allocated, textField.get().getText());
+                    super.commitEdit(result.getRelation());
+                    return result.getBaseline();
                 } else {
-                    return state.setAllocated(
-                            state.getAllocated().add(function));
+                    return allocated;
                 }
             });
         }
@@ -303,7 +310,7 @@ public class LogicalTreeController {
             TextField node = new TextField(function.getName());
             node.setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
-                    commitEdit(function.setName(node.getText()));
+                    commitEdit(getItem());
                     event.consume();
                 } else if (event.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();

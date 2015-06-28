@@ -26,18 +26,17 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
@@ -84,7 +83,7 @@ public class PhysicalTreeController {
         MenuItem addMenuItem = new MenuItem("Add Item");
         contextMenu.getItems().add(addMenuItem);
         addMenuItem.setOnAction(event -> {
-            interactions.addItem(Item.defaultOrigin);
+            interactions.createItem(ItemView.defaultOrigin);
             event.consume();
         });
         view.setContextMenu(contextMenu);
@@ -122,13 +121,11 @@ public class PhysicalTreeController {
         private final SortedMap<IDPath, Item> items;
 
         private TreeState(UndoState state) {
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            AllocatedBaseline allocated = state.getAllocated();
-            this.systemOfInterest = functional.map(FunctionalBaseline::getSystemOfInterest);
+            Baseline allocated = state.getAllocated();
+            this.systemOfInterest = state.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
-            RelationContext context = allocated.getStore();
             allocated.getItems()
-                    .forEach((item) -> tmpItems.put(item.getIdPath(context), item));
+                    .forEach((item) -> tmpItems.put(item.getIdPath(allocated), item));
             this.items = Collections.unmodifiableSortedMap(tmpItems);
         }
     }
@@ -193,7 +190,7 @@ public class PhysicalTreeController {
             MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
             addMenuItem.setOnAction(event -> {
-                interactions.addItem(Item.defaultOrigin);
+                interactions.createItem(ItemView.defaultOrigin);
                 event.consume();
             });
             MenuItem renameMenuItem = new MenuItem("Renumber");
@@ -205,7 +202,9 @@ public class PhysicalTreeController {
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction(event -> {
-                edit.removeAllocatedRelation(getItem().getUuid());
+                edit.updateAllocated(baseline -> {
+                    return getItem().removeFrom(baseline);
+                });
                 event.consume();
             });
         }
@@ -242,16 +241,24 @@ public class PhysicalTreeController {
                  * Commit instead.
                  */
                 if (textField.isPresent()) {
-                    commitEdit(getItem().setName(textField.get().getText()));
+                    commitEdit(getItem());
                 }
             }
         }
 
         @Override
         public void commitEdit(Item item) {
-            super.commitEdit(item);
-            edit.updateAllocatedRelation(item.getUuid(), Item.class,
-                    relation -> relation.setName(item.getName()));
+            edit.updateAllocated(allocated -> {
+                Optional<Item> current = allocated.get(item);
+                if (current.isPresent()) {
+                    Baseline.BaselineAnd<Item> result = current.get().setName(
+                            allocated, textField.get().getText());
+                    super.commitEdit(result.getRelation());
+                    return result.getBaseline();
+                } else {
+                    return allocated;
+                }
+            });
         }
 
         @Override
@@ -281,7 +288,7 @@ public class PhysicalTreeController {
             TextField node = new TextField(getItem().getName());
             node.setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
-                    commitEdit(getItem().setName(node.getText()));
+                    commitEdit(getItem());
                     event.consume();
                 } else if (event.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();

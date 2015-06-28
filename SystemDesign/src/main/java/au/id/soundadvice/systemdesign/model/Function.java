@@ -26,23 +26,39 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
+import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
+import au.id.soundadvice.systemdesign.fxml.UniqueName;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import au.id.soundadvice.systemdesign.relation.RelationContext;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import javafx.geometry.Point2D;
 import javax.annotation.CheckReturnValue;
 
 /**
+ * A function is a unit of functionality of an item. An item can have multiple
+ * functions. Each function has corresponding flows in and out that when added
+ * together describe the total set of flows in and out of the item.
+ *
+ * Functions typically have a two-word name consisting of noun and verb. For
+ * example: Collate files. Noun and verb should both be drawn from a restricted
+ * vocabulary. This technique is intended to maintain a model of system
+ * functionality simple enough for humans to readily understand and to readily
+ * appreciate when functions overlap between items. Combined with the explicit
+ * use of flows the functional design is intended to clearly demonstrate
+ * coupling and cohesion and encourage allocation of functionality to the most
+ * appropriate item.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Function implements RequirementContext, BeanFactory<RelationContext, FunctionBean>, Relation {
+public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
 
     @Override
     public int hashCode() {
@@ -92,11 +108,12 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     }
 
     @CheckReturnValue
-    public Function makeConsistent(Function other) {
-        return new Function(
+    public BaselineAnd<Function> makeConsistent(Baseline baseline, Function other) {
+        Function result = new Function(
                 other.getUuid(),
-                other.getItem().getUuid(), trace, external,
-                other.name);
+                other.getItem().getUuid(), trace,
+                other.name, external);
+        return baseline.add(result).and(result);
     }
 
     @Override
@@ -104,8 +121,151 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return name;
     }
 
-    public static Function createNew(UUID item, String name) {
-        return new Function(UUID.randomUUID(), item, Optional.empty(), false, name);
+    /**
+     * Create a new Function.
+     *
+     * @param baseline The baseline to update
+     * @param item The item that implements this function
+     * @param trace If a functional baseline exists for this allocated baseline
+     * then the functional baseline Function this function traces to. Otherwise,
+     * Optional.empty()
+     * @param name The name of the function
+     * @param origin The location for the function on the screen
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Function> create(
+            Baseline baseline, Item item, Optional<Function> trace, String name, Point2D origin) {
+        Optional<UUID> traceUUID = trace.map(Function::getUuid);
+        Function function = new Function(
+                UUID.randomUUID(),
+                item.getUuid(), traceUUID,
+                name, false);
+        baseline = baseline.add(function);
+        // Also add the coresponding view
+        return FunctionView.create(baseline, function, trace, origin)
+                .getBaseline().and(function);
+    }
+
+    /**
+     * Create a new Function with no trace and a default name.
+     *
+     * @param baseline The baseline to update
+     * @param item The item that implements this function
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Function> create(Baseline baseline, Item item) {
+        String name = baseline.getFunctions().parallel()
+                .map(Function::getName)
+                .collect(new UniqueName("New Function"));
+        return Function.create(
+                baseline, item, Optional.empty(), name, FunctionView.defaultOrigin);
+    }
+
+    /**
+     * Create a new external Function.
+     *
+     * @param baseline The baseline to update
+     * @param externalItem The external item this external function belongs to
+     * @param traceExternals A stream of functional baseline functions on the
+     * system of interest that this external function has flows with
+     * @param name The name of the function
+     * @param origin The location for the function on the screen
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Function> createExternal(
+            Baseline baseline, Item externalItem, Stream<Function> traceExternals, String name, Point2D origin) {
+        Function function = new Function(
+                UUID.randomUUID(),
+                externalItem.getUuid(), Optional.empty(),
+                name, true);
+        baseline = baseline.add(function);
+        // Also add the coresponding views
+        Iterator<Function> it = traceExternals.iterator();
+        while (it.hasNext()) {
+            Function traceExternal = it.next();
+            baseline = FunctionView.create(
+                    baseline, function, Optional.of(traceExternal), origin)
+                    .getBaseline();
+        }
+        return baseline.and(function);
+    }
+
+    public static Stream<Function> getSystemFunctionsForExternalFunction(
+            UndoState state, Function external) {
+        Baseline functional = state.getFunctional();
+        Optional<Item> systemOfInterest = state.getSystemOfInterest();
+        if (systemOfInterest.isPresent()
+                && !external.item.getUuid().equals(systemOfInterest.get().getUuid())) {
+            return external.getFlows(functional)
+                    .filter(flow -> flow.hasEnd(functional, systemOfInterest.get()))
+                    .map(flow -> flow.otherEnd(functional, external))
+                    .distinct();
+        } else {
+            return Stream.empty();
+        }
+    }
+
+    /**
+     * Flow an external item down from the functional baseline to the allocated
+     * baseline.
+     *
+     * @param state The state to update
+     * @param external The item to flow down from the state's functional
+     * baseline
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static UndoState.StateAnd<Function> flowDownExternal(
+            UndoState state, Function external) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        Item item = external.getItem().getTarget(functional.getStore());
+        Function newExternal = new Function(
+                external.uuid,
+                item.getUuid(),
+                Optional.empty(),
+                external.name, true);
+        allocated = allocated.add(newExternal);
+        // Also add the coresponding views
+        Iterator<Function> it = getSystemFunctionsForExternalFunction(state, external).iterator();
+        // Pick an origin
+        Optional<Point2D> origin = external.getViews(functional)
+                .map(FunctionView::getOrigin)
+                .findAny();
+        while (it.hasNext()) {
+            Function systemFunction = it.next();
+            /*
+             * Create one view for each system function this external function
+             * has flows with
+             */
+            allocated = FunctionView.create(
+                    allocated, newExternal, Optional.of(systemFunction),
+                    origin.orElse(FunctionView.defaultOrigin))
+                    .getBaseline();
+        }
+        return state.setAllocated(allocated).and(newExternal);
+    }
+
+    /**
+     * Remove an function from a baseline.
+     *
+     * @param baseline The baseline to update
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public Baseline removeFrom(Baseline baseline) {
+        return baseline.remove(uuid);
+    }
+
+    public Stream<FunctionView> getViews(Baseline baseline) {
+        return baseline.getReverse(uuid, FunctionView.class);
+    }
+
+    public Stream<Flow> getFlows(Baseline baseline) {
+        return baseline.getReverse(uuid, Flow.class);
     }
 
     @Override
@@ -117,8 +277,8 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         return item;
     }
 
-    public Optional<UUID> getTrace() {
-        return this.trace;
+    public Optional<Function> getTrace(Baseline functionalBaseline) {
+        return this.trace.flatMap(traceUUID -> functionalBaseline.get(traceUUID, Function.class));
     }
 
     public boolean isExternal() {
@@ -137,7 +297,7 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
         this.name = bean.getName();
     }
 
-    private Function(UUID uuid, UUID item, Optional<UUID> trace, boolean external, String name) {
+    private Function(UUID uuid, UUID item, Optional<UUID> trace, String name, boolean external) {
         this.uuid = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
@@ -152,18 +312,13 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     private final String name;
 
     @Override
-    public RequirementType getRequirementType() {
-        return RequirementType.Functional;
-    }
-
-    @Override
-    public FunctionBean toBean(RelationContext context) {
+    public FunctionBean toBean(Baseline baseline) {
         return new FunctionBean(
-                uuid, item.getUuid(), getDisplayName(context), trace, external, name);
+                uuid, item.getUuid(), getDisplayName(baseline), trace, external, name);
     }
 
-    public String getDisplayName(RelationContext context) {
-        return getDisplayName(item.getTarget(context));
+    public String getDisplayName(Baseline baseline) {
+        return getDisplayName(item.getTarget(baseline.getStore()));
     }
 
     public String getDisplayName(Item item) {
@@ -183,19 +338,55 @@ public class Function implements RequirementContext, BeanFactory<RelationContext
     }
 
     @CheckReturnValue
-    public Function setName(String value) {
-        return new Function(uuid, item.getUuid(), trace, external, value);
+    public BaselineAnd<Function> setName(Baseline baseline, String name) {
+        if (this.name.equals(name)) {
+            return baseline.and(this);
+        } else {
+            Function result = new Function(uuid, item.getUuid(), trace, name, external);
+            return baseline.add(result).and(result);
+        }
     }
 
     @CheckReturnValue
-    public Function setTrace(UUID value) {
-        return new Function(uuid, item.getUuid(), Optional.of(value), external, name);
+    public BaselineAnd<Function> setTrace(Baseline baseline, Function traceFunction) {
+        if (external) {
+            // External functions don't have traces, just views
+            return baseline.and(this);
+        }
+        {
+            Iterator<Flow> toRemove = getFlows(baseline).iterator();
+            while (toRemove.hasNext()) {
+                Flow flow = toRemove.next();
+                baseline = flow.removeFrom(baseline);
+            }
+        }
+        Optional<Point2D> origin = Optional.empty();
+        {
+            Iterator<FunctionView> toRemove = getViews(baseline).iterator();
+            while (toRemove.hasNext()) {
+                FunctionView view = toRemove.next();
+                // Preserve origin
+                origin = Optional.of(view.getOrigin());
+                baseline = view.removeFrom(baseline);
+            }
+        }
+        Function function = new Function(
+                uuid,
+                item.getUuid(), Optional.of(traceFunction.uuid),
+                name, external);
+        baseline = baseline.add(function);
+        // Also add the coresponding view
+        baseline = FunctionView.create(
+                baseline, function, Optional.of(traceFunction),
+                origin.orElse(FunctionView.defaultOrigin)
+        ).getBaseline();
+        return baseline.and(function);
     }
 
     public Function asExternal(UUID allocateToParentFunction) {
         return new Function(
                 uuid, item.getUuid(),
-                Optional.of(allocateToParentFunction), true,
-                name);
+                Optional.of(allocateToParentFunction),
+                name, true);
     }
 }

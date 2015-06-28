@@ -39,10 +39,8 @@ import java.util.Set;
 public enum Direction {
 
     /**
-     * No direction - the flow should be deleted.
-     */
-    /**
-     * No direction - the flow should be deleted.
+     * No direction. A flow with no direction should be deleted. An interface
+     * should never have a direction.
      */
     None,
     /**

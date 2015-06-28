@@ -26,20 +26,19 @@
  */
 package au.id.soundadvice.systemdesign.baselines;
 
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.consistency.autofix.AutoFix;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.Relation;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EmptyStackException;
 import java.util.Optional;
 import java.util.Stack;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -125,12 +124,10 @@ public class EditState {
                 ++count;
             } while (Files.isDirectory(childDir.getPath()));
             UndoState state = undo.get();
-            Optional<Item> systemOfInterest = state.getAllocated().getStore().get(
-                    child.getUuid(), Item.class);
+            Optional<Item> systemOfInterest = state.getAllocated().getItemForIdentity(child);
             if (systemOfInterest.isPresent()) {
-                state = state.setFunctional(new FunctionalBaseline(
-                        systemOfInterest.get(), state.getAllocated()));
-                state = state.setAllocated(AllocatedBaseline.create(child));
+                state = state.setFunctional(state.getAllocated());
+                state = state.setAllocated(Baseline.create(child));
                 currentDirectory.set(Optional.of(childDir));
                 undo.reset(state);
                 savedState.set(state);
@@ -223,19 +220,14 @@ public class EditState {
     }
 
     /**
-     * Modify the functional (ie parent) baseline.
+     * Modify the functional (ie parent) baseline. If no such baseline exists
+     * this method is a no-op.
      *
      * @param update A function to update the baseline.
      */
-    public void updateFunctional(UnaryOperator<FunctionalBaseline> update) {
-        undo.update(state -> {
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            if (functional.isPresent()) {
-                return state.setFunctional(update.apply(functional.get()));
-            } else {
-                return state;
-            }
-        });
+    public void updateFunctional(UnaryOperator<Baseline> update) {
+        undo.update(state -> state.setFunctional(
+                update.apply(state.getFunctional())));
     }
 
     /**
@@ -243,36 +235,17 @@ public class EditState {
      *
      * @param update A function to update the baseline.
      */
-    public void updateAllocated(UnaryOperator<AllocatedBaseline> update) {
-        undo.update(state -> state.setAllocated(update.apply(state.getAllocated())));
+    public void updateAllocated(UnaryOperator<Baseline> update) {
+        undo.update(state -> state.setAllocated(
+                update.apply(state.getAllocated())));
     }
 
     /**
-     * Modify an existing relation within the allocated baseline, if it exists.
+     * Modify both baselines
      *
-     * @param <T> The type of the relation to update
-     * @param uuid The uuid of the relation to update
-     * @param type The type of the relation to update
-     * @param update The function to update the relation.
+     * @param update A function to update the baseline.
      */
-    public <T extends Relation> void updateAllocatedRelation(
-            UUID uuid, Class<T> type, UnaryOperator<T> update) {
-        updateAllocated(allocated -> {
-            Optional<T> relation = allocated.getStore().get(uuid, type);
-            if (relation.isPresent()) {
-                return allocated.add(update.apply(relation.get()));
-            } else {
-                return allocated;
-            }
-        });
-    }
-
-    /**
-     * Remove a relation from the allocated baseline (only).
-     *
-     * @param uuid The identifier of the relation to remove
-     */
-    public void removeAllocatedRelation(UUID uuid) {
-        undo.update(state -> state.setAllocated(state.getAllocated().remove(uuid)));
+    public void update(UnaryOperator<UndoState> update) {
+        undo.update(update);
     }
 }

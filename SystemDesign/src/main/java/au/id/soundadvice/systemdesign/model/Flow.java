@@ -29,12 +29,12 @@ package au.id.soundadvice.systemdesign.model;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.FlowBean;
 import au.id.soundadvice.systemdesign.beans.Direction;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
-import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,19 +42,12 @@ import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
+ * A flow represents the transfer of information, energy and/or materials from
+ * one function to another.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
-
-    public static Optional<Flow> findExisting(
-            RelationStore context, UndirectedPair functions, String type) {
-        return context.getReverse(functions.getLeft(), Flow.class).parallel()
-                .filter((candidate) -> {
-                    return functions.getRight().equals(candidate.getRight().getUuid())
-                    && type.equals(candidate.getType());
-                }).findAny();
-    }
+public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
 
     @Override
     public String toString() {
@@ -92,6 +85,75 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return true;
     }
 
+    @CheckReturnValue
+    public static BaselineAnd<Flow> add(
+            Baseline baseline,
+            Function left, Function right,
+            String flowType, Direction direction) {
+        Interface iface;
+        {
+            RelationStore store = baseline.getStore();
+            Item leftItem = left.getItem().getTarget(store);
+            Item rightItem = right.getItem().getTarget(store);
+            BaselineAnd<Interface> tmp = Interface.create(baseline, leftItem, rightItem);
+            baseline = tmp.getBaseline();
+            iface = tmp.getRelation();
+        }
+
+        Optional<Flow> existing = baseline.getFlow(
+                new UndirectedPair(left.getUuid(), right.getUuid()),
+                flowType);
+        if (existing.isPresent()) {
+            Flow flow = existing.get();
+            Direction current = flow.getDirectionFrom(left);
+            Direction updated = current.add(direction);
+            if (current.equals(updated)) {
+                // Nothing changed
+                return baseline.and(flow);
+            } else {
+                flow = flow.setDirectionFrom(left, updated);
+                return baseline.add(flow).and(flow);
+            }
+        } else {
+            Flow flow = new Flow(
+                    UUID.randomUUID(),
+                    iface.getUuid(),
+                    new DirectedPair(left.getUuid(), right.getUuid(), direction),
+                    flowType);
+            return baseline.add(flow).and(flow);
+        }
+    }
+
+    @CheckReturnValue
+    public Baseline removeFrom(Baseline baseline) {
+        return baseline.remove(uuid);
+    }
+
+    @CheckReturnValue
+    public static Baseline remove(
+            Baseline baseline, Function left, Function right, String type, Direction direction) {
+        Optional<Flow> existing = baseline.getFlow(
+                new UndirectedPair(left.getUuid(), right.getUuid()), type);
+        if (existing.isPresent()) {
+            Flow existingFlow = existing.get();
+            Direction current = existingFlow.getDirectionFrom(left);
+            Direction remaining = current.remove(direction);
+            if (current.equals(remaining)) {
+                // No change
+                return baseline;
+            } else if (remaining == Direction.None) {
+                // Remove the flow completely
+                return baseline.remove(existingFlow.getUuid());
+            } else {
+                // Update the flow
+                return baseline.update(existingFlow.getUuid(), Flow.class,
+                        flow -> flow.setDirectionFrom(left, remaining));
+            }
+        } else {
+            return baseline;
+        }
+    }
+
     @Override
     public UUID getUuid() {
         return uuid;
@@ -121,10 +183,6 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
         return type;
     }
 
-    public static Flow createNew(UUID iface, DirectedPair scope, String type) {
-        return new Flow(UUID.randomUUID(), iface, scope, type);
-    }
-
     public Flow(FlowBean bean) {
         this(bean.getUuid(),
                 bean.getInterface(),
@@ -149,25 +207,26 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
     private final String type;
 
     @Override
-    public FlowBean toBean(RelationContext context) {
+    public FlowBean toBean(Baseline baseline) {
         StringBuilder builder = new StringBuilder();
-        Function leftEnd = left.getTarget(context);
-        Function rightEnd = right.getTarget(context);
+        RelationStore store = baseline.getStore();
+        Function leftEnd = left.getTarget(store);
+        Function rightEnd = right.getTarget(store);
         switch (flowScope.getDirection()) {
             case Normal:
-                builder.append(leftEnd.getDisplayName(context));
+                builder.append(leftEnd.getDisplayName(baseline));
                 builder.append(" --").append(type).append("-> ");
-                builder.append(rightEnd.getDisplayName(context));
+                builder.append(rightEnd.getDisplayName(baseline));
                 break;
             case Reverse:
-                builder.append(rightEnd.getDisplayName(context));
+                builder.append(rightEnd.getDisplayName(baseline));
                 builder.append(" --").append(type).append("-> ");
-                builder.append(leftEnd.getDisplayName(context));
+                builder.append(leftEnd.getDisplayName(baseline));
                 break;
             case Both:
-                builder.append(leftEnd.getDisplayName(context));
+                builder.append(leftEnd.getDisplayName(baseline));
                 builder.append(" <-").append(type).append("-> ");
-                builder.append(rightEnd.getDisplayName(context));
+                builder.append(rightEnd.getDisplayName(baseline));
                 break;
             default:
                 throw new AssertionError(flowScope.toString());
@@ -207,17 +266,20 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
                 flowScope.setDirectionFrom(from.getUuid(), value), type);
     }
 
-    public DirectedPair getScope() {
-        return flowScope;
+    public Scope<Function> getScope(Baseline baseline) {
+        Optional<Function> leftFunction = baseline.get(flowScope.getLeft(), Function.class);
+        Optional<Function> rightFunction = baseline.get(flowScope.getRight(), Function.class);
+        return new Scope<>(leftFunction.get(), rightFunction.get());
     }
 
-    public Function otherEnd(RelationContext store, Function function) {
+    public Function otherEnd(Baseline baseline, Function function) {
         UUID otherEndUUID = flowScope.otherEnd(function.getUuid());
         // Assume referential integrity is guaranteed by store
-        return store.get(otherEndUUID, Function.class).get();
+        return baseline.get(otherEndUUID, Function.class).get();
     }
 
-    public Function otherEnd(RelationContext store, Item item) {
+    public Function otherEnd(Baseline baseline, Item item) {
+        RelationContext store = baseline.getContext();
         Function leftFunction = left.getTarget(store);
         Function rightFunction = right.getTarget(store);
         if (leftFunction.getItem().getUuid().equals(item.getUuid())) {
@@ -231,5 +293,13 @@ public class Flow implements BeanFactory<RelationContext, FlowBean>, Relation {
 
     public boolean hasEnd(Function function) {
         return flowScope.hasEnd(function.getUuid());
+    }
+
+    public boolean hasEnd(Baseline baseline, Item item) {
+        RelationContext store = baseline.getContext();
+        Function leftFunction = left.getTarget(store);
+        Function rightFunction = right.getTarget(store);
+        return leftFunction.getItem().getUuid().equals(item.getUuid())
+                || rightFunction.getItem().getUuid().equals(item.getUuid());
     }
 }

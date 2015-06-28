@@ -26,15 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.baselines;
 
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.relation.Relation;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -69,73 +68,96 @@ public class UndoState {
         return true;
     }
 
+    /**
+     * A simple tuple class for returning an updated Baseline along with an
+     * updated Relation class.
+     *
+     * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+     * @param <T> The type of the relation
+     */
+    public class StateAnd<T> {
+
+        private StateAnd(UndoState state, T relation) {
+            this.state = state;
+            this.relation = relation;
+        }
+
+        public UndoState getState() {
+            return state;
+        }
+
+        public T getRelation() {
+            return relation;
+        }
+
+        private final UndoState state;
+        private final T relation;
+    }
+
+    public <T> StateAnd<T> and(T relation) {
+        return new StateAnd<>(this, relation);
+    }
+
     public static UndoState createNew() {
-        return new UndoState(Optional.empty(), AllocatedBaseline.create(Identity.create()));
+        return new UndoState(Baseline.empty(), Baseline.create(Identity.create()));
     }
 
     public static UndoState load(Directory directory) throws IOException {
         Directory functionalDirectory = directory.getParent();
         if (functionalDirectory.getIdentity().isPresent()) {
             // Subsystem design - load functional baseline as well
-            AllocatedBaseline functionalBaseline = AllocatedBaseline.load(functionalDirectory);
-            AllocatedBaseline allocatedBaseline = AllocatedBaseline.load(directory);
-            Optional<Item> systemOfInterest = functionalBaseline.getStore().get(
-                    allocatedBaseline.getIdentity().getUuid(), Item.class);
-            if (systemOfInterest.isPresent()) {
-                return new UndoState(
-                        Optional.of(new FunctionalBaseline(systemOfInterest.get(), functionalBaseline)),
-                        allocatedBaseline);
-            }
+            Baseline functionalBaseline = Baseline.load(functionalDirectory);
+            Baseline allocatedBaseline = Baseline.load(directory);
+            return new UndoState(
+                    functionalBaseline,
+                    allocatedBaseline);
         }
         // Top-level design
-        return new UndoState(Optional.empty(), AllocatedBaseline.load(directory));
+        return new UndoState(Baseline.empty(), Baseline.load(directory));
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {
-        if (functional.isPresent()) {
-            functional.get().saveTo(transaction, directory.getParent());
+        if (getSystemOfInterest().isPresent()) {
+            functional.saveTo(transaction, directory.getParent());
         }
         allocated.saveTo(transaction, directory);
     }
 
-    public Optional<FunctionalBaseline> getFunctional() {
+    public Baseline getFunctional() {
         return functional;
     }
 
-    public AllocatedBaseline getAllocated() {
+    public Baseline getAllocated() {
         return allocated;
     }
 
-    public <T extends Relation> Optional<T> getAllocatedInstance(
-            UUID uuid, Class<T> clazz) {
-        return allocated.getStore().get(uuid, clazz);
+    public Optional<Item> getSystemOfInterest() {
+        Identity identity = allocated.getIdentity();
+        return functional.getItemForIdentity(identity);
     }
 
-    public <T extends Relation> Optional<T> getFunctionalInstance(
-            UUID uuid, Class<T> clazz) {
-        if (functional.isPresent()) {
-            return functional.get().getStore().get(uuid, clazz);
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    private UndoState(
-            Optional<FunctionalBaseline> functional,
-            AllocatedBaseline allocated) {
+    private UndoState(Baseline functional, Baseline allocated) {
         this.functional = functional;
         this.allocated = allocated;
     }
-    private final Optional<FunctionalBaseline> functional;
-    private final AllocatedBaseline allocated;
+    private final Baseline functional;
+    private final Baseline allocated;
 
     @CheckReturnValue
-    public UndoState setFunctional(FunctionalBaseline value) {
-        return new UndoState(Optional.of(value), allocated);
+    public UndoState setFunctional(Baseline value) {
+        if (functional == value) {
+            return this;
+        } else {
+            return new UndoState(value, allocated);
+        }
     }
 
     @CheckReturnValue
-    public UndoState setAllocated(AllocatedBaseline value) {
-        return new UndoState(functional, value);
+    public UndoState setAllocated(Baseline value) {
+        if (allocated == value) {
+            return this;
+        } else {
+            return new UndoState(functional, value);
+        }
     }
 }

@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,6 +36,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -100,7 +100,7 @@ public class ByClass<E extends Identifiable> {
     public ByClass<E> remove(UUID key) {
         return new ByClass<>(Collections.<Class<?>, ByUUID<E>>unmodifiableMap(
                 relations.entrySet().parallelStream()
-                .map(entry -> new SimpleImmutableEntry<>(
+                .map(entry -> new Pair<>(
                                 entry.getKey(), entry.getValue().remove(key)))
                 .filter(entry -> !entry.getValue().isEmpty())
                 .collect(Collectors.toConcurrentMap(
@@ -112,7 +112,7 @@ public class ByClass<E extends Identifiable> {
     public ByClass<E> removeAll(Collection<UUID> keys) {
         return new ByClass<>(Collections.<Class<?>, ByUUID<E>>unmodifiableMap(
                 relations.entrySet().parallelStream()
-                .map(entry -> new SimpleImmutableEntry<>(
+                .map(entry -> new Pair<>(
                                 entry.getKey(), entry.getValue().removeAll(keys)))
                 .filter(entry -> !entry.getValue().isEmpty())
                 .collect(Collectors.toConcurrentMap(

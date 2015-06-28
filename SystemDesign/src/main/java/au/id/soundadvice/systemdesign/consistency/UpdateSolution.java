@@ -26,13 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
-import au.id.soundadvice.systemdesign.relation.Relation;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 /**
@@ -41,57 +37,22 @@ import java.util.function.UnaryOperator;
  */
 public class UpdateSolution implements Solution {
 
-    public static UpdateSolution update(String description, UnaryOperator<UndoState> update) {
+    public static UpdateSolution update(
+            String description, UnaryOperator<UndoState> update) {
         return new UpdateSolution(description, update);
     }
 
     public static UpdateSolution updateFunctional(
-            String description, UnaryOperator<FunctionalBaseline> update) {
+            String description, UnaryOperator<Baseline> update) {
         return new UpdateSolution(description, state -> {
-            Optional<FunctionalBaseline> functional = state.getFunctional();
-            if (functional.isPresent()) {
-                return state.setFunctional(update.apply(functional.get()));
-            } else {
-                return state;
-            }
-        });
-    }
-
-    public static <T extends Relation> UpdateSolution updateFunctionalRelation(
-            String description,
-            UUID uuid, Class<T> type,
-            UnaryOperator<T> update) {
-        return updateFunctional(description, baseline -> {
-            Optional<T> current = baseline.getStore().get(uuid, type);
-            if (current.isPresent()) {
-                T updated = update.apply(current.get());
-                return baseline.add(updated);
-            } else {
-                return baseline;
-            }
+            return state.setFunctional(update.apply(state.getFunctional()));
         });
     }
 
     public static UpdateSolution updateAllocated(
-            String description, UnaryOperator<AllocatedBaseline> update) {
+            String description, UnaryOperator<Baseline> update) {
         return new UpdateSolution(description, state -> {
-            AllocatedBaseline allocated = state.getAllocated();
-            return state.setAllocated(update.apply(allocated));
-        });
-    }
-
-    public static <T extends Relation> UpdateSolution updateAllocatedRelation(
-            String description,
-            UUID uuid, Class<T> type,
-            UnaryOperator<T> update) {
-        return updateAllocated(description, baseline -> {
-            Optional<T> current = baseline.getStore().get(uuid, type);
-            if (current.isPresent()) {
-                T updated = update.apply(current.get());
-                return baseline.add(updated);
-            } else {
-                return baseline;
-            }
+            return state.setAllocated(update.apply(state.getAllocated()));
         });
     }
 

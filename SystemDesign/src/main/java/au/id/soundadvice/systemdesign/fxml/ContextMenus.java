@@ -45,7 +45,7 @@ public class ContextMenus {
         if (item.isExternal()) {
             MenuItem deleteMenuItem = new MenuItem("Delete External Item");
             deleteMenuItem.setOnAction(event -> {
-                edit.removeAllocatedRelation(item.getUuid());
+                edit.updateAllocated(baseline -> item.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);
@@ -70,7 +70,7 @@ public class ContextMenus {
             contextMenu.getItems().add(navigateMenuItem);
             MenuItem deleteMenuItem = new MenuItem("Delete Item");
             deleteMenuItem.setOnAction(event -> {
-                edit.removeAllocatedRelation(item.getUuid());
+                edit.updateAllocated(baseline -> item.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);
@@ -83,7 +83,7 @@ public class ContextMenus {
         if (function.isExternal()) {
             MenuItem deleteMenuItem = new MenuItem("Delete External Function");
             deleteMenuItem.setOnAction(event -> {
-                edit.removeAllocatedRelation(function.getUuid());
+                edit.updateAllocated(baseline -> function.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);
@@ -102,7 +102,7 @@ public class ContextMenus {
             contextMenu.getItems().add(navigateMenuItem);
             MenuItem deleteMenuItem = new MenuItem("Delete Function");
             deleteMenuItem.setOnAction(event -> {
-                edit.removeAllocatedRelation(function.getUuid());
+                edit.updateAllocated(baseline -> function.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);
@@ -120,7 +120,7 @@ public class ContextMenus {
         contextMenu.getItems().add(typeMenuItem);
         MenuItem deleteMenuItem = new MenuItem("Delete");
         deleteMenuItem.setOnAction((event) -> {
-            edit.removeAllocatedRelation(flow.getUuid());
+            edit.updateAllocated(baseline -> flow.removeFrom(baseline));
             event.consume();
         });
         contextMenu.getItems().add(deleteMenuItem);

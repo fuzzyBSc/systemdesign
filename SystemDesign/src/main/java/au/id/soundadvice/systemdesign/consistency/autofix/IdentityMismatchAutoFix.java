@@ -26,10 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
-import au.id.soundadvice.systemdesign.baselines.AllocatedBaseline;
-import au.id.soundadvice.systemdesign.baselines.FunctionalBaseline;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.UndoState;
 import au.id.soundadvice.systemdesign.model.Identity;
+import au.id.soundadvice.systemdesign.model.Item;
 import java.util.Optional;
 
 /**
@@ -40,11 +40,11 @@ public class IdentityMismatchAutoFix {
 
     static UndoState fix(UndoState state) {
         // Fix id
-        Optional<FunctionalBaseline> functional = state.getFunctional();
-        if (functional.isPresent()) {
-            Identity correctedId = functional.get().getSystemOfInterest().asIdentity(
-                    functional.get().getStore());
-            AllocatedBaseline allocated = state.getAllocated();
+        Optional<Item> systemOfInterest = state.getSystemOfInterest();
+        if (systemOfInterest.isPresent()) {
+            Identity correctedId = systemOfInterest.get().asIdentity(
+                    state.getFunctional());
+            Baseline allocated = state.getAllocated();
             if (!correctedId.equals(allocated.getIdentity())) {
                 // Identity mismatch - autofix.
                 return state.setAllocated(allocated.setIdentity(correctedId));

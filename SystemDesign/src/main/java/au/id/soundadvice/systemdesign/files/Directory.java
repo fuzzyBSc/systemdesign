@@ -55,26 +55,20 @@ public class Directory {
     public Directory(Path root) {
         this.root = root;
         this.identityFile = root.resolve("identity.csv");
-        this.modelFile = root.resolve("model.csv");
         this.itemsFile = root.resolve("items.csv");
         this.interfacesFile = root.resolve("interfaces.csv");
         this.functionsFile = root.resolve("functions.csv");
         this.functionViewsFile = root.resolve("functionViews.csv");
         this.flowsFile = root.resolve("flows.csv");
-        this.hazardsFile = root.resolve("hazards.csv");
-        this.requirementsFile = root.resolve("requirements.csv");
     }
 
     private final Path root;
     private final Path identityFile;
-    private final Path modelFile;
     private final Path itemsFile;
     private final Path interfacesFile;
     private final Path functionsFile;
     private final Path functionViewsFile;
     private final Path flowsFile;
-    private final Path hazardsFile;
-    private final Path requirementsFile;
 
     public Path getIdentityFile() {
         return identityFile;
@@ -106,10 +100,6 @@ public class Directory {
         return root;
     }
 
-    public Path getModel() {
-        return modelFile;
-    }
-
     public Path getItems() {
         return itemsFile;
     }
@@ -128,14 +118,6 @@ public class Directory {
 
     public Path getFlows() {
         return flowsFile;
-    }
-
-    public Path getHazards() {
-        return hazardsFile;
-    }
-
-    public Path getRequirements() {
-        return requirementsFile;
     }
 
     private static Path getDictionary(Directory root) throws IOException {
