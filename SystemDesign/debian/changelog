@@ -1,3 +1,9 @@
+systemdesign (0.2-1) UNRELEASED; urgency=medium
+
+  * Bugfixes and usability improvements
+
+ -- Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>  Sun, 28 Jun 2015 17:00:00 +1000
+
 systemdesign (0.1-1) UNRELEASED; urgency=medium
 
   * Minimum viable product prototype release
