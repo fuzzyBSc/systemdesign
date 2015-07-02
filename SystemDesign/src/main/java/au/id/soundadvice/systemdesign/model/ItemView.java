@@ -36,6 +36,7 @@ import javafx.geometry.Point2D;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import javafx.scene.paint.Color;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -54,6 +55,10 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
+
+    public Color getColor() {
+        return color;
+    }
 
     public static Point2D defaultOrigin = new Point2D(200, 200);
 
@@ -82,6 +87,9 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         if (!Objects.equals(this.origin, other.origin)) {
             return false;
         }
+        if (!Objects.equals(this.color, other.color)) {
+            return false;
+        }
         return true;
     }
 
@@ -91,11 +99,16 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
      * @param baseline The baseline to update
      * @param item The item this view refers to
      * @param origin The location for the item on the screen
+     * @param color The color for this item
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static BaselineAnd<ItemView> create(Baseline baseline, Item item, Point2D origin) {
-        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin);
+    public static BaselineAnd<ItemView> create(
+            Baseline baseline,
+            Item item,
+            Point2D origin,
+            Color color) {
+        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin, color);
         return baseline.add(view).and(view);
     }
 
@@ -121,18 +134,22 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
     private final UUID uuid;
     private final Reference<ItemView, Item> item;
     private final Point2D origin;
+    private final Color color;
 
     public ItemView(ItemViewBean bean) {
         this.uuid = bean.getUuid();
         this.item = new Reference(this, bean.getItem(), Item.class);
         this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
+        this.color = bean.getColor();
     }
 
     @Override
     public ItemViewBean toBean(Baseline baseline) {
         return new ItemViewBean(
-                uuid, item.getUuid(), item.getTarget(baseline.getStore()).getDisplayName(),
-                origin.getX(), origin.getY());
+                uuid,
+                item.getUuid(), item.getTarget(baseline.getStore()).getDisplayName(),
+                origin.getX(), origin.getY(),
+                color);
     }
 
     public String getDisplayName() {
@@ -147,10 +164,15 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         return finder.getReferences(this);
     }
 
-    private ItemView(UUID uuid, UUID item, Point2D origin) {
+    private ItemView(
+            UUID uuid,
+            UUID item,
+            Point2D origin,
+            Color color) {
         this.uuid = uuid;
         this.item = new Reference(this, item, Item.class);
         this.origin = origin;
+        this.color = color;
     }
 
     @CheckReturnValue
@@ -158,7 +180,17 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         if (this.origin.equals(origin)) {
             return baseline.and(this);
         } else {
-            ItemView result = new ItemView(uuid, item.getUuid(), origin);
+            ItemView result = new ItemView(uuid, item.getUuid(), origin, color);
+            return baseline.add(result).and(result);
+        }
+    }
+
+    @CheckReturnValue
+    public BaselineAnd<ItemView> setColor(Baseline baseline, Color color) {
+        if (this.color.equals(color)) {
+            return baseline.and(this);
+        } else {
+            ItemView result = new ItemView(uuid, item.getUuid(), origin, color);
             return baseline.add(result).and(result);
         }
     }

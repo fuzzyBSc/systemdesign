@@ -162,36 +162,6 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
                 baseline, item, Optional.empty(), name, FunctionView.defaultOrigin);
     }
 
-    /**
-     * Create a new external Function.
-     *
-     * @param baseline The baseline to update
-     * @param externalItem The external item this external function belongs to
-     * @param traceExternals A stream of functional baseline functions on the
-     * system of interest that this external function has flows with
-     * @param name The name of the function
-     * @param origin The location for the function on the screen
-     * @return The updated baseline
-     */
-    @CheckReturnValue
-    public static BaselineAnd<Function> createExternal(
-            Baseline baseline, Item externalItem, Stream<Function> traceExternals, String name, Point2D origin) {
-        Function function = new Function(
-                UUID.randomUUID(),
-                externalItem.getUuid(), Optional.empty(),
-                name, true);
-        baseline = baseline.add(function);
-        // Also add the coresponding views
-        Iterator<Function> it = traceExternals.iterator();
-        while (it.hasNext()) {
-            Function traceExternal = it.next();
-            baseline = FunctionView.create(
-                    baseline, function, Optional.of(traceExternal), origin)
-                    .getBaseline();
-        }
-        return baseline.and(function);
-    }
-
     public static Stream<Function> getSystemFunctionsForExternalFunction(
             UndoState state, Function external) {
         Baseline functional = state.getFunctional();
@@ -230,10 +200,8 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         allocated = allocated.add(newExternal);
         // Also add the coresponding views
         Iterator<Function> it = getSystemFunctionsForExternalFunction(state, external).iterator();
-        // Pick an origin
-        Optional<Point2D> origin = external.getViews(functional)
-                .map(FunctionView::getOrigin)
-                .findAny();
+        // Pick a sample view to copy
+        Optional<FunctionView> sampleView = external.getViews(functional).findAny();
         while (it.hasNext()) {
             Function systemFunction = it.next();
             /*
@@ -242,7 +210,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
              */
             allocated = FunctionView.create(
                     allocated, newExternal, Optional.of(systemFunction),
-                    origin.orElse(FunctionView.defaultOrigin))
+                    sampleView.map(FunctionView::getOrigin).orElse(FunctionView.defaultOrigin))
                     .getBaseline();
         }
         return state.setAllocated(allocated).and(newExternal);
@@ -359,13 +327,13 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
                 baseline = flow.removeFrom(baseline);
             }
         }
-        Optional<Point2D> origin = Optional.empty();
+        Optional<FunctionView> sampleView = Optional.empty();
         {
             Iterator<FunctionView> toRemove = getViews(baseline).iterator();
             while (toRemove.hasNext()) {
                 FunctionView view = toRemove.next();
-                // Preserve origin
-                origin = Optional.of(view.getOrigin());
+                // Preserve as sample
+                sampleView = Optional.of(view);
                 baseline = view.removeFrom(baseline);
             }
         }
@@ -377,7 +345,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         // Also add the coresponding view
         baseline = FunctionView.create(
                 baseline, function, Optional.of(traceFunction),
-                origin.orElse(FunctionView.defaultOrigin)
+                sampleView.map(FunctionView::getOrigin).orElse(FunctionView.defaultOrigin)
         ).getBaseline();
         return baseline.and(function);
     }

@@ -41,6 +41,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FunctionView;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.UndirectedPair;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +106,9 @@ class LogicalSchematicController {
         }
     }
 
-    private Node toNode(FunctionView view, Function function, Item item) {
+    private Node toNode(
+            FunctionView functionView, Function function,
+            ItemView itemView, Item item) {
         Label label = new Label(
                 function.getName() + '\n'
                 + '(' + item.getDisplayName() + ')');
@@ -113,6 +116,7 @@ class LogicalSchematicController {
 
         Ellipse ellipse = new Ellipse();
         ellipse.getStyleClass().add("outline");
+        ellipse.setFill(itemView.getColor());
 
         ellipse.setCenterX(0);
         ellipse.setCenterY(0);
@@ -136,8 +140,8 @@ class LogicalSchematicController {
         if (function.isExternal()) {
             group.getStyleClass().add("external");
         }
-        group.setLayoutX(view.getOrigin().getX());
-        group.setLayoutY(view.getOrigin().getY());
+        group.setLayoutX(functionView.getOrigin().getX());
+        group.setLayoutY(functionView.getOrigin().getY());
 
         ContextMenu contextMenu = ContextMenus.functionContextMenu(
                 item, function, interactions, edit);
@@ -296,7 +300,8 @@ class LogicalSchematicController {
         drawingFunctionViews.values().forEach(functionView -> {
             Function function = functionView.getFunction().getTarget(allocated.getContext());
             Item item = function.getItem().getTarget(allocated.getContext());
-            Node node = toNode(functionView, function, item);
+            ItemView itemView = item.getView(allocated);
+            Node node = toNode(functionView, function, itemView, item);
 
             new MoveHandler(pane, node, new Move(functionView),
                     new GridSnap(10),

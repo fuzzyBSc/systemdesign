@@ -40,6 +40,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
+import javafx.scene.paint.Color;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -132,17 +133,19 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
      * @param baseline The baseline to update
      * @param name The name of the item
      * @param origin The location for the item on the screen
+     * @param color The item's color
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static BaselineAnd<Item> create(Baseline baseline, String name, Point2D origin) {
+    public static BaselineAnd<Item> create(
+            Baseline baseline, String name, Point2D origin, Color color) {
         Item item = new Item(
                 UUID.randomUUID(),
                 baseline.getIdentity().getUuid(),
                 getNextItemId(baseline), name, false);
         baseline = baseline.add(item);
         // Also add the coresponding view
-        baseline = ItemView.create(baseline, item, origin).getBaseline();
+        baseline = ItemView.create(baseline, item, origin, color).getBaseline();
         return baseline.and(item);
     }
 
@@ -159,7 +162,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
                 .filter(item -> !item.isExternal())
                 .map(Item::getName)
                 .collect(new UniqueName("New Item"));
-        return create(baseline, name, origin);
+        return create(baseline, name, origin, Color.LIGHTYELLOW);
     }
 
     /**
@@ -182,7 +185,8 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         allocated = allocated.add(item);
         // Also add the coresponding view
         ItemView viewTemplate = template.getView(functional);
-        allocated = ItemView.create(allocated, item, viewTemplate.getOrigin())
+        allocated = ItemView.create(
+                allocated, item, viewTemplate.getOrigin(), viewTemplate.getColor())
                 .getBaseline();
         return state.setAllocated(allocated).and(item);
     }

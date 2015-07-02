@@ -39,6 +39,7 @@ import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -53,7 +54,10 @@ import java.util.stream.Collectors;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
@@ -196,6 +200,49 @@ public class Interactions {
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
                     return function.setName(allocated, name).getBaseline();
+                } else {
+                    return allocated;
+                }
+            });
+        }
+    }
+
+    public void color(Item item) {
+        Optional<Color> result;
+        {
+            // User interaction - read only
+            UndoState state = edit.getUndo().get();
+            Baseline allocated = state.getAllocated();
+            if (item.isExternal() || !allocated.get(item).isPresent()) {
+                return;
+            }
+
+            ItemView view = item.getView(allocated);
+            Dialog<Color> dialog = new Dialog<>();
+            dialog.setTitle("Select color for item");
+            dialog.setHeaderText("Select color for " + item.getDisplayName());
+            ColorPicker picker = new ColorPicker(view.getColor());
+            dialog.getDialogPane().setContent(picker);
+
+            dialog.getDialogPane().getButtonTypes().addAll(
+                    ButtonType.OK, ButtonType.CANCEL);
+
+            dialog.setResultConverter(buttonType -> {
+                if (buttonType.equals(ButtonType.OK)) {
+                    return picker.getValue();
+                } else {
+                    return null;
+                }
+            });
+            result = dialog.showAndWait();
+        }
+        if (result.isPresent()) {
+            Color color = result.get();
+            edit.updateAllocated(allocated -> {
+                Optional<Item> current = allocated.get(item);
+                Optional<ItemView> view = current.map(tmpItem -> tmpItem.getView(allocated));
+                if (view.isPresent()) {
+                    return view.get().setColor(allocated, color).getBaseline();
                 } else {
                     return allocated;
                 }

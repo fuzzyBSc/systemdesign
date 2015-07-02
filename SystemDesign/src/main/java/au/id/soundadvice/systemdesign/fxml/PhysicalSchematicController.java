@@ -136,6 +136,7 @@ public class PhysicalSchematicController {
 
         Rectangle rectangle = new Rectangle();
         rectangle.getStyleClass().add("outline");
+        rectangle.setFill(view.getColor());
 
         int insets = 5;
 

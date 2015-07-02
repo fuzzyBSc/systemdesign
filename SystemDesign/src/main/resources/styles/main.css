@@ -26,7 +26,6 @@
  */
 
 .schematicItem > .outline {
-    -fx-fill: lightyellow;
     -fx-stroke: black;
 }
 
@@ -40,7 +39,6 @@
 }
 
 .schematicFunction > .outline {
-    -fx-fill: lightyellow;
     -fx-stroke: black;
 }
 

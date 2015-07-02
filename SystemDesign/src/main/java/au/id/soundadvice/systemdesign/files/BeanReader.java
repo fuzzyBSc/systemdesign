@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import javafx.scene.paint.Color;
 
 /**
  * Read beans of the specified type from a CSV file.
@@ -72,9 +73,11 @@ public class BeanReader<T> implements Closeable {
 
     // Must keep pinnned here as PropertyEditorManager only holds weak references
     private static final Class<?> uuidEditorClass = UUIDEditor.class;
+    private static final Class<?> colorEditorClass = ColorEditor.class;
 
     static {
         PropertyEditorManager.registerEditor(UUID.class, uuidEditorClass);
+        PropertyEditorManager.registerEditor(Color.class, colorEditorClass);
     }
 
     public BeanReader(Class<T> clazz, CSVReader reader) throws IOException {

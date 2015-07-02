@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.Iterator;
 import java.util.stream.Stream;
+import javafx.scene.paint.Color;
 
 /**
  *
@@ -66,7 +67,10 @@ public class ItemViewAutoFix {
             while (it.hasNext()) {
                 Item item = it.next();
 
-                allocated = ItemView.create(allocated, item, ItemView.defaultOrigin)
+                allocated = ItemView.create(
+                        allocated, item,
+                        ItemView.defaultOrigin,
+                        Color.LIGHTYELLOW)
                         .getBaseline();
             }
             state = state.setAllocated(allocated);

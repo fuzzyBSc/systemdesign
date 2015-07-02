@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
+import javafx.scene.paint.Color;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -64,7 +65,7 @@ public class ItemViewAutoFixTest {
             allocated = pair.getBaseline();
             Item item = pair.getRelation();
             extraViewItem.set(item);
-            allocated = ItemView.create(allocated, item, Point2D.ZERO)
+            allocated = ItemView.create(allocated, item, Point2D.ZERO, Color.LIGHTYELLOW)
                     .getBaseline();
             assertEquals(2, item.getViews(allocated).count());
             return allocated;

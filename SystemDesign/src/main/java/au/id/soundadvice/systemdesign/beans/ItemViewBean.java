@@ -28,12 +28,24 @@ package au.id.soundadvice.systemdesign.beans;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.UUID;
+import javafx.scene.paint.Color;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class ItemViewBean implements Identifiable {
+
+    public Color getColor() {
+        // Defaults for backwards-compatibility
+        return color == null
+                ? this.color = Color.LIGHTYELLOW
+                : color;
+    }
+
+    public void setColor(Color color) {
+        this.color = color;
+    }
 
     public double getOriginX() {
         return originX;
@@ -78,12 +90,14 @@ public class ItemViewBean implements Identifiable {
 
     public ItemViewBean(
             UUID uuid, UUID item, String description,
-            double originX, double originY) {
+            double originX, double originY,
+            Color color) {
         this.uuid = uuid;
         this.item = item;
         this.description = description;
         this.originX = originX;
         this.originY = originY;
+        this.color = color;
     }
 
     public ItemViewBean() {
@@ -94,4 +108,5 @@ public class ItemViewBean implements Identifiable {
     private String description;
     private double originX;
     private double originY;
+    private Color color;
 }
