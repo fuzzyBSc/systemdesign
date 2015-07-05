@@ -47,8 +47,6 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -256,9 +254,12 @@ public class Interactions {
     }
 
     void addInterface(Item left, Item right) {
-        edit.updateAllocated(allocated -> {
-            return Interface.create(allocated, left, right).getBaseline();
-        });
+        if (!left.isExternal() || !right.isExternal()) {
+            // One end has to be internal
+            edit.updateAllocated(allocated -> {
+                return Interface.create(allocated, left, right).getBaseline();
+            });
+        }
     }
 
     private StateAnd<FlowType> getTypeForNewFlow(
@@ -295,19 +296,16 @@ public class Interactions {
                         .map(Reference::getUuid)
                         .collect(Collectors.toSet());
 
-                Map<Boolean, List<FlowType>> types = external.getFlows(functional)
+                Optional<FlowType> type = external.getFlows(functional)
                         .filter(flow -> {
                             return flow.hasEnd(systemFunction.get())
                             && flow.getDirectionFrom(external).contains(directionFromExternal);
                         })
-                        .map(flow -> flow.getType().getTarget(allocated.getContext()))
-                        .collect(Collectors.groupingBy(type -> alreadyUsed.contains(type.getUuid())));
-                // Prefer types not already used
-                for (Boolean key : new Boolean[]{Boolean.FALSE, Boolean.TRUE}) {
-                    List<FlowType> list = types.get(key);
-                    if (list != null && !list.isEmpty()) {
-                        return state.and(list.get(0));
-                    }
+                        .map(flow -> flow.getType().getTarget(functional.getContext()))
+                        .filter(candidate -> !alreadyUsed.contains(candidate.getUuid()))
+                        .findAny();
+                if (type.isPresent()) {
+                    return state.and(type.get());
                 }
             }
         }
@@ -323,7 +321,9 @@ public class Interactions {
             Baseline allocated = state.getAllocated();
             Optional<Function> left = allocated.get(source);
             Optional<Function> right = allocated.get(target);
-            if (left.isPresent() && right.isPresent()) {
+            if (left.isPresent() && right.isPresent()
+                    // One end has to be internal
+                    && (!left.get().isExternal() || !right.get().isExternal())) {
                 StateAnd<FlowType> result = getTypeForNewFlow(state, left.get(), right.get());
                 state = result.getState();
                 allocated = state.getAllocated();

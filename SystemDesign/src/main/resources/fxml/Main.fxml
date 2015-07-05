@@ -26,6 +26,11 @@
                         <TreeView fx:id="logicalTree" prefHeight="200.0" prefWidth="200.0" />
                      </content>
                 </TitledPane>
+                  <TitledPane prefHeight="200.0" prefWidth="200.0" text="Type">
+                     <content>
+                        <TreeView fx:id="typeTree" prefHeight="200.0" prefWidth="200.0" />
+                     </content>
+                  </TitledPane>
               </panes>
             </Accordion>
          </left>

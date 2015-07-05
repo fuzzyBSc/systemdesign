@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.suggestions.AllSuggestions;
 import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.net.URL;
@@ -56,6 +57,8 @@ public class MainController implements Initializable {
     private TreeView<Item> physicalTree;
     @FXML
     private TreeView<Function> logicalTree;
+    @FXML
+    private TreeView<FlowType> typeTree;
     @FXML
     private Button upButton;
     @FXML
@@ -83,6 +86,7 @@ public class MainController implements Initializable {
             JFXExecutor.instance(), new ButtonDisable());
     private PhysicalTreeController physicalTreeController;
     private LogicalTreeController logicalTreeController;
+    private TypeTreeController typeTreeController;
     private PhysicalSchematicController schematicController;
     private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
@@ -105,6 +109,8 @@ public class MainController implements Initializable {
         physicalTreeController.start();
         logicalTreeController = new LogicalTreeController(interactions, edit, logicalTree);
         logicalTreeController.start();
+        typeTreeController = new TypeTreeController(interactions, edit, typeTree);
+        typeTreeController.start();
         schematicController = new PhysicalSchematicController(interactions, edit, physicalDrawing);
         schematicController.start();
         logicalController = new LogicalTabs(interactions, edit, tabs);
