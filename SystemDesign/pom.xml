@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>au.id.soundadvice</groupId>
     <artifactId>SystemDesign</artifactId>
-    <version>0.2</version>
+    <version>0.3</version>
     <packaging>jar</packaging>
     <name>SystemDesign</name>
     <url>http://maven.apache.org</url>
@@ -120,7 +120,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <debian.hasPackageVersion>
         </debian.hasPackageVersion>
-        <debian.originalVersion>0.2</debian.originalVersion>
+        <debian.originalVersion>0.3</debian.originalVersion>
         <debian.package>systemdesign</debian.package>
     </properties>
 </project>
