@@ -26,24 +26,47 @@
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
+import au.id.soundadvice.systemdesign.model.Baseline;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.UndoState;
-import java.util.function.UnaryOperator;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javafx.scene.paint.Color;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class AutoFix {
+public class ExternalColorAutoFix {
 
-    public static UnaryOperator<UndoState> all() {
-        return state -> {
-            state = TypeUUIDMismatchAutoFix.fix(state);
-            state = IdentityMismatchAutoFix.fix(state);
-            state = FunctionViewAutoFix.fix(state);
-            state = ItemViewAutoFix.fix(state);
-            state = ExternalColorAutoFix.fix(state);
-            return state;
-        };
+    static UndoState fix(UndoState state) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+
+        Map<UUID, Color> functionalViews = functional.getItemViews()
+                .collect(Collectors.toMap(
+                                view -> view.getItem().getUuid(),
+                                ItemView::getColor));
+
+        /*
+         * Find external views in the allocated baseline that don't match the
+         * color of the correspoding functional baseline view
+         */
+        Iterator<ItemView> it = allocated.getItemViews().iterator();
+        while (it.hasNext()) {
+            ItemView view = it.next();
+            if (view.getItem().getTarget(allocated.getContext()).isExternal()) {
+                Color allocatedColor = view.getColor();
+                Color functionalColor = functionalViews.getOrDefault(
+                        view.getItem().getUuid(), allocatedColor);
+                if (!allocatedColor.equals(functionalColor)) {
+                    allocated = view.setColor(allocated, functionalColor).getBaseline();
+                }
+            }
+        }
+        return state.setAllocated(allocated);
     }
 
 }

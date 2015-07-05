@@ -145,14 +145,14 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
         baseline = baseline.add(replacement);
 
         // Update flows to point to replacement
-        Iterator<Flow> it = baseline.getStore().getReverse(uuid, Flow.class).iterator();
+        Iterator<Flow> it = baseline.getStore().getReverse(this.uuid, Flow.class).iterator();
         while (it.hasNext()) {
             Flow flow = it.next();
             baseline = flow.setType(baseline, replacement).getBaseline();
         }
 
         // Remove ourselves
-        return baseline.remove(uuid).and(replacement);
+        return baseline.remove(this.uuid).and(replacement);
     }
 
     @Override

@@ -291,12 +291,15 @@ public class Interactions {
             }
             if (internal != null && systemFunction.isPresent() && external != null) {
                 Set<UUID> alreadyUsed = internal.getFlows(allocated).parallel()
-                        .filter(flow -> flow.otherEnd(allocated, internal).equals(external))
+                        .filter(flow -> {
+                            return flow.otherEnd(allocated, internal).equals(external)
+                            && flow.getDirectionFrom(external).contains(directionFromExternal);
+                        })
                         .map(Flow::getType)
                         .map(Reference::getUuid)
                         .collect(Collectors.toSet());
 
-                Optional<FlowType> type = external.getFlows(functional)
+                Optional<FlowType> functionalType = external.getFlows(functional)
                         .filter(flow -> {
                             return flow.hasEnd(systemFunction.get())
                             && flow.getDirectionFrom(external).contains(directionFromExternal);
@@ -304,8 +307,18 @@ public class Interactions {
                         .map(flow -> flow.getType().getTarget(functional.getContext()))
                         .filter(candidate -> !alreadyUsed.contains(candidate.getUuid()))
                         .findAny();
-                if (type.isPresent()) {
-                    return state.and(type.get());
+                if (functionalType.isPresent()) {
+                    // Flow down to the allocated baseline if needed
+                    Optional<FlowType> allocatedType = FlowType.find(
+                            allocated, functionalType.get().getName());
+                    if (allocatedType.isPresent()) {
+                        return state.and(allocatedType.get());
+                    } else {
+                        BaselineAnd<FlowType> addedType
+                                = functionalType.get().addTo(allocated);
+                        return state.setAllocated(addedType.getBaseline())
+                                .and(addedType.getRelation());
+                    }
                 }
             }
         }

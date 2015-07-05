@@ -43,12 +43,6 @@ public class ContextMenus {
 
         ContextMenu contextMenu = new ContextMenu();
         if (item.isExternal()) {
-            MenuItem colorMenuItem = new MenuItem("Set Color");
-            colorMenuItem.setOnAction(event -> {
-                interactions.color(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(colorMenuItem);
             MenuItem deleteMenuItem = new MenuItem("Delete External Item");
             deleteMenuItem.setOnAction(event -> {
                 edit.updateAllocated(baseline -> item.removeFrom(baseline));
