@@ -35,11 +35,15 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.ItemView;
+import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
+import au.id.soundadvice.systemdesign.relation.Reference;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -47,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -256,9 +261,10 @@ public class Interactions {
         });
     }
 
-    private String getTypeForNewFlow(UndoState state, Function left, Function right) {
-        Baseline functional = state.getFunctional();
-        Baseline allocated = state.getAllocated();
+    private StateAnd<FlowType> getTypeForNewFlow(
+            UndoState state, Function left, Function right) {
+        final Baseline functional = state.getFunctional();
+        final Baseline allocated = state.getAllocated();
         Optional<Item> systemOfInterest = state.getSystemOfInterest();
         if (systemOfInterest.isPresent()) {
             // See if we can pick out a likely type
@@ -283,30 +289,33 @@ public class Interactions {
                 directionFromExternal = Direction.None;
             }
             if (internal != null && systemFunction.isPresent() && external != null) {
-                Set<String> alreadyUsed = internal.getFlows(allocated).parallel()
+                Set<UUID> alreadyUsed = internal.getFlows(allocated).parallel()
                         .filter(flow -> flow.otherEnd(allocated, internal).equals(external))
                         .map(Flow::getType)
+                        .map(Reference::getUuid)
                         .collect(Collectors.toSet());
 
-                Map<Boolean, List<String>> types = external.getFlows(functional)
+                Map<Boolean, List<FlowType>> types = external.getFlows(functional)
                         .filter(flow -> {
                             return flow.hasEnd(systemFunction.get())
                             && flow.getDirectionFrom(external).contains(directionFromExternal);
                         })
-                        .map(Flow::getType)
-                        .collect(Collectors.groupingBy(type -> alreadyUsed.contains(type)));
+                        .map(flow -> flow.getType().getTarget(allocated.getContext()))
+                        .collect(Collectors.groupingBy(type -> alreadyUsed.contains(type.getUuid())));
                 // Prefer types not already used
                 for (Boolean key : new Boolean[]{Boolean.FALSE, Boolean.TRUE}) {
-                    List<String> list = types.get(key);
+                    List<FlowType> list = types.get(key);
                     if (list != null && !list.isEmpty()) {
-                        return list.get(0);
+                        return state.and(list.get(0));
                     }
                 }
             }
         }
-        return allocated.getFlows().parallel()
-                .map(Flow::getType)
+        String name = allocated.getFlowTypes().parallel()
+                .map(FlowType::getName)
                 .collect(new UniqueName("New Flow"));
+        BaselineAnd<FlowType> result = FlowType.add(allocated, name);
+        return state.setAllocated(result.getBaseline()).and(result.getRelation());
     }
 
     public void addFlow(Function source, Function target) {
@@ -315,8 +324,14 @@ public class Interactions {
             Optional<Function> left = allocated.get(source);
             Optional<Function> right = allocated.get(target);
             if (left.isPresent() && right.isPresent()) {
-                String flowType = getTypeForNewFlow(state, left.get(), right.get());
-                allocated = Flow.add(allocated, left.get(), right.get(), flowType, Direction.Normal).getBaseline();
+                StateAnd<FlowType> result = getTypeForNewFlow(state, left.get(), right.get());
+                state = result.getState();
+                allocated = state.getAllocated();
+                FlowType flowType = result.getRelation();
+                allocated = Flow.add(
+                        allocated,
+                        left.get(), right.get(),
+                        flowType, Direction.Normal).getBaseline();
                 return state.setAllocated(allocated);
             } else {
                 return state;
@@ -325,31 +340,55 @@ public class Interactions {
     }
 
     void setFlowType(Flow flow) {
-        Optional<String> result;
+        Optional<String> interactionResult;
         {
             // User interaction, read-only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            if (!undo.get().getAllocated().get(flow).isPresent()) {
+            UndoState state = edit.getUndo().get();
+            Baseline allocated = state.getAllocated();
+            Optional<Flow> current = allocated.get(flow);
+            if (!current.isPresent()) {
                 return;
             }
+            FlowType type = current.get().getType().getTarget(allocated.getContext());
 
-            TextInputDialog dialog = new TextInputDialog(flow.getType());
+            TextInputDialog dialog = new TextInputDialog(type.getName());
             dialog.setTitle("Enter Flow Type");
             dialog.setHeaderText("Enter Flow Type");
 
-            result = dialog.showAndWait();
+            interactionResult = dialog.showAndWait();
         }
-        if (result.isPresent()) {
-            edit.updateAllocated(allocated -> {
+        if (interactionResult.isPresent()) {
+            String typeName = interactionResult.get();
+            edit.update(state -> {
+                Baseline allocated = state.getAllocated();
                 Optional<Flow> current = allocated.get(flow);
-                if (current.isPresent() && !current.get().getType().equals(result.get())) {
+                FlowType currentType = current.get().getType().getTarget(allocated.getContext());
+                if (current.isPresent() && !currentType.getName().equals(typeName)) {
                     Function left = current.get().getLeft().getTarget(allocated.getContext());
                     Function right = current.get().getRight().getTarget(allocated.getContext());
-                    allocated = Flow.remove(allocated, left, right, flow.getType(), flow.getDirection());
-                    allocated = Flow.add(allocated, left, right, result.get(), flow.getDirection()).getBaseline();
-                    return allocated;
+                    allocated = Flow.remove(allocated, left, right, currentType, flow.getDirection());
+                    Optional<FlowType> newType = FlowType.find(allocated, typeName);
+                    if (!newType.isPresent()) {
+                        // See if we can flow the type down
+                        Baseline functional = state.getFunctional();
+                        newType = FlowType.find(functional, typeName);
+                        if (newType.isPresent()) {
+                            // Flow type down
+                            BaselineAnd<FlowType> result = newType.get().addTo(allocated);
+                            allocated = result.getBaseline();
+                            newType = Optional.of(result.getRelation());
+                        }
+                        if (!newType.isPresent()) {
+                            // No such type in parent: Add new type
+                            BaselineAnd<FlowType> result = FlowType.add(allocated, typeName);
+                            allocated = result.getBaseline();
+                            newType = Optional.of(result.getRelation());
+                        }
+                    }
+                    allocated = Flow.add(allocated, left, right, newType.get(), flow.getDirection()).getBaseline();
+                    return state.setAllocated(allocated);
                 } else {
-                    return allocated;
+                    return state;
                 }
             });
         }

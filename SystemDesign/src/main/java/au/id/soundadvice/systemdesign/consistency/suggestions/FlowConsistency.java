@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -50,14 +51,14 @@ import java.util.stream.Stream;
  */
 public class FlowConsistency {
 
-    private static Map<Function, Map<String, Direction>> getFlowTypes(
+    private static Map<Function, Map<FlowType, Direction>> getFlowTypes(
             Baseline baseline, Function fromFunction, Stream<Flow> flows, UnaryOperator<Optional<Function>> functionFixer) {
         return flows
                 .filter(flow -> flow.hasEnd(fromFunction))
                 .collect(Collectors.groupingBy(
                                 flow -> functionFixer.apply(Optional.of(flow.otherEnd(baseline, fromFunction))),
                                 Collectors.groupingBy(
-                                        Flow::getType,
+                                        flow -> flow.getType().getTarget(baseline.getContext()),
                                         Collectors.mapping(
                                                 flow -> flow.getDirectionFrom(fromFunction),
                                                 Collectors.collectingAndThen(
@@ -69,9 +70,9 @@ public class FlowConsistency {
                 .collect(Collectors.toMap(entry -> entry.getKey().get(), Map.Entry::getValue));
     }
 
-    private static Stream<Map.Entry<String, Direction>> getDifferenceByType(
-            Map<String, Direction> subtractFrom,
-            Map<String, Direction> toSubtract) {
+    private static Stream<Map.Entry<FlowType, Direction>> getDifferenceByType(
+            Map<FlowType, Direction> subtractFrom,
+            Map<FlowType, Direction> toSubtract) {
         return subtractFrom.entrySet().stream()
                 .map(entry -> {
                     Direction toSubtractDirection
@@ -86,12 +87,12 @@ public class FlowConsistency {
                 .filter(entry -> entry.getValue() != Direction.None);
     }
 
-    private static Stream<Map.Entry<Function, Stream<Map.Entry<String, Direction>>>> getDifferenceByFunction(
-            Map<Function, Map<String, Direction>> subtractFrom,
-            Map<Function, Map<String, Direction>> toSubtract) {
+    private static Stream<Map.Entry<Function, Stream<Map.Entry<FlowType, Direction>>>> getDifferenceByFunction(
+            Map<Function, Map<FlowType, Direction>> subtractFrom,
+            Map<Function, Map<FlowType, Direction>> toSubtract) {
         return subtractFrom.entrySet().stream()
                 .map(entry -> {
-                    Map<String, Direction> toSubtractByType
+                    Map<FlowType, Direction> toSubtractByType
                     = toSubtract.get(entry.getKey());
                     if (toSubtractByType == null) {
                         return new SimpleImmutableEntry<>(
@@ -126,13 +127,13 @@ public class FlowConsistency {
         Baseline problemAllocated = state.getAllocated();
 
         // system function -> flow type -> flow direction from external function
-        Map<Function, Map<String, Direction>> parentFlows = getFlowTypes(
+        Map<Function, Map<FlowType, Direction>> parentFlows = getFlowTypes(
                 problemFunctional,
                 externalAllocatedFunction,
                 functionalInterface.getFlows(problemFunctional)
                 .filter(flow -> flow.hasEnd(externalAllocatedFunction)),
                 t -> t);
-        Map<Function, Map<String, Direction>> childFlows = getFlowTypes(
+        Map<Function, Map<FlowType, Direction>> childFlows = getFlowTypes(
                 problemAllocated,
                 externalAllocatedFunction,
                 externalAllocatedFunction.getFlows(problemAllocated),
@@ -146,7 +147,7 @@ public class FlowConsistency {
                     Function systemFunction = byFunction.getKey();
                     return byFunction.getValue()
                     .flatMap(byType -> {
-                        String type = byType.getKey();
+                        FlowType type = byType.getKey();
                         Direction direction = byType.getValue();
                         String description = getDescription(
                                 "Extra",
@@ -182,7 +183,7 @@ public class FlowConsistency {
                     Function systemFunction = byFunction.getKey();
                     return byFunction.getValue()
                     .flatMap(byType -> {
-                        String type = byType.getKey();
+                        FlowType type = byType.getKey();
                         Direction direction = byType.getValue();
                         String description = getDescription(
                                 "Missing",
@@ -208,7 +209,7 @@ public class FlowConsistency {
     private static String getDescription(
             String missingExtra,
             String fromDescription, String toDescription,
-            String type, Direction direction) {
+            FlowType type, Direction direction) {
         String from;
         String to;
         switch (direction) {
@@ -234,7 +235,7 @@ public class FlowConsistency {
     private static Baseline addFlowDirections(
             Baseline allocated,
             Function leftSample, Function rightSample,
-            String type, Direction directions) {
+            FlowType type, Direction directions) {
         Optional<Function> left = allocated.get(leftSample);
         Optional<Function> right = allocated.get(rightSample);
         if (left.isPresent() && right.isPresent()) {
@@ -251,7 +252,7 @@ public class FlowConsistency {
     private static Baseline removeFlowDirections(
             Baseline allocated,
             Function leftSample, Function rightSample,
-            String type, Direction directions) {
+            FlowType type, Direction directions) {
         Optional<Function> left = allocated.get(leftSample);
         Optional<Function> right = allocated.get(rightSample);
         if (left.isPresent() && right.isPresent()) {

@@ -49,11 +49,11 @@ public class Directory {
 
     @Override
     public String toString() {
-        return root.toString();
+        return path.toString();
     }
 
     public Directory(Path root) {
-        this.root = root;
+        this.path = root;
         this.identityFile = root.resolve("identity.csv");
         this.itemsFile = root.resolve("items.csv");
         this.itemViewsFile = root.resolve("itemViews.csv");
@@ -61,9 +61,10 @@ public class Directory {
         this.functionsFile = root.resolve("functions.csv");
         this.functionViewsFile = root.resolve("functionViews.csv");
         this.flowsFile = root.resolve("flows.csv");
+        this.flowTypesFile = root.resolve("flowTypes.csv");
     }
 
-    private final Path root;
+    private final Path path;
     private final Path identityFile;
     private final Path itemsFile;
     private final Path itemViewsFile;
@@ -71,6 +72,7 @@ public class Directory {
     private final Path functionsFile;
     private final Path functionViewsFile;
     private final Path flowsFile;
+    private final Path flowTypesFile;
 
     public Path getIdentityFile() {
         return identityFile;
@@ -99,7 +101,7 @@ public class Directory {
     }
 
     public Path getPath() {
-        return root;
+        return path;
     }
 
     public Path getItems() {
@@ -126,37 +128,21 @@ public class Directory {
         return flowsFile;
     }
 
-    private static Path getDictionary(Directory root) throws IOException {
-        Directory current = root;
-        Directory last = root;
-        Path projectRoot = null;
-        while (projectRoot == null) {
-            if (current.getIdentity().isPresent()) {
-                // Keep looping
-                last = current;
-            } else {
-                projectRoot = last.getPath();
-            }
-        }
-        return projectRoot.resolve("dictionary.csv");
-    }
-
-    public Path getDictionary() throws IOException {
-        // Call out via static to avoid accidental references to this
-        return getDictionary(this);
+    public Path getFlowTypes() {
+        return flowTypesFile;
     }
 
     public DirectoryStream<Path> getChildren() throws IOException {
         return Files.newDirectoryStream(
-                root, path -> Directory.getIdentity(path).isPresent());
+                path, candidate -> Directory.getIdentity(candidate).isPresent());
     }
 
     public Directory getParent() {
-        return new Directory(root.getParent());
+        return new Directory(path.getParent());
     }
 
     private static Optional<Directory> getChild(Directory parent, UUID uuid) throws IOException {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(parent.root)) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(parent.path)) {
             for (Path path : stream) {
                 if (Files.isDirectory(path)) {
                     Optional<Identity> identity = Directory.getIdentity(path);

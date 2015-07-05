@@ -76,12 +76,25 @@ public class FlowBean implements Identifiable {
         this.direction = direction;
     }
 
-    public String getType() {
+    public UUID getTypeUUID() {
         return type;
     }
 
+    @Deprecated
+    public String getType() {
+        if (type == null) {
+            return legacyType;
+        } else {
+            return type.toString();
+        }
+    }
+
     public void setType(String type) {
-        this.type = type;
+        try {
+            this.type = UUID.fromString(type);
+        } catch (IllegalArgumentException ex) {
+            this.legacyType = type;
+        }
     }
 
     public String getDescription() {
@@ -92,7 +105,7 @@ public class FlowBean implements Identifiable {
         this.description = description;
     }
 
-    public FlowBean(UUID uuid, UUID iface, Direction direction, UUID left, UUID right, String type, String description) {
+    public FlowBean(UUID uuid, UUID iface, Direction direction, UUID left, UUID right, UUID type, String description) {
         this.uuid = uuid;
         this.iface = iface;
         // Normalise left/right
@@ -123,6 +136,8 @@ public class FlowBean implements Identifiable {
      */
     private UUID right;
     private Direction direction;
-    private String type;
+    private UUID type;
+    @Deprecated
+    private String legacyType;
     private String description;
 }

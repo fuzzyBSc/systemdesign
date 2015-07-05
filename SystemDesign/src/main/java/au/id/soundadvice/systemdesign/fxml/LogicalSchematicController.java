@@ -40,6 +40,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.UndirectedPair;
@@ -160,7 +161,7 @@ class LogicalSchematicController {
     }
 
     private Node toNode(
-            Flow flow, Direction direction,
+            Flow flow, FlowType flowType, Direction direction,
             double radiusX, double radiusY, boolean negate) {
         int startDegrees;
         if (negate) {
@@ -198,7 +199,7 @@ class LogicalSchematicController {
 
         }
 
-        Label label = new Label(flow.getType());
+        Label label = new Label(flowType.getName());
         label.boundsInLocalProperty().addListener((info, old, bounds) -> {
             double halfWidth = bounds.getWidth() / 2;
             double halfHeight = bounds.getHeight() / 2;
@@ -220,7 +221,9 @@ class LogicalSchematicController {
         return group;
     }
 
-    private Node toNode(FunctionView left, FunctionView right, List<Flow> flows) {
+    private Node toNode(
+            Baseline allocated,
+            FunctionView left, FunctionView right, List<Flow> flows) {
         Point2D leftOrigin = left.getOrigin();
         Point2D rightOrigin = right.getOrigin();
         boolean reverseDirection = false;
@@ -253,7 +256,8 @@ class LogicalSchematicController {
             if (reverseDirection) {
                 direction = direction.reverse();
             }
-            Node node = toNode(flow, direction, radiusX, radiusY, negate);
+            FlowType type = flow.getType().getTarget(allocated.getContext());
+            Node node = toNode(flow, type, direction, radiusX, radiusY, negate);
             group.getChildren().add(node);
             if (negate) {
                 radiusY += 30;
@@ -293,7 +297,7 @@ class LogicalSchematicController {
                         right = tmp;
                     }
                 }
-                Node node = toNode(left, right, entry.getValue());
+                Node node = toNode(allocated, left, right, entry.getValue());
                 pane.getChildren().add(node);
             }
         });

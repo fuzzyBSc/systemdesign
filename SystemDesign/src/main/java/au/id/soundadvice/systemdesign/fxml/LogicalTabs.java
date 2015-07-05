@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -128,7 +129,11 @@ public class LogicalTabs {
 
             // Obtain the flows for each connection scope, ignoring direction
             Map<Scope<Function>, List<Flow>> flows = allocated.getFlows().parallel()
-                    .sorted((left, right) -> left.getType().compareTo(right.getType()))
+                    .sorted((left, right) -> {
+                        FlowType leftType = left.getType().getTarget(allocated.getContext());
+                        FlowType rightType = right.getType().getTarget(allocated.getContext());
+                        return leftType.getName().compareTo(rightType.getName());
+                    })
                     .collect(Collectors.groupingBy(flow -> flow.getScope(allocated)));
             Map<UndirectedPair, List<Flow>> flowsForViews = flows.entrySet().parallelStream()
                     .flatMap(entry -> {

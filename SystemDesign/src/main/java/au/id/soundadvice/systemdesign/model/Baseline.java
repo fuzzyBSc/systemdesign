@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.FlowBean;
+import au.id.soundadvice.systemdesign.beans.FlowTypeBean;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
 import au.id.soundadvice.systemdesign.beans.FunctionViewBean;
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
@@ -43,7 +44,9 @@ import au.id.soundadvice.systemdesign.relation.RelationStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -125,7 +128,7 @@ public class Baseline {
         private final T relation;
     }
 
-    public <T extends Relation> BaselineAnd<T> and(T relation) {
+    public <T> BaselineAnd<T> and(T relation) {
         return new BaselineAnd(this, relation);
     }
 
@@ -190,12 +193,22 @@ public class Baseline {
     }
 
     /**
-     * A transfer of information, energy or materials from one function
+     * A transfer of information, energy or materials from one function to
+     * another
      *
      * @return
      */
     public Stream<Flow> getFlows() {
         return store.getByClass(Flow.class);
+    }
+
+    /**
+     * A distinct combination of information, energy and materials
+     *
+     * @return
+     */
+    public Stream<FlowType> getFlowTypes() {
+        return store.getByClass(FlowType.class);
     }
 
     private static final Baseline empty = create(Identity.create());
@@ -296,11 +309,44 @@ public class Baseline {
             }
         }
 
+        Map<String, UUID> flowTypes = new HashMap<>();
+        if (Files.exists(directory.getFlowTypes())) {
+            try (BeanReader<FlowTypeBean> reader = BeanReader.forPath(FlowTypeBean.class, directory.getFlowTypes())) {
+                for (;;) {
+                    Optional<FlowTypeBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        FlowType flowType = new FlowType(bean.get());
+                        relations.add(flowType);
+                        flowTypes.put(flowType.getName(), flowType.getUuid());
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
         if (Files.exists(directory.getFlows())) {
             try (BeanReader<FlowBean> reader = BeanReader.forPath(FlowBean.class, directory.getFlows())) {
                 for (;;) {
                     Optional<FlowBean> bean = reader.read();
                     if (bean.isPresent()) {
+                        UUID uuid = bean.get().getTypeUUID();
+                        if (uuid == null) {
+                            String typeName = bean.get().getType();
+                            if (typeName == null) {
+                                // Invalid bean
+                                continue;
+                            }
+                            // Legacy bean: v0.2 support
+                            uuid = flowTypes.get(typeName);
+                            if (uuid == null) {
+                                FlowType flowType = FlowType.create(typeName);
+                                uuid = flowType.getUuid();
+                                relations.add(flowType);
+                                flowTypes.put(typeName, uuid);
+                            }
+                            bean.get().setType(uuid.toString());
+                        }
                         relations.add(new Flow(bean.get()));
                     } else {
                         break;
@@ -330,6 +376,7 @@ public class Baseline {
             BeanFile.saveModel(transaction, this, directory.getInterfaces(), InterfaceBean.class, store.getByClass(Interface.class));
             BeanFile.saveModel(transaction, this, directory.getFunctions(), FunctionBean.class, store.getByClass(Function.class));
             BeanFile.saveModel(transaction, this, directory.getFunctionViews(), FunctionViewBean.class, store.getByClass(FunctionView.class));
+            BeanFile.saveModel(transaction, this, directory.getFlowTypes(), FlowTypeBean.class, store.getByClass(FlowType.class));
             BeanFile.saveModel(transaction, this, directory.getFlows(), FlowBean.class, store.getByClass(Flow.class));
         }
     }
@@ -426,11 +473,11 @@ public class Baseline {
     /**
      * Expose flow finding based on UUIDs for package-private use.
      */
-    Optional<Flow> getFlow(UndirectedPair functions, String type) {
+    Optional<Flow> getFlow(UndirectedPair functions, UUID type) {
         return store.getReverse(functions.getLeft(), Flow.class).parallel()
-                .filter((candidate) -> {
+                .filter(candidate -> {
                     return functions.getRight().equals(candidate.getRight().getUuid())
-                    && type.equals(candidate.getType());
+                    && type.equals(candidate.getType().getUuid());
                 }).findAny();
     }
 

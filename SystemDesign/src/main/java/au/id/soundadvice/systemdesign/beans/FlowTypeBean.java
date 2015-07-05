@@ -24,25 +24,42 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency.autofix;
+package au.id.soundadvice.systemdesign.beans;
 
-import au.id.soundadvice.systemdesign.model.UndoState;
-import java.util.function.UnaryOperator;
+import au.id.soundadvice.systemdesign.files.Identifiable;
+import java.util.UUID;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class AutoFix {
+public class FlowTypeBean implements Identifiable {
 
-    public static UnaryOperator<UndoState> all() {
-        return state -> {
-            state = TypeUUIDMismatchAutoFix.fix(state);
-            state = IdentityMismatchAutoFix.fix(state);
-            state = FunctionViewAutoFix.fix(state);
-            state = ItemViewAutoFix.fix(state);
-            return state;
-        };
+    @Override
+    public UUID getUuid() {
+        return uuid;
     }
 
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public FlowTypeBean(UUID uuid, String name) {
+        this.uuid = uuid;
+        this.name = name;
+    }
+
+    public FlowTypeBean() {
+    }
+
+    private UUID uuid;
+    private String name;
 }
