@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign;
 
-import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.model.baselines.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.MainController;
 import java.io.IOException;

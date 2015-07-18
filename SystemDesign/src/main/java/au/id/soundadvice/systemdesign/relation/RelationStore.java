@@ -74,12 +74,11 @@ public class RelationStore implements RelationContext {
         ByReverse<Relation> byReverse = reverseLoader.build();
 
         // Delete any items needed to establish referential integrity
-        List<UUID> toDeleteAsUUIDs = reverseLoader.getDeletedRelations().parallel()
-                .map(Relation::getUuid)
+        List<UUID> toDelete = reverseLoader.getDeletedRelations().parallel()
                 .collect(Collectors.toList());
-        if (!toDeleteAsUUIDs.isEmpty()) {
-            byUUID = byUUID.removeAll(toDeleteAsUUIDs);
-            byClass = byClass.removeAll(toDeleteAsUUIDs);
+        if (!toDelete.isEmpty()) {
+            byUUID = byUUID.removeAll(toDelete);
+            byClass = byClass.removeAll(toDelete);
             // byReverse entries have already been removed
         }
 
@@ -172,22 +171,19 @@ public class RelationStore implements RelationContext {
 
     @CheckReturnValue
     public RelationStore removeAll(Stream<UUID> seed) {
-        Set<Relation> toDelete = seed.parallel()
-                .map(uuid -> relations.get(uuid))
-                .filter(relation -> relation != null)
+        Set<UUID> toDelete = seed.parallel()
+                .filter(uuid -> relations.get(uuid) != null)
                 .collect(Collectors.toCollection(HashSet::new));
         if (toDelete.isEmpty()) {
             return this;
         } else {
             reverseReferences.cascade(toDelete);
-            List<UUID> toDeleteAsUUIDs = toDelete.parallelStream()
-                    .map(Relation::getUuid)
-                    .collect(Collectors.toList());
 
-            ByUUID<Relation> tmpRelations = relations.removeAll(toDeleteAsUUIDs);
-            ByClass<Relation> tmpByClass = byClass.removeAll(toDeleteAsUUIDs);
+            ByUUID<Relation> tmpRelations = relations.removeAll(toDelete);
+            ByClass<Relation> tmpByClass = byClass.removeAll(toDelete);
             ByReverse<Relation> tmpReverseRelations
-                    = reverseReferences.removeAll(toDelete.stream());
+                    = reverseReferences.removeAll(
+                            toDelete.stream().map(uuid -> relations.get(uuid)));
             return new RelationStore(
                     tmpRelations, tmpByClass, tmpReverseRelations);
         }

@@ -130,8 +130,10 @@ public class UndoState {
     }
 
     public Optional<Item> getSystemOfInterest() {
-        Identity identity = Identity.find(allocated);
-        return functional.getItemForIdentity(identity);
+        Optional<Identity> optionalIdentity
+                = Identity.findAll(allocated).findAny();
+        return optionalIdentity.flatMap(
+                identity -> functional.getItemForIdentity(identity));
     }
 
     public UndoState(Baseline functional, Baseline allocated) {

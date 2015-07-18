@@ -1,0 +1,6 @@
+"description","external","item","name","trace","uuid"
+"Report Inconsistency (1 SystemDesign Software)","false","15f2ccf9-e2b8-4966-b85c-e37b24313614","Report Inconsistency","4902c502-bc8d-4a45-b912-bbc8c10c7598","9c0cd9a3-33c8-4286-a0d5-e58316105b01"
+"Manipulate Model (1 SystemDesign Software)","false","15f2ccf9-e2b8-4966-b85c-e37b24313614","Manipulate Model","7a9ae517-1122-4e21-9acd-4fee178a108a","9fff2499-5845-4cb2-8e4a-1178eeabeb29"
+"Approve Changes (3 Control Board)","true","1a53ad8d-5a23-4ab9-87a2-e4ca344182b3","Approve Changes","","a2ef8fb3-dae7-44b5-acf9-232190762242"
+"Control Versions (2 Configuration Management System)","false","61e29bdc-5cf4-45fa-b6af-bec240c87a30","Control Versions","7a9ae517-1122-4e21-9acd-4fee178a108a","fd404a9f-42a9-418f-93e4-604812a30c7f"
+"Develop Systems (2 Engineering Team)","true","d674806d-db60-4c2d-afbf-725f7108a2d3","Develop Systems","","31a28a71-41c2-4a99-a763-d51dfb7c3883"

@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.model.baselines.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
@@ -199,7 +199,7 @@ class LogicalSchematicController {
 
         }
 
-        Label label = new Label(flowType.getName());
+        Label label = new Label(flowType.getName().replace(" ", "\n"));
         label.boundsInLocalProperty().addListener((info, old, bounds) -> {
             double halfWidth = bounds.getWidth() / 2;
             double halfHeight = bounds.getHeight() / 2;
@@ -260,7 +260,7 @@ class LogicalSchematicController {
             Node node = toNode(flow, type, direction, radiusX, radiusY, negate);
             group.getChildren().add(node);
             if (negate) {
-                radiusY += 30;
+                radiusY += 35;
                 negate = false;
             } else {
                 negate = true;

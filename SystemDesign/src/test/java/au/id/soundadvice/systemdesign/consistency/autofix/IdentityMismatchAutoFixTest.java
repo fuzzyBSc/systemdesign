@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
+import javafx.scene.paint.Color;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -54,7 +55,8 @@ public class IdentityMismatchAutoFixTest {
         {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
-            Baseline.BaselineAnd<Item> pair = Item.create(functional, Point2D.ZERO);
+            Baseline.BaselineAnd<Item> pair = Item.create(
+                    functional, Point2D.ZERO, Color.LIGHTYELLOW);
             functional = pair.getBaseline();
             Item item = pair.getRelation();
             systemOfInterest.set(item);

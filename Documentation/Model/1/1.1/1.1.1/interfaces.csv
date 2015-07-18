@@ -1,0 +1,8 @@
+"description","leftItem","rightItem","uuid"
+"1.1.1.4:1.1.1.9 beans:model","b79a9ca1-2a86-4e79-8298-0916b9068035","c195736f-02b6-4a6a-9521-9d504183fc9e","e30c5bf2-42be-4b7a-8680-8fa3032d835e"
+"1.1.1.6:1.1.1.8 consistency:fxml","e0fada80-0f84-4546-a80c-7f0fbf21a46f","5e437618-fca4-4025-9e9e-3e88b6ab9afa","fe3f7373-3017-471b-ba01-737d1ef8b16b"
+"1.1.1.7:1.2 files:Configuration Management System","9e116fa6-e543-487c-b64e-3e600795c335","61e29bdc-5cf4-45fa-b6af-bec240c87a30","041530ad-8665-4e2d-a747-c71c3eba3df2"
+"1.1.1.7:1.1.4 files:opencsv","9e116fa6-e543-487c-b64e-3e600795c335","55d83008-cd9e-4b84-8d75-15b2a8b31d98","4c3209bd-2dc1-4353-8c18-59baea33d5a6"
+"1.1.1.8:1.1.1.9 fxml:model","b79a9ca1-2a86-4e79-8298-0916b9068035","5e437618-fca4-4025-9e9e-3e88b6ab9afa","5bce1185-8f27-4298-b102-8a48f34ddf15"
+"1.1.1.4:1.1.1.7 beans:files","9e116fa6-e543-487c-b64e-3e600795c335","c195736f-02b6-4a6a-9521-9d504183fc9e","7866bc8b-df6d-46ee-96e5-dff99739ed6f"
+"1.1.1.8:2 fxml:Engineering Team","d674806d-db60-4c2d-afbf-725f7108a2d3","5e437618-fca4-4025-9e9e-3e88b6ab9afa","7f26c354-1e7c-43ad-8ed6-bae8eb5eed5d"

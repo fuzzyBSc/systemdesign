@@ -1,6 +1,0 @@
-"description","external","item","name","trace","uuid"
-"Model Systems (2 Sources)","false","2bc18f78-5073-4a73-9dfa-ea416bb89995","Model Systems","a01a5e30-5764-41ba-a62f-84cb47e10996","848a4aa5-3f30-4561-a6fc-01e4d5168dca"
-"Build Software (1 Build Instructions)","false","f37d90cd-ce2d-459d-b019-d5b8b9cb6780","Build Software","a01a5e30-5764-41ba-a62f-84cb47e10996","b25c7cca-fb91-4854-8469-5cb538279fea"
-"Process CSV (4 opencsv)","false","2b2af623-7254-4783-9144-903106df3cff","Process CSV","a01a5e30-5764-41ba-a62f-84cb47e10996","bc7ee126-2008-4049-ad69-1f0c67146036"
-"Input Model (5 Runtime User)","true","0e9f8ef5-cf00-48b3-8c81-e51afa3336ea","Input Model","a01a5e30-5764-41ba-a62f-84cb47e10996","d5ebb853-799a-4e1b-bc88-1a3b8150f4f8"
-"Store Files (3 Runtime Filesystem)","true","98ec0213-d1e0-4736-860c-a0507f6bd5bd","Store Files","a01a5e30-5764-41ba-a62f-84cb47e10996","7d182653-479e-421f-9491-3ac2b863b62b"

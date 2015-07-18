@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.relation;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -55,16 +55,16 @@ public class RelationStoreTest {
                 Stream.of(to, from, typeMismatch, dangling));
 
         assertSame(to, from.getReference().getTarget(store));
-        Collection<? extends FromRelation> reverse = store.getReverse(
+        List<? extends FromRelation> reverse = store.getReverse(
                 to.getUuid(), FromRelation.class)
                 .collect(Collectors.toList());
         assertEquals(1, reverse.size());
         assertSame(from, reverse.iterator().next());
-        Collection<ToRelation> toByClass = store.getByClass(ToRelation.class)
+        List<ToRelation> toByClass = store.getByClass(ToRelation.class)
                 .collect(Collectors.toList());
         assertEquals(1, toByClass.size());
         assertSame(to, toByClass.iterator().next());
-        Collection<FromRelation> fromByClass = store.getByClass(FromRelation.class)
+        List<FromRelation> fromByClass = store.getByClass(FromRelation.class)
                 .collect(Collectors.toList());
         assertEquals(1, fromByClass.size());
         assertSame(from, fromByClass.iterator().next());

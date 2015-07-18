@@ -1,0 +1,3 @@
+"budget","description","item","maximum","minimum","uuid"
+"5b83e02e-8c25-44bd-89ea-ee8bff13d1ec","1 SystemDesign consumes 0.5 Memory(GB)","f7ef3528-ea95-4fb4-84a4-8eb91340e967","-0.5","-0.5","a8baf463-b3e8-48dc-a3fb-89b7fef79b2b"
+"a27a875e-9fc7-4264-8868-2a167e06ea4f","1 SystemDesign consumes 5 Disk(GB)","f7ef3528-ea95-4fb4-84a4-8eb91340e967","-5","-5","c09c209a-a1b6-45f8-92b6-83280f3dca4e"

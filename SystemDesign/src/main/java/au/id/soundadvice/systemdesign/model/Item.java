@@ -171,12 +171,12 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static BaselineAnd<Item> create(Baseline baseline, Point2D origin) {
+    public static BaselineAnd<Item> create(Baseline baseline, Point2D origin, Color color) {
         String name = find(baseline).parallel()
                 .filter(item -> !item.isExternal())
                 .map(Item::getName)
                 .collect(new UniqueName("New Item"));
-        return create(baseline, name, origin, Color.LIGHTYELLOW);
+        return create(baseline, name, origin, color);
     }
 
     /**

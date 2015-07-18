@@ -1,0 +1,6 @@
+"description","external","item","name","trace","uuid"
+"Report Inconsistency (1 SystemDesign)","false","f7ef3528-ea95-4fb4-84a4-8eb91340e967","Report Inconsistency","9c0cd9a3-33c8-4286-a0d5-e58316105b01","8d813dc4-a1ba-419c-9486-d6ae7d606564"
+"Control Versions (1.2 Configuration Management System)","true","61e29bdc-5cf4-45fa-b6af-bec240c87a30","Control Versions","","fd404a9f-42a9-418f-93e4-604812a30c7f"
+"Manipulate Model (1 SystemDesign)","false","f7ef3528-ea95-4fb4-84a4-8eb91340e967","Manipulate Model","9fff2499-5845-4cb2-8e4a-1178eeabeb29","13a157cf-ab2e-4692-b91c-f8581fd0eb0c"
+"Develop Systems (2 Engineering Team)","true","d674806d-db60-4c2d-afbf-725f7108a2d3","Develop Systems","","31a28a71-41c2-4a99-a763-d51dfb7c3883"
+"Store CSV (4 opencsv)","false","55d83008-cd9e-4b84-8d75-15b2a8b31d98","Store CSV","9fff2499-5845-4cb2-8e4a-1178eeabeb29","39ac7b1f-488a-4cc6-87e1-7068e3176d6e"

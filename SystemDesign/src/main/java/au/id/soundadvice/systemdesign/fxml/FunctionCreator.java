@@ -27,11 +27,11 @@
 package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.model.baselines.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.model.baselines.UndoBuffer;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -93,7 +93,8 @@ public class FunctionCreator {
             if (choices.size() == 1) {
                 return Optional.of(selected);
             } else {
-                Optional<Item> mostRecent = baseline.get(mostRecentItem.get());
+                Optional<Item> mostRecent = Optional.ofNullable(mostRecentItem.get())
+                        .flatMap(item -> baseline.get(item));
                 if (mostRecent.isPresent()) {
                     selected = mostRecent.get();
                 }

@@ -1,6 +1,0 @@
-"description","drawing","function","originX","originY","uuid"
-"Process CSV (4 opencsv)","a01a5e30-5764-41ba-a62f-84cb47e10996","bc7ee126-2008-4049-ad69-1f0c67146036","550","340","91541a5d-0e37-48aa-abb3-f96b1ae83b6c"
-"Model Systems (2 Sources)","a01a5e30-5764-41ba-a62f-84cb47e10996","848a4aa5-3f30-4561-a6fc-01e4d5168dca","310","340","bcbcb6a9-8534-46cd-a9f9-a399b8b241c8"
-"Build Software (1 Build Instructions)","a01a5e30-5764-41ba-a62f-84cb47e10996","b25c7cca-fb91-4854-8469-5cb538279fea","110","340","c3aa668f-163c-45ea-b43a-a0b179dabd20"
-"Store Files (3 Runtime Filesystem)","a01a5e30-5764-41ba-a62f-84cb47e10996","7d182653-479e-421f-9491-3ac2b863b62b","310","500","0d2c60e7-40e6-4b82-9374-b7874c946405"
-"Input Model (5 Runtime User)","a01a5e30-5764-41ba-a62f-84cb47e10996","d5ebb853-799a-4e1b-bc88-1a3b8150f4f8","310","140","5df8275b-3fea-4de9-add0-88e0fbd71177"

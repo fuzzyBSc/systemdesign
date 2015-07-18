@@ -1,0 +1,6 @@
+"description","leftItem","rightItem","uuid"
+"1.1.1:1.1.4 SystemDesign:opencsv","f7ef3528-ea95-4fb4-84a4-8eb91340e967","55d83008-cd9e-4b84-8d75-15b2a8b31d98","8f35042d-a0bc-43cf-995e-6da1b5c9c923"
+"1.1.1:2 SystemDesign:Engineering Team","d674806d-db60-4c2d-afbf-725f7108a2d3","f7ef3528-ea95-4fb4-84a4-8eb91340e967","8f6942e7-f805-4e5c-abc3-976225382b2d"
+"1.1.1:1.1.5 SystemDesign:Java 8 w/ JavaFX","f7ef3528-ea95-4fb4-84a4-8eb91340e967","18debf93-c474-4acb-930a-08dccd015fff","bcc48984-49a4-49d3-bc54-7a26bccdc081"
+"1.1.1:1.2 SystemDesign:Configuration Management System","f7ef3528-ea95-4fb4-84a4-8eb91340e967","61e29bdc-5cf4-45fa-b6af-bec240c87a30","05023724-6dea-4157-a0f3-5ad2a7f280c7"
+"1.1.5:1.3 Java 8 w/ JavaFX:Desktop Computer","b2a2ea70-4c95-481b-9822-f966af9e0b80","18debf93-c474-4acb-930a-08dccd015fff","51ca2b18-2b83-4183-b741-eedbad25bb11"

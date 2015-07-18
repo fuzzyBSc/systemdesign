@@ -42,29 +42,21 @@ public class Range {
     private static final char plusMinus = '\u00b1';
 
     public static Range valueOf(String text) throws ParseException {
-        String[] segments = text.split("[\\+\\-\\/" + plusMinus + "]+");
+        int splitPos = text.indexOf(plusMinus);
+        int splitEndPos = splitPos < 0 ? -1 : splitPos + 1;
+        if (splitPos < 0) {
+            splitPos = text.indexOf("+/-");
+            splitEndPos = splitPos < 0 ? -1 : splitPos + 3;
+        }
+
         DecimalFormat parser = (DecimalFormat) NumberFormat.getNumberInstance();
         parser.setParseBigDecimal(true);
-        switch (segments.length) {
-            case 1: {
-                return Range.fromExact((BigDecimal) parser.parseObject(text));
-            }
-            case 2: {
-                BigDecimal[] pair = new BigDecimal[]{
-                    (BigDecimal) parser.parseObject(segments[0]),
-                    (BigDecimal) parser.parseObject(segments[1])};
-                if (text.indexOf('/') >= 0
-                        || text.indexOf('+') >= 0
-                        || text.indexOf(plusMinus) >= 0) {
-                    // +/-
-                    return Range.fromValueWithError(pair[0], pair[1]);
-                } else {
-                    // -
-                    return Range.fromRange(pair[0], pair[1]);
-                }
-            }
-            default:
-                throw new ParseException(text, 0);
+        if (splitPos >= 0) {
+            return Range.fromValueWithError(
+                    (BigDecimal) parser.parseObject(text.substring(0, splitPos)),
+                    (BigDecimal) parser.parseObject(text.substring(splitEndPos)));
+        } else {
+            return Range.fromExact((BigDecimal) parser.parseObject(text));
         }
     }
 

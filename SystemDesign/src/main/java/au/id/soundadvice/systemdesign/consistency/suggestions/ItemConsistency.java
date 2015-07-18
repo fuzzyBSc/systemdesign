@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import au.id.soundadvice.systemdesign.baselines.EditState;
+import au.id.soundadvice.systemdesign.model.baselines.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
@@ -100,6 +100,10 @@ public class ItemConsistency implements ProblemFactory {
         return system.get().getInterfaces(problemFunctional)
                 .flatMap(iface -> {
                     Item parentItem = iface.otherEnd(problemFunctional, system.get());
+                    if (parentItem.equals(system.get())) {
+                        // Ignore interfaces to self
+                        return Stream.empty();
+                    }
                     Optional<Item> childItem = problemAllocated.get(parentItem);
                     if (childItem.isPresent()) {
                         Stream<Problem> consistency;

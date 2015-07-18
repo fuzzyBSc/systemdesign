@@ -274,8 +274,23 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
         if (this.type.getUuid().equals(type.getUuid())) {
             return baseline.and(this);
         } else {
-            Flow replacement = new Flow(uuid, iface.getUuid(), flowScope, type.getUuid());
-            return baseline.add(replacement).and(replacement);
+            // Add flow direction(s) for the new type
+            BaselineAnd<Flow> addResult = add(
+                    baseline,
+                    left.getTarget(baseline.getContext()),
+                    right.getTarget(baseline.getContext()),
+                    type, this.getDirection());
+            baseline = addResult.getBaseline();
+            Flow replacement = addResult.getRelation();
+            // Remove ourselves
+            baseline = baseline.remove(uuid);
+
+            // See if the old type should be removed
+            FlowType oldType = this.type.getTarget(baseline.getContext());
+            if (!oldType.getFlows(baseline).findAny().isPresent()) {
+                baseline = oldType.removeFrom(baseline);
+            }
+            return baseline.and(replacement);
         }
     }
 

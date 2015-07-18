@@ -28,17 +28,15 @@ package au.id.soundadvice.systemdesign.relation;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.util.Pair;
@@ -60,44 +58,40 @@ public class ByReverse<E extends Relation> {
 
     public static class Loader<E extends Relation> {
 
-        private final Set<E> deletedRelations;
+        private final Set<UUID> deletedRelations;
         private final ByReverse<E> result;
 
         public Loader(ByUUID<E> relations) {
-            ConcurrentMap<UUID, List<E>> reverse = new ConcurrentHashMap<>();
-            Set<E> tmpDelete = Collections.newSetFromMap(new ConcurrentHashMap<>());
-            relations.stream().parallel()
-                    .forEach(relation -> {
-                        relation.getReferences().parallel()
-                        .forEach(reference -> {
-                            ReferenceTarget<?> target = reference.getTo();
-                            if (target.getType().isInstance(relations.get(target.getUuid()))) {
-                                List<E> list = reverse.get(target.getUuid());
-                                if (list == null) {
-                                    list = Collections.synchronizedList(new ArrayList<>());
-                                    List<E> old = reverse.putIfAbsent(target.getUuid(), list);
-                                    if (old != null) {
-                                        list = old;
-                                    }
+            UUID invalidReference = UUID.randomUUID();
+            Map<UUID, Set<E>> reverse = relations.stream()
+                    .flatMap(relation -> relation.getReferences()
+                            .map(reference -> {
+                                ReferenceTarget<?> target = reference.getTo();
+                                UUID targetUUID;
+                                if (target.getType().isInstance(relations.get(target.getUuid()))) {
+                                    targetUUID = target.getUuid();
+                                } else {
+                                    // Target does not exist or is of incorrect type
+                                    targetUUID = invalidReference;
                                 }
-                                list.add(relation);
-                            } else {
-                                // Target does not exist or is of incorrect type
-                                tmpDelete.add(relation);
-                            }
-                        });
-                    });
+                                return new Pair<>(targetUUID, relation);
+                            }))
+                    .collect(Collectors.groupingBy(Pair::getKey,
+                                    Collectors.mapping(Pair::getValue, Collectors.toSet())));
             Map<UUID, ByClass<E>> tmpResult = reverse.entrySet().parallelStream()
                     .collect(Collectors.toMap(
                                     entry -> entry.getKey(),
                                     entry -> ByClass.valueOf(entry.getValue().stream())));
+            Set<UUID> tmpDelete = new HashSet<>();
+            tmpDelete.add(invalidReference);
             cascade(tmpResult, tmpDelete);
-            result = new ByReverse<>(Collections.unmodifiableMap(tmpResult))
-                    .removeAll(tmpDelete.stream());
+            tmpDelete.remove(invalidReference);
             deletedRelations = tmpDelete;
+            result = new ByReverse<>(Collections.unmodifiableMap(tmpResult))
+                    .removeAll(deletedRelations.stream().map(uuid -> relations.get(uuid)));
         }
 
-        public Stream<E> getDeletedRelations() {
+        public Stream<UUID> getDeletedRelations() {
             return deletedRelations.stream();
         }
 
@@ -107,9 +101,8 @@ public class ByReverse<E extends Relation> {
     }
 
     private static <E extends Identifiable> void cascade(
-            Map<UUID, ByClass<E>> reverse, Set<E> seed) {
+            Map<UUID, ByClass<E>> reverse, Set<UUID> seed) {
         Deque<UUID> stack = seed.stream()
-                .map(Identifiable::getUuid)
                 .collect(Collectors.toCollection(ArrayDeque<UUID>::new));
         while (!stack.isEmpty()) {
             UUID current = stack.pop();
@@ -118,7 +111,7 @@ public class ByReverse<E extends Relation> {
                 references.values()
                         .flatMap(byClass -> byClass.stream())
                         .forEach(dependant -> {
-                            if (seed.add(dependant)) {
+                            if (seed.add(dependant.getUuid())) {
                                 stack.push(dependant.getUuid());
                             }
                         });
@@ -132,7 +125,7 @@ public class ByReverse<E extends Relation> {
         this.relations = unmodifiable;
     }
 
-    public void cascade(Set<E> seed) {
+    public void cascade(Set<UUID> seed) {
         cascade(relations, seed);
     }
 
@@ -187,7 +180,7 @@ public class ByReverse<E extends Relation> {
                     });
                 })
                 .collect(Collectors.groupingBy(
-                        Pair::getKey, Collectors.mapping(Pair::getValue, Collectors.toList())));
+                                Pair::getKey, Collectors.mapping(Pair::getValue, Collectors.toList())));
         if (toDeleteByTarget.isEmpty()) {
             // There were no references
             return this;
