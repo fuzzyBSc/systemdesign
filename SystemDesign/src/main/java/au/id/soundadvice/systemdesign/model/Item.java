@@ -60,6 +60,20 @@ import javax.annotation.CheckReturnValue;
  */
 public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
 
+    /**
+     * Return all items for the baseline.
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<Item> find(Baseline baseline) {
+        return baseline.getStore().getByClass(Item.class);
+    }
+
+    public Stream<BudgetAllocation> findBudgetAllocations(Baseline baseline) {
+        return baseline.getStore().getReverse(uuid, BudgetAllocation.class);
+    }
+
     @Override
     public int hashCode() {
         int hash = 7;
@@ -108,7 +122,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
     }
 
     public static IDPath getNextItemId(Baseline baseline) {
-        Optional<Integer> currentMax = baseline.getItems().parallel()
+        Optional<Integer> currentMax = find(baseline).parallel()
                 .filter(item -> !item.isExternal())
                 .map(item -> {
                     try {
@@ -141,7 +155,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
             Baseline baseline, String name, Point2D origin, Color color) {
         Item item = new Item(
                 UUID.randomUUID(),
-                baseline.getIdentity().getUuid(),
+                Identity.find(baseline).getUuid(),
                 getNextItemId(baseline), name, false);
         baseline = baseline.add(item);
         // Also add the coresponding view
@@ -158,7 +172,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
      */
     @CheckReturnValue
     public static BaselineAnd<Item> create(Baseline baseline, Point2D origin) {
-        String name = baseline.getItems().parallel()
+        String name = find(baseline).parallel()
                 .filter(item -> !item.isExternal())
                 .map(Item::getName)
                 .collect(new UniqueName("New Item"));
@@ -180,7 +194,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         Baseline allocated = state.getAllocated();
         Item item = new Item(
                 template.uuid,
-                allocated.getIdentity().getUuid(),
+                Identity.find(allocated).getUuid(),
                 template.getIdPath(functional), template.name, true);
         allocated = allocated.add(item);
         // Also add the coresponding view

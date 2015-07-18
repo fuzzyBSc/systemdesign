@@ -24,21 +24,62 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.beans;
 
-import javafx.application.Platform;
-import javafx.scene.control.TreeView;
+import au.id.soundadvice.systemdesign.files.Identifiable;
+import java.util.UUID;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-class TreeState {
+public class BudgetBean implements Identifiable {
 
-    void apply(TreeView view) {
-        if (!Platform.isFxApplicationThread()) {
-            throw new AssertionError();
-        }
+    public String getUnit() {
+        return unit;
     }
 
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    @Override
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public BudgetBean(UUID uuid, String name, String unit, String description) {
+        this.uuid = uuid;
+        this.name = name;
+        this.unit = unit;
+        this.description = description;
+    }
+
+    public BudgetBean() {
+    }
+
+    private UUID uuid;
+    private String name;
+    private String unit;
+    private String description;
 }

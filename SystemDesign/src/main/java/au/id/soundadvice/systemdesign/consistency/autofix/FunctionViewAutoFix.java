@@ -46,7 +46,7 @@ public class FunctionViewAutoFix {
 
     static UndoState fix(UndoState state) {
         final UndoState preRemoveState = state;
-        Stream<FunctionView> removals = preRemoveState.getAllocated().getFunctions()
+        Stream<FunctionView> removals = Function.find(preRemoveState.getAllocated())
                 .flatMap(function -> {
                     return function.getViews(preRemoveState.getAllocated())
                     .flatMap(view -> {
@@ -102,7 +102,8 @@ public class FunctionViewAutoFix {
         }
 
         final UndoState preAddState = state;
-        Stream<Pair<Function, Optional<Function>>> additions = preAddState.getAllocated().getFunctions()
+        Stream<Pair<Function, Optional<Function>>> additions
+                = Function.find(preAddState.getAllocated())
                 .flatMap(function -> {
                     Baseline functional = preAddState.getFunctional();
                     Baseline allocated = preAddState.getAllocated();

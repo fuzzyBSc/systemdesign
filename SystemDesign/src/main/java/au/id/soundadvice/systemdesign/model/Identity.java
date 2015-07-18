@@ -70,6 +70,17 @@ public class Identity implements BeanFactory<Baseline, IdentityBean>, Relation {
         return true;
     }
 
+    /**
+     * Retrieve identifying information about the system of interest for this
+     * baseline.
+     *
+     * @param baseline The baseline whose identity to find
+     * @return
+     */
+    public static Identity find(Baseline baseline) {
+        return baseline.getStore().getByClass(Identity.class).findAny().get();
+    }
+
     public String getName() {
         return name;
     }

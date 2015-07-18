@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.model.Baseline;
+import au.id.soundadvice.systemdesign.model.Function;
 import java.util.stream.Stream;
 
 /**
@@ -45,7 +46,7 @@ public class UntracedFunctions implements ProblemFactory {
         if (state.getSystemOfInterest().isPresent()) {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
-            boolean anyUntraced = allocated.getFunctions().parallel()
+            boolean anyUntraced = Function.find(allocated).parallel()
                     .anyMatch(function
                             -> !function.isExternal()
                             && !function.getTrace(functional).isPresent());

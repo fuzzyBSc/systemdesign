@@ -144,4 +144,15 @@ public class ContextMenus {
         return contextMenu;
     }
 
+    static ContextMenu budgetTreeBackgroundMenu(Interactions interactions) {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem addMenuItem = new MenuItem("Add Budget");
+        contextMenu.getItems().add(addMenuItem);
+        addMenuItem.setOnAction(event -> {
+            interactions.createBudget();
+            event.consume();
+        });
+        return contextMenu;
+    }
+
 }

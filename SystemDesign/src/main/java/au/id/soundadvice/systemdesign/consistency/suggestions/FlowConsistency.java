@@ -158,7 +158,7 @@ public class FlowConsistency {
                                                 // Remove from all child functions
                                                 UpdateSolution.updateAllocated("Flow down",
                                                         allocated -> {
-                                                            Iterator<Function> it = allocated.getFunctions().iterator();
+                                                            Iterator<Function> it = Function.find(allocated).iterator();
                                                             while (it.hasNext()) {
                                                                 Function childFunction = it.next();
                                                                 allocated = removeFlowDirections(
@@ -193,7 +193,7 @@ public class FlowConsistency {
                         return Stream.of(new Problem(description, Stream.of(
                                                 // We don't know which new child flows to add,
                                                 // so can't flow down
-                                                new DisabledSolution("Flow down"),
+                                                DisabledSolution.FlowDown,
                                                 UpdateSolution.updateFunctional("Flow up", solutionFunctional
                                                         -> removeFlowDirections(
                                                                 solutionFunctional,

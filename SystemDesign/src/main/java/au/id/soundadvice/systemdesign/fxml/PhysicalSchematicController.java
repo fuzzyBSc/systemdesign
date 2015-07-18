@@ -181,16 +181,16 @@ public class PhysicalSchematicController {
         public void run() {
             pane.getChildren().clear();
             Baseline baseline = undo.get().getAllocated();
-            Identity identity = baseline.getIdentity();
+            Identity identity = Identity.find(baseline);
             if (identity.getIdPath().isEmpty()) {
                 tab.setText("Physical");
             } else {
                 tab.setText(identity.toString());
             }
-            baseline.getInterfaces().forEach(iface -> {
+            Interface.find(baseline).forEach(iface -> {
                 addNode(pane, baseline, iface);
             });
-            baseline.getItemViews().forEach(view -> {
+            ItemView.find(baseline).forEach(view -> {
                 addNode(pane, baseline, view, view.getItem().getTarget(baseline.getContext()));
             });
         }

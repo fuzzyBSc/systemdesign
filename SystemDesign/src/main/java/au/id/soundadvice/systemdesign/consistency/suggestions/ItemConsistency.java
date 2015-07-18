@@ -149,7 +149,7 @@ public class ItemConsistency implements ProblemFactory {
         Baseline problemFunctional = state.getFunctional();
         Baseline problemAllocated = state.getAllocated();
 
-        return problemAllocated.getItems()
+        return Item.find(problemAllocated)
                 .filter(Item::isExternal)
                 .flatMap(externalAllocatedItem -> {
                     Optional<Interface> functionalInterface
@@ -190,7 +190,7 @@ public class ItemConsistency implements ProblemFactory {
                                                 UpdateSolution.updateAllocated("Flow down", solutionAllocated
                                                         -> externalAllocatedItem.removeFrom(solutionAllocated)
                                                 ),
-                                                new DisabledSolution("Flow up"))));
+                                                DisabledSolution.FlowUp)));
                     }
                 });
     }

@@ -45,7 +45,7 @@ public class IdentityMismatchAutoFix {
             Identity correctedId = systemOfInterest.get().asIdentity(
                     state.getFunctional());
             Baseline allocated = state.getAllocated();
-            if (!correctedId.equals(allocated.getIdentity())) {
+            if (!correctedId.equals(Identity.find(allocated))) {
                 // Identity mismatch - autofix.
                 return state.setAllocated(allocated.setIdentity(correctedId));
             }

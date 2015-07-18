@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.consistency.autofix;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.IDPath;
+import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.concurrent.atomic.AtomicReference;
@@ -63,10 +64,10 @@ public class IdentityMismatchAutoFixTest {
                             IDPath.valueOfDotted("wrong.id")));
 
             state = new UndoState(functional, allocated);
-            assertEquals("wrong.id", state.getAllocated().getIdentity().getIdPath().toString());
+            assertEquals("wrong.id", Identity.find(state.getAllocated()).getIdPath().toString());
         }
         UndoState result = IdentityMismatchAutoFix.fix(state);
-        assertEquals("1", result.getAllocated().getIdentity().getIdPath().toString());
+        assertEquals("1", Identity.find(result.getAllocated()).getIdPath().toString());
     }
 
 }

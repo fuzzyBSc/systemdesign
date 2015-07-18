@@ -60,6 +60,8 @@ public class MainController implements Initializable {
     @FXML
     private TreeView<FlowType> typeTree;
     @FXML
+    private TreeView<BudgetSummary> budgetTree;
+    @FXML
     private Button upButton;
     @FXML
     private Button downButton;
@@ -87,6 +89,7 @@ public class MainController implements Initializable {
     private PhysicalTreeController physicalTreeController;
     private LogicalTreeController logicalTreeController;
     private TypeTreeController typeTreeController;
+    private BudgetTreeController budgetTreeController;
     private PhysicalSchematicController schematicController;
     private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
@@ -111,6 +114,8 @@ public class MainController implements Initializable {
         logicalTreeController.start();
         typeTreeController = new TypeTreeController(interactions, edit, typeTree);
         typeTreeController.start();
+        budgetTreeController = new BudgetTreeController(interactions, edit, budgetTree);
+        budgetTreeController.start();
         schematicController = new PhysicalSchematicController(interactions, edit, physicalDrawing);
         schematicController.start();
         logicalController = new LogicalTabs(interactions, edit, tabs);

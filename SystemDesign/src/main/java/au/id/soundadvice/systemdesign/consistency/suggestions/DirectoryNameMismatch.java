@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.consistency.Solution;
 import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.model.Identity;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -85,7 +86,7 @@ public class DirectoryNameMismatch implements ProblemFactory {
             Path path = dir.get().getPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
-                String identity = edit.getUndo().get().getAllocated().getIdentity().toString();
+                String identity = Identity.find(edit.getUndo().get().getAllocated()).toString();
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
                     Path renameTo = path.getParent().resolve(identity);
                     if (!Files.exists(renameTo)) {

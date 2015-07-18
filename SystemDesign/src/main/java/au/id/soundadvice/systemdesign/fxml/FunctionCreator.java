@@ -84,7 +84,7 @@ public class FunctionCreator {
     }
 
     private Optional<Item> chooseItem(Baseline baseline) {
-        List<Item> choices = baseline.getItems().parallel()
+        List<Item> choices = Item.find(baseline).parallel()
                 .filter(item -> !item.isExternal())
                 .sorted((left, right) -> left.toString().compareTo(right.toString()))
                 .collect(Collectors.toList());

@@ -127,7 +127,7 @@ public class LogicalTreeController {
                     .forEach(parent -> rawAllocation.put(parent, new TreeMap<>()));
             // Keep orphans separate to avoid null pointers in TreeMap
             SortedMap<String, Function> rawOrphans = new TreeMap<>();
-            allocated.getFunctions()
+            Function.find(allocated)
                     .filter(function -> !function.isExternal())
                     .forEach(child -> {
                         // Parent may be null, ie child is orphaned

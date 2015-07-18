@@ -45,10 +45,11 @@ public class TypeUUIDMismatchAutoFix {
 
     private static Baseline removeUnusedTypes(Baseline baseline) {
         final Baseline preRemoveBaseline = baseline;
-        Iterator<FlowType> it = baseline.getFlowTypes().filter(type -> {
-            Optional<Flow> flow = type.getFlows(preRemoveBaseline).findAny();
-            return !flow.isPresent();
-        }).iterator();
+        Iterator<FlowType> it = FlowType.find(baseline)
+                .filter(type -> {
+                    Optional<Flow> flow = type.getFlows(preRemoveBaseline).findAny();
+                    return !flow.isPresent();
+                }).iterator();
         while (it.hasNext()) {
             FlowType type = it.next();
             baseline = type.removeFrom(baseline);
@@ -57,7 +58,7 @@ public class TypeUUIDMismatchAutoFix {
     }
 
     private static Map<String, List<FlowType>> getTypesByName(Baseline baseline) {
-        return baseline.getFlowTypes()
+        return FlowType.find(baseline)
                 .collect(Collectors.groupingBy(FlowType::getName));
     }
 
@@ -70,7 +71,7 @@ public class TypeUUIDMismatchAutoFix {
                                 Map.Entry::getKey,
                                 entry -> entry.getValue().get(0)));
         {
-            Iterator<Flow> it = baseline.getFlows().iterator();
+            Iterator<Flow> it = Flow.find(baseline).iterator();
             while (it.hasNext()) {
                 Flow flow = it.next();
                 FlowType type = flow.getType().getTarget(baseline.getContext());
@@ -79,7 +80,7 @@ public class TypeUUIDMismatchAutoFix {
             }
         }
         {
-            Iterator<FlowType> it = baseline.getFlowTypes().iterator();
+            Iterator<FlowType> it = FlowType.find(baseline).iterator();
             while (it.hasNext()) {
                 FlowType type = it.next();
                 FlowType canonicalType = canonicalTypes.get(type.getName());

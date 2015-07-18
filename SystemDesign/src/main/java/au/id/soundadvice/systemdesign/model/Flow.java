@@ -85,6 +85,17 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
         return true;
     }
 
+    /**
+     * A transfer of information, energy or materials from one function to
+     * another
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<Flow> find(Baseline baseline) {
+        return baseline.getStore().getByClass(Flow.class);
+    }
+
     @CheckReturnValue
     public static BaselineAnd<Flow> add(
             Baseline baseline,

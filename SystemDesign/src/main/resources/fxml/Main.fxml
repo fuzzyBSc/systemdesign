@@ -31,6 +31,11 @@
                         <TreeView fx:id="typeTree" prefHeight="200.0" prefWidth="200.0" />
                      </content>
                   </TitledPane>
+                  <TitledPane prefHeight="200.0" prefWidth="200.0" text="Budget">
+                     <content>
+                        <TreeView fx:id="budgetTree" prefHeight="200.0" prefWidth="200.0" />
+                     </content>
+                  </TitledPane>
               </panes>
             </Accordion>
          </left>

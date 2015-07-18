@@ -76,6 +76,17 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     }
 
     /**
+     * Return all interfaces between subsystems of the allocated baseline, as
+     * well as all interfaces between subsystems and external systems.
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<Interface> find(Baseline baseline) {
+        return baseline.getStore().getByClass(Interface.class);
+    }
+
+    /**
      * Create a new Interface.
      *
      * @param baseline The baseline to update

@@ -42,7 +42,7 @@ public class ItemViewAutoFix {
 
     static UndoState fix(UndoState state) {
         final UndoState preRemoveState = state;
-        Stream<ItemView> removals = preRemoveState.getAllocated().getItems()
+        Stream<ItemView> removals = Item.find(preRemoveState.getAllocated())
                 .flatMap(item -> {
                     return item.getViews(preRemoveState.getAllocated())
                     // One view should exist for each item, so skip that one
@@ -59,7 +59,7 @@ public class ItemViewAutoFix {
         }
 
         final UndoState preAddState = state;
-        Stream<Item> additions = preAddState.getAllocated().getItems()
+        Stream<Item> additions = Item.find(preAddState.getAllocated())
                 .filter(item -> !item.getViews(preAddState.getAllocated()).findAny().isPresent());
         {
             Iterator<Item> it = additions.iterator();

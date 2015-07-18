@@ -121,6 +121,17 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
     }
 
     /**
+     * Return all of the functions allocated to any subsystems of the baseline,
+     * as well as external functions.
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<Function> find(Baseline baseline) {
+        return baseline.getStore().getByClass(Function.class);
+    }
+
+    /**
      * Create a new Function.
      *
      * @param baseline The baseline to update
@@ -155,7 +166,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
      */
     @CheckReturnValue
     public static BaselineAnd<Function> create(Baseline baseline, Item item) {
-        String name = baseline.getFunctions().parallel()
+        String name = find(baseline).parallel()
                 .map(Function::getName)
                 .collect(new UniqueName("New Function"));
         return Function.create(

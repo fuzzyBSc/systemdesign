@@ -130,7 +130,7 @@ public class UndoState {
     }
 
     public Optional<Item> getSystemOfInterest() {
-        Identity identity = allocated.getIdentity();
+        Identity identity = Identity.find(allocated);
         return functional.getItemForIdentity(identity);
     }
 

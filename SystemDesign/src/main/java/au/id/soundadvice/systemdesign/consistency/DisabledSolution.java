@@ -34,6 +34,9 @@ import au.id.soundadvice.systemdesign.baselines.EditState;
  */
 public class DisabledSolution implements Solution {
 
+    public static DisabledSolution FlowUp = new DisabledSolution("Flow up");
+    public static DisabledSolution FlowDown = new DisabledSolution("Flow down");
+
     public DisabledSolution(String description) {
         this.description = description;
     }

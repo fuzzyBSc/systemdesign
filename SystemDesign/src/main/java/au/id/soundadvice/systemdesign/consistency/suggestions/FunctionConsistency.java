@@ -192,7 +192,7 @@ public class FunctionConsistency {
                                                 UpdateSolution.updateAllocated("Flow down", solutionAllocated
                                                         -> allocatedExternalFunction.removeFrom(solutionAllocated)
                                                 ),
-                                                new DisabledSolution("Flow up"))));
+                                                DisabledSolution.FlowUp)));
                     }
 
                 });

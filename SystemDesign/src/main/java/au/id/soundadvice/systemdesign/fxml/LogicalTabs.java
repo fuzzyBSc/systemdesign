@@ -92,7 +92,7 @@ public class LogicalTabs {
                                 function -> Optional.of(function),
                                 java.util.function.Function.identity()));
             } else {
-                if (allocated.getFunctions().findAny().isPresent()) {
+                if (Function.find(allocated).findAny().isPresent()) {
                     parentFunctions = Collections.singletonMap(Optional.empty(), null);
                 } else {
                     parentFunctions = Collections.emptyMap();
@@ -128,7 +128,7 @@ public class LogicalTabs {
             }
 
             // Obtain the flows for each connection scope, ignoring direction
-            Map<Scope<Function>, List<Flow>> flows = allocated.getFlows().parallel()
+            Map<Scope<Function>, List<Flow>> flows = Flow.find(allocated).parallel()
                     .sorted((left, right) -> {
                         FlowType leftType = left.getType().getTarget(allocated.getContext());
                         FlowType rightType = right.getType().getTarget(allocated.getContext());
@@ -160,7 +160,7 @@ public class LogicalTabs {
 
             // Divide up all function views between the various controllers
             Map<Optional<Function>, List<FunctionView>> perDrawingFunctionViews
-                    = allocated.getFunctionViews().parallel()
+                    = FunctionView.find(allocated).parallel()
                     .collect(Collectors.groupingBy(view -> view.getDrawing(functional)));
             perDrawingFunctionViews.entrySet().stream()
                     .forEach(entry -> {

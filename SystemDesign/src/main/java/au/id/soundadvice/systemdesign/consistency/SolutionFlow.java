@@ -24,49 +24,64 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.consistency.autofix;
+package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.UndoState;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import javafx.scene.paint.Color;
+import java.util.function.UnaryOperator;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ExternalColorAutoFix {
+public enum SolutionFlow {
 
-    static UndoState fix(UndoState state) {
-        Baseline functional = state.getFunctional();
-        Baseline allocated = state.getAllocated();
+    Up("Flow up"), Down("Flow down");
 
-        Map<UUID, Color> functionalViews = ItemView.find(functional)
-                .collect(Collectors.toMap(
-                                view -> view.getItem().getUuid(),
-                                ItemView::getColor));
-
-        /*
-         * Find external views in the allocated baseline that don't match the
-         * color of the correspoding functional baseline view
-         */
-        Iterator<ItemView> it = ItemView.find(allocated).iterator();
-        while (it.hasNext()) {
-            ItemView view = it.next();
-            if (view.getItem().getTarget(allocated.getContext()).isExternal()) {
-                Color allocatedColor = view.getColor();
-                Color functionalColor = functionalViews.getOrDefault(
-                        view.getItem().getUuid(), allocatedColor);
-                if (!allocatedColor.equals(functionalColor)) {
-                    allocated = view.setColor(allocated, functionalColor).getBaseline();
-                }
-            }
-        }
-        return state.setAllocated(allocated);
+    public String getDescription() {
+        return description;
     }
 
+    public Baseline getSource(UndoState state) {
+        switch (this) {
+            case Up:
+                return state.getAllocated();
+            case Down:
+                return state.getFunctional();
+            default:
+                throw new AssertionError(this.name());
+
+        }
+    }
+
+    public Baseline getTarget(UndoState state) {
+        switch (this) {
+            case Up:
+                return state.getFunctional();
+            case Down:
+                return state.getAllocated();
+            default:
+                throw new AssertionError(this.name());
+
+        }
+    }
+
+    @CheckReturnValue
+    public UndoState updateTarget(UndoState state, UnaryOperator<Baseline> update) {
+        switch (this) {
+            case Up:
+                return state.updateFunctional(update);
+            case Down:
+                return state.updateAllocated(update);
+            default:
+                throw new AssertionError(this.name());
+
+        }
+    }
+
+    private SolutionFlow(String description) {
+        this.description = description;
+    }
+    private final String description;
 }

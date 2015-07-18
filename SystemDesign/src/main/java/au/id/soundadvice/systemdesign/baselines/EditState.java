@@ -95,7 +95,7 @@ public class EditState {
         if (dir.isPresent()) {
             UndoState state = undo.get();
             loadImpl(dir.get().getParent());
-            lastChild.push(state.getAllocated().getIdentity());
+            lastChild.push(Identity.find(state.getAllocated()));
         } else {
             throw new IOException("Cannot load from null directory");
         }

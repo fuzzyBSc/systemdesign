@@ -35,7 +35,6 @@ import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
@@ -72,7 +71,6 @@ public class TypeTreeController {
     }
 
     private void addContextMenu() {
-        view.setContextMenu(ContextMenus.logicalTreeBackgroundMenu(functionCreator));
     }
 
     private class UpdateView implements Runnable {
@@ -83,7 +81,7 @@ public class TypeTreeController {
             TreeItem root = new TreeItem();
             root.setExpanded(true);
             root.getChildren().addAll(
-                    allocated.getFlowTypes()
+                    FlowType.find(allocated)
                     .sorted((left, right) -> left.getName().compareTo(right.getName()))
                     .map(flowType -> {
                         TreeItem parent = new TreeItem(flowType);
@@ -217,7 +215,6 @@ public class TypeTreeController {
     private final Interactions interactions;
     private final EditState edit;
     private final TreeView<FlowType> view;
-    private final AtomicReference<TreeState> treeState = new AtomicReference<>();
     private final SingleRunnable<UpdateView> updateView;
     private final FunctionCreator functionCreator;
 }

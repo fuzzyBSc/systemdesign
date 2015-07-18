@@ -42,6 +42,7 @@ public class AutoFix {
             state = FunctionViewAutoFix.fix(state);
             state = ItemViewAutoFix.fix(state);
             state = ExternalColorAutoFix.fix(state);
+            state = BudgetDeduplicate.fix(state);
             return state;
         };
     }

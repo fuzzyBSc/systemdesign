@@ -42,7 +42,8 @@ public class AllSuggestions implements ProblemFactory {
     private final List<ProblemFactory> factories = Arrays.asList(
             new DirectoryNameMismatch(),
             new ItemConsistency(),
-            new UntracedFunctions());
+            new UntracedFunctions(),
+            new BudgetConsistency());
 
     @Override
     public Stream<Problem> getProblems(EditState state) {

@@ -26,6 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.model;
 
+import au.id.soundadvice.systemdesign.beans.BudgetAllocationBean;
+import au.id.soundadvice.systemdesign.beans.BudgetBean;
 import au.id.soundadvice.systemdesign.beans.FlowBean;
 import au.id.soundadvice.systemdesign.beans.FlowTypeBean;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
@@ -73,13 +75,13 @@ public class Baseline {
 
     @Override
     public String toString() {
-        return getIdentity().toString();
+        return Identity.find(this).toString();
     }
 
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 79 * hash + Objects.hashCode(getIdentity());
+        hash = 79 * hash + Objects.hashCode(Identity.find(this));
         return hash;
     }
 
@@ -130,85 +132,6 @@ public class Baseline {
 
     public <T> BaselineAnd<T> and(T relation) {
         return new BaselineAnd(this, relation);
-    }
-
-    /**
-     * Retrieve identifying information about the system of interest for this
-     * allocated baseline.
-     *
-     * @return
-     */
-    public Identity getIdentity() {
-        return store.getByClass(Identity.class).findAny().get();
-    }
-
-    /**
-     * Return all subsystems of the allocated baseline.
-     *
-     * @return
-     */
-    public Stream<Item> getItems() {
-        return store.getByClass(Item.class);
-    }
-
-    /**
-     * Return all views of items within the allocated baseline.
-     *
-     * @return
-     */
-    public Stream<ItemView> getItemViews() {
-        return store.getByClass(ItemView.class);
-    }
-
-    /**
-     * Return all interfaces between subsystems of the allocated baseline, as
-     * well as all interfaces between subsystems and external systems.
-     *
-     * @return
-     */
-    public Stream<Interface> getInterfaces() {
-        return store.getByClass(Interface.class);
-    }
-
-    /**
-     * Return all of the functions allocated to any subsystems of the allocated
-     * baseline, as well as external functions.
-     *
-     * @return
-     */
-    public Stream<Function> getFunctions() {
-        return store.getByClass(Function.class);
-    }
-
-    /**
-     * Return all views of functions. For functions allocated to subsystems we
-     * should always see one view of that function, corresponding to its trace.
-     * External functions may appear on multiple drawings and thus have multiple
-     * views.
-     *
-     * @return
-     */
-    public Stream<FunctionView> getFunctionViews() {
-        return store.getByClass(FunctionView.class);
-    }
-
-    /**
-     * A transfer of information, energy or materials from one function to
-     * another
-     *
-     * @return
-     */
-    public Stream<Flow> getFlows() {
-        return store.getByClass(Flow.class);
-    }
-
-    /**
-     * A distinct combination of information, energy and materials
-     *
-     * @return
-     */
-    public Stream<FlowType> getFlowTypes() {
-        return store.getByClass(FlowType.class);
     }
 
     private static final Baseline empty = create(Identity.create());
@@ -355,6 +278,33 @@ public class Baseline {
             }
         }
 
+        if (Files.exists(directory.getBudgets())) {
+            try (BeanReader<BudgetBean> reader = BeanReader.forPath(BudgetBean.class, directory.getBudgets())) {
+                for (;;) {
+                    Optional<BudgetBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        Budget model = new Budget(bean.get());
+                        relations.add(model);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        if (Files.exists(directory.getBudgetAllocations())) {
+            try (BeanReader<BudgetAllocationBean> reader = BeanReader.forPath(BudgetAllocationBean.class, directory.getBudgetAllocations())) {
+                for (;;) {
+                    Optional<BudgetAllocationBean> bean = reader.read();
+                    if (bean.isPresent()) {
+                        BudgetAllocation model = new BudgetAllocation(bean.get());
+                        relations.add(model);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
         return new Baseline(RelationStore.valueOf(relations.stream()));
     }
 
@@ -378,6 +328,8 @@ public class Baseline {
             BeanFile.saveModel(transaction, this, directory.getFunctionViews(), FunctionViewBean.class, store.getByClass(FunctionView.class));
             BeanFile.saveModel(transaction, this, directory.getFlowTypes(), FlowTypeBean.class, store.getByClass(FlowType.class));
             BeanFile.saveModel(transaction, this, directory.getFlows(), FlowBean.class, store.getByClass(Flow.class));
+            BeanFile.saveModel(transaction, this, directory.getBudgets(), BudgetBean.class, store.getByClass(Budget.class));
+            BeanFile.saveModel(transaction, this, directory.getBudgetAllocations(), BudgetAllocationBean.class, store.getByClass(BudgetAllocation.class));
         }
     }
 
@@ -396,7 +348,7 @@ public class Baseline {
     @CheckReturnValue
     public Baseline setIdentity(Identity id) {
         RelationStore tmpStore = store
-                .remove(getIdentity().getUuid())
+                .remove(Identity.find(this).getUuid())
                 .add(id);
         return new Baseline(tmpStore);
     }

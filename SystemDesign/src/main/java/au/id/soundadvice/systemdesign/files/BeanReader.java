@@ -37,6 +37,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -74,10 +75,12 @@ public class BeanReader<T> implements Closeable {
     // Must keep pinnned here as PropertyEditorManager only holds weak references
     private static final Class<?> uuidEditorClass = UUIDEditor.class;
     private static final Class<?> colorEditorClass = ColorEditor.class;
+    private static final Class<?> bigDecimalEditorClass = BigDecimalEditor.class;
 
     static {
         PropertyEditorManager.registerEditor(UUID.class, uuidEditorClass);
         PropertyEditorManager.registerEditor(Color.class, colorEditorClass);
+        PropertyEditorManager.registerEditor(BigDecimal.class, bigDecimalEditorClass);
     }
 
     public BeanReader(Class<T> clazz, CSVReader reader) throws IOException {

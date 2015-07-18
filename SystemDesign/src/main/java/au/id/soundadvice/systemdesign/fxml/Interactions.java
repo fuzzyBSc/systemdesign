@@ -28,17 +28,18 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.baselines.EditState;
-import au.id.soundadvice.systemdesign.model.UndoState;
-import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.model.IDPath;
-import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.baselines.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
+import au.id.soundadvice.systemdesign.model.UndoState;
+import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.model.Budget;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
+import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.ItemView;
@@ -47,6 +48,7 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -87,6 +89,46 @@ public class Interactions {
         return result.get();
     }
 
+    public Optional<String> textInput(String question, String _default) {
+        TextInputDialog dialog = new TextInputDialog(_default);
+        dialog.setTitle(question);
+        dialog.setHeaderText(question);
+        return dialog.showAndWait();
+    }
+
+    public void createBudget() {
+        String name;
+        String unit;
+        {
+            // User interaction - read only
+            UndoState state = edit.getUndo().get();
+            Baseline allocated = state.getAllocated();
+
+            Optional<String> optionalName = textInput(
+                    "Enter name for budget",
+                    Budget.find(allocated).parallel()
+                    .map(budget -> budget.getKey().getName())
+                    .collect(new UniqueName("New Budget")));
+            if (!optionalName.isPresent()) {
+                return;
+            }
+            name = optionalName.get();
+        }
+        {
+            // User interaction - read only
+            Optional<String> optionalUnit = textInput(
+                    "Enter unit for " + name, "units");
+            if (!optionalUnit.isPresent()) {
+                return;
+            }
+            unit = optionalUnit.get();
+        }
+
+        edit.updateAllocated(baseline -> {
+            return Budget.add(baseline, new Budget.Key(name, unit)).getBaseline();
+        });
+    }
+
     void addFunctionToItem(Item item) {
         Optional<String> result;
         {
@@ -97,7 +139,7 @@ public class Interactions {
                 return;
             }
 
-            String name = allocated.getFunctions().parallel()
+            String name = Function.find(allocated).parallel()
                     .map(Function::getName)
                     .collect(new UniqueName("New Function"));
 
@@ -135,7 +177,7 @@ public class Interactions {
         if (result.isPresent()) {
             IDPath path = IDPath.valueOfSegment(result.get());
             edit.updateAllocated(allocated -> {
-                boolean isUnique = allocated.getItems().parallel()
+                boolean isUnique = Item.find(allocated).parallel()
                         .map(Item::getShortId)
                         .noneMatch((existing) -> path.equals(existing));
                 if (isUnique) {
@@ -165,7 +207,7 @@ public class Interactions {
         if (result.isPresent()) {
             String name = result.get();
             edit.updateAllocated(allocated -> {
-                boolean isUnique = allocated.getItems().parallel()
+                boolean isUnique = Item.find(allocated).parallel()
                         .map(Item::getName)
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
@@ -198,7 +240,7 @@ public class Interactions {
         if (result.isPresent()) {
             String name = result.get();
             edit.updateAllocated(allocated -> {
-                boolean isUnique = allocated.getFunctions().parallel()
+                boolean isUnique = Function.find(allocated).parallel()
                         .map(Function::getName)
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
@@ -206,6 +248,86 @@ public class Interactions {
                 } else {
                     return allocated;
                 }
+            });
+        }
+    }
+
+    void setBudgetName(Budget.Key key) {
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            UndoState state = undo.get();
+            Baseline allocated = state.getAllocated();
+            Optional<Budget> budget = Budget.find(allocated, key).findAny();
+            if (!budget.isPresent()) {
+                return;
+            }
+
+            result = textInput("Rename " + key.getName(), key.getName());
+        }
+        if (result.isPresent()) {
+            edit.update(state -> {
+                Budget.Key newKey = key.setName(result.get());
+                {
+                    Baseline functional = state.getFunctional();
+                    Iterator<Budget> it = Budget.find(functional, key).iterator();
+                    while (it.hasNext()) {
+                        Budget budget = it.next();
+                        functional = budget.setKey(functional, newKey).getBaseline();
+                    }
+                    state = state.setFunctional(functional);
+                }
+                {
+                    Baseline allocated = state.getAllocated();
+                    Iterator<Budget> it = Budget.find(allocated, key).iterator();
+                    while (it.hasNext()) {
+                        Budget budget = it.next();
+                        allocated = budget.setKey(allocated, newKey).getBaseline();
+                    }
+                    state = state.setAllocated(allocated);
+                }
+                return state;
+            });
+        }
+    }
+
+    void setBudgetUnit(Budget.Key key) {
+        Optional<String> result;
+        {
+            // User interaction - read only
+            UndoBuffer<UndoState> undo = edit.getUndo();
+            UndoState state = undo.get();
+            Baseline allocated = state.getAllocated();
+            Optional<Budget> budget = Budget.find(allocated, key).findAny();
+            if (!budget.isPresent()) {
+                return;
+            }
+
+            result = textInput("Set " + key.getName() + " unit", key.getUnit());
+        }
+        if (result.isPresent()) {
+            edit.update(state -> {
+                Budget.Key newKey = key.setUnit(result.get());
+                {
+                    Baseline functional = state.getFunctional();
+                    Iterator<Budget> it = Budget.find(functional, key).iterator();
+                    while (it.hasNext()) {
+                        Budget budget = it.next();
+                        functional = budget.setKey(functional, newKey).getBaseline();
+                    }
+                    state = state.setFunctional(functional);
+                }
+                {
+                    Baseline allocated = state.getAllocated();
+                    Iterator<Budget> it = Budget.find(allocated, key).iterator();
+                    while (it.hasNext()) {
+                        Budget budget = it.next();
+                        allocated = budget.setKey(allocated, newKey).getBaseline();
+                    }
+                    state = state.setAllocated(allocated);
+                }
+                return state;
             });
         }
     }
@@ -322,7 +444,7 @@ public class Interactions {
                 }
             }
         }
-        String name = allocated.getFlowTypes().parallel()
+        String name = FlowType.find(allocated).parallel()
                 .map(FlowType::getName)
                 .collect(new UniqueName("New Flow"));
         BaselineAnd<FlowType> result = FlowType.add(allocated, name);

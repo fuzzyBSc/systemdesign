@@ -77,8 +77,18 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
         return true;
     }
 
+    /**
+     * A distinct combination of information, energy and materials
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<FlowType> find(Baseline baseline) {
+        return baseline.getStore().getByClass(FlowType.class);
+    }
+
     public static Optional<FlowType> find(Baseline baseline, String name) {
-        return baseline.getFlowTypes()
+        return find(baseline)
                 .filter(type -> name.equals(type.name))
                 .findAny();
     }

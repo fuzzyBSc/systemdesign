@@ -83,6 +83,19 @@ public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Re
         return true;
     }
 
+    /**
+     * Return all views of functions. For functions allocated to subsystems we
+     * should always see one view of that function, corresponding to its trace.
+     * External functions may appear on multiple drawings and thus have multiple
+     * views.
+     *
+     * @parm baseline The baseline to search
+     * @return
+     */
+    public static Stream<FunctionView> find(Baseline baseline) {
+        return baseline.getStore().getByClass(FunctionView.class);
+    }
+
     public static BaselineAnd<FunctionView> create(
             Baseline baseline, Function function, Optional<Function> drawing, Point2D origin) {
         FunctionView view = new FunctionView(

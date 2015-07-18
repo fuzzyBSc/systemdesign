@@ -72,10 +72,10 @@ public class AllocatedBaselineTest {
 
         System.out.println("Load from nonexistant");
         Baseline baseline = Baseline.load(subsystemDirectory);
-        assertFalse(baseline.getItems().iterator().hasNext());
-        assertFalse(baseline.getInterfaces().iterator().hasNext());
-        assertFalse(baseline.getFunctions().iterator().hasNext());
-        assertFalse(baseline.getFlows().iterator().hasNext());
+        assertFalse(Item.find(baseline).iterator().hasNext());
+        assertFalse(Interface.find(baseline).iterator().hasNext());
+        assertFalse(Function.find(baseline).iterator().hasNext());
+        assertFalse(Flow.find(baseline).iterator().hasNext());
 
         System.out.println("Load from empty");
         try (SaveTransaction transaction = new SaveTransaction()) {
@@ -83,10 +83,10 @@ public class AllocatedBaselineTest {
             transaction.commit();
         }
         baseline = Baseline.load(subsystemDirectory);
-        assertFalse(baseline.getItems().iterator().hasNext());
-        assertFalse(baseline.getInterfaces().iterator().hasNext());
-        assertFalse(baseline.getFunctions().iterator().hasNext());
-        assertFalse(baseline.getFlows().iterator().hasNext());
+        assertFalse(Item.find(baseline).iterator().hasNext());
+        assertFalse(Interface.find(baseline).iterator().hasNext());
+        assertFalse(Function.find(baseline).iterator().hasNext());
+        assertFalse(Flow.find(baseline).iterator().hasNext());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class AllocatedBaselineTest {
         Baseline model = Baseline.create(Identity.create());
 
         Item systemOfInterest = new Item(
-                model.getIdentity().getUuid(), new ItemBean(
+                Identity.find(model).getUuid(), new ItemBean(
                         UUID.randomUUID(), "C1234", "system", false));
         model = model.add(systemOfInterest);
 
@@ -109,7 +109,7 @@ public class AllocatedBaselineTest {
                 systemOfInterest.asIdentity(model));
 
         Item subsystemOfInterest = new Item(
-                system.getIdentity().getUuid(), new ItemBean(
+                Identity.find(system).getUuid(), new ItemBean(
                         UUID.randomUUID(), "1", "subsystem", false));
         system = system.add(subsystemOfInterest);
 
@@ -117,7 +117,7 @@ public class AllocatedBaselineTest {
                 subsystemOfInterest.asIdentity(system));
         for (int ii = 0; ii < 10; ++ii) {
             Item item = new Item(
-                    subsystem.getIdentity().getUuid(), new ItemBean(
+                    Identity.find(subsystem).getUuid(), new ItemBean(
                             UUID.randomUUID(), Integer.toString(ii),
                             "subsystem " + ii, false));
             subsystem = subsystem.add(item);

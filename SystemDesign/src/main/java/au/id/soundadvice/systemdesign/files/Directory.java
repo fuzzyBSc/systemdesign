@@ -62,6 +62,8 @@ public class Directory {
         this.functionViewsFile = root.resolve("functionViews.csv");
         this.flowsFile = root.resolve("flows.csv");
         this.flowTypesFile = root.resolve("flowTypes.csv");
+        this.budgetsFile = root.resolve("budgets.csv");
+        this.budgetAllocationsFile = root.resolve("budgetAllocations.csv");
     }
 
     private final Path path;
@@ -73,6 +75,8 @@ public class Directory {
     private final Path functionViewsFile;
     private final Path flowsFile;
     private final Path flowTypesFile;
+    private final Path budgetsFile;
+    private final Path budgetAllocationsFile;
 
     public Path getIdentityFile() {
         return identityFile;
@@ -130,6 +134,14 @@ public class Directory {
 
     public Path getFlowTypes() {
         return flowTypesFile;
+    }
+
+    public Path getBudgets() {
+        return budgetsFile;
+    }
+
+    public Path getBudgetAllocations() {
+        return budgetAllocationsFile;
     }
 
     public DirectoryStream<Path> getChildren() throws IOException {

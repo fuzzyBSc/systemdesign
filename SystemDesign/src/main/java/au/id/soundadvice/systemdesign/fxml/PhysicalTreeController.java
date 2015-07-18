@@ -124,7 +124,7 @@ public class PhysicalTreeController {
             Baseline allocated = state.getAllocated();
             this.systemOfInterest = state.getSystemOfInterest();
             SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
-            allocated.getItems()
+            Item.find(allocated)
                     .forEach((item) -> tmpItems.put(item.getIdPath(allocated), item));
             this.items = Collections.unmodifiableSortedMap(tmpItems);
         }

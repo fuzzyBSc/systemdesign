@@ -60,6 +60,16 @@ public class ItemView implements BeanFactory<Baseline, ItemViewBean>, Relation {
         return color;
     }
 
+    /**
+     * Return all views of items within the baseline.
+     *
+     * @param baseline The baseline to search
+     * @return
+     */
+    public static Stream<ItemView> find(Baseline baseline) {
+        return baseline.getStore().getByClass(ItemView.class);
+    }
+
     public static Point2D defaultOrigin = new Point2D(200, 200);
 
     @Override
