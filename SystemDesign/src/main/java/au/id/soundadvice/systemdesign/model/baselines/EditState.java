@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model.baselines;
@@ -34,6 +34,8 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
+import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,12 +45,16 @@ import java.util.Stack;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class EditState {
+
+    private static final Logger LOG = Logger.getLogger(EditState.class.getName());
 
     public Optional<Directory> getCurrentDirectory() {
         return currentDirectory.get();
@@ -63,12 +69,22 @@ public class EditState {
     }
 
     public static EditState init(Executor executor) {
-        return new EditState(executor, Optional.empty(), UndoState.createNew(), true);
+        return new EditState(
+                executor,
+                Optional.empty(), new NullVersionControl(),
+                UndoState.createNew(),
+                true);
     }
 
     public void clear() {
         UndoState state = UndoState.createNew();
         this.currentDirectory.set(Optional.empty());
+        VersionControl old = this.versionControl.getAndSet(new NullVersionControl());
+        try {
+            old.close();
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, null, ex);
+        }
         this.lastChild.clear();
         this.undo.reset(state);
         this.savedState.set(state);
@@ -77,9 +93,11 @@ public class EditState {
     private EditState(
             Executor executor,
             Optional<Directory> currentDirectory,
+            VersionControl versionControl,
             UndoState undo,
             boolean alreadySaved) {
         this.currentDirectory = new AtomicReference<>(currentDirectory);
+        this.versionControl = new AtomicReference<>(versionControl);
         this.undo = new UndoBuffer<>(executor, undo);
         this.changed = new Changed(executor);
         if (alreadySaved) {
@@ -121,7 +139,7 @@ public class EditState {
             do {
                 // Avoid name collisions
                 String name = count == 0 ? prefix : prefix + "_" + count;
-                childDir = new Directory(parentDir.get().getPath().resolve(name));
+                childDir = parentDir.get().resolve(name);
                 ++count;
             } while (Files.isDirectory(childDir.getPath()));
             UndoState state = undo.get();
@@ -160,6 +178,15 @@ public class EditState {
     private void loadImpl(Directory dir) throws IOException {
         UndoState state = UndoState.load(dir);
         currentDirectory.set(Optional.of(dir));
+        VersionControl newVersionControl = VersionControl.forPath(dir.getPath());
+        VersionControl old = this.versionControl.getAndSet(newVersionControl);
+        if (old != newVersionControl) {
+            try {
+                old.close();
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+            }
+        }
         undo.reset(state);
         savedState.set(state);
 
@@ -174,23 +201,36 @@ public class EditState {
     public void save() throws IOException {
         Optional<Directory> dir = currentDirectory.get();
         if (dir.isPresent()) {
-            saveTo(dir.get());
+            saveTo(dir.get(), versionControl.get());
         } else {
             throw new IOException("Model has not been saved yet");
         }
     }
 
-    public void saveTo(Directory dir) throws IOException {
+    private void saveTo(Directory dir, VersionControl newVersionControl) throws IOException {
         UndoState state = undo.get();
-        try (SaveTransaction transaction = new SaveTransaction()) {
+        try (SaveTransaction transaction = new SaveTransaction(newVersionControl)) {
             state.saveTo(transaction, dir);
             transaction.commit();
         }
         currentDirectory.set(Optional.of(dir));
+        VersionControl old = this.versionControl.getAndSet(newVersionControl);
+        if (old != newVersionControl) {
+            try {
+                old.close();
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+            }
+        }
         savedState.set(state);
     }
 
+    public void saveTo(Directory dir) throws IOException {
+        saveTo(dir, VersionControl.forPath(dir.getPath()));
+    }
+
     private final AtomicReference<Optional<Directory>> currentDirectory;
+    private final AtomicReference<VersionControl> versionControl;
     private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;
     private final AtomicReference<UndoState> savedState;
@@ -214,8 +254,9 @@ public class EditState {
     public void renameDirectory(Path from, Path to) throws IOException {
         Optional<Directory> current = currentDirectory.get();
         if (current.isPresent() && current.get().getPath().equals(from)) {
-            Files.move(from, to);
-            currentDirectory.set(Optional.of(new Directory(to)));
+            VersionControl versioning = versionControl.get();
+            versioning.renameDirectory(from, to);
+            currentDirectory.set(Optional.of(Directory.forPath(to)));
             changed.changed();
         }
     }

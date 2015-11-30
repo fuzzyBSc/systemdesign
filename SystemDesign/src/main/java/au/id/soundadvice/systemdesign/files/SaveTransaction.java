@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
+import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -46,6 +47,10 @@ import java.util.List;
  */
 public class SaveTransaction implements Closeable {
 
+    public SaveTransaction(VersionControl versionControl) {
+        this.versionControl = versionControl;
+    }
+
     private static final class Job {
 
         public Job(Path realFile, Path tempFile) {
@@ -57,22 +62,28 @@ public class SaveTransaction implements Closeable {
         private final Path tempFile;
     }
     private final List<Job> jobs = new ArrayList<>();
+    private final VersionControl versionControl;
 
     public void addJob(Path realFile, Path tempFile) {
         jobs.add(new Job(realFile, tempFile));
     }
 
     public void commit() throws IOException {
+        List<Path> changed = new ArrayList<>();
         for (Job job : jobs) {
             if (Files.exists(job.tempFile)) {
                 if (FileUtils.contentEquals(job.tempFile, job.realFile)) {
                     // Don't overwrite if identical. Delete temp file in close.
                 } else {
                     Files.move(job.tempFile, job.realFile, REPLACE_EXISTING, ATOMIC_MOVE);
+                    changed.add(job.realFile);
                 }
             } else {
                 Files.deleteIfExists(job.realFile);
             }
+        }
+        for (Path path : changed) {
+            versionControl.changed(path);
         }
     }
 

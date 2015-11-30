@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.files;
@@ -36,6 +36,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.StreamSupport;
 
 /**
  * Given a base directory, compute paths to well-known files and other useful
@@ -52,7 +53,12 @@ public class Directory {
         return path.toString();
     }
 
-    public Directory(Path root) {
+    public static Directory forPath(Path path) {
+        return new Directory(Optional.empty(), path);
+    }
+
+    private Directory(Optional<Directory> parent, Path root) {
+        this.parent = parent;
         this.path = root;
         this.identityFile = root.resolve("identity.csv");
         this.itemsFile = root.resolve("items.csv");
@@ -66,6 +72,7 @@ public class Directory {
         this.budgetAllocationsFile = root.resolve("budgetAllocations.csv");
     }
 
+    private final Optional<Directory> parent;
     private final Path path;
     private final Path identityFile;
     private final Path itemsFile;
@@ -150,25 +157,32 @@ public class Directory {
     }
 
     public Directory getParent() {
-        return new Directory(path.getParent());
+        return parent.orElseGet(
+                () -> new Directory(Optional.empty(), path.getParent()));
     }
 
     private static Optional<Directory> getChild(Directory parent, UUID uuid) throws IOException {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(parent.path)) {
-            for (Path path : stream) {
-                if (Files.isDirectory(path)) {
-                    Optional<Identity> identity = Directory.getIdentity(path);
-                    if (identity.isPresent() && uuid.equals(identity.get().getUuid())) {
-                        return Optional.of(new Directory(path));
-                    }
-                }
-            }
-            return Optional.empty();
+        try (DirectoryStream<Path> dir = Files.newDirectoryStream(parent.path)) {
+            return StreamSupport.stream(dir.spliterator(), true)
+                    .filter(path -> {
+                        if (Files.isDirectory(path)) {
+                            Optional<Identity> identity = Directory.getIdentity(path);
+                            return identity.isPresent() && uuid.equals(identity.get().getUuid());
+                        } else {
+                            return false;
+                        }
+                    })
+                    .map(path -> new Directory(Optional.of(parent), path))
+                    .findAny();
         }
     }
 
     public Optional<Directory> getChild(UUID uuid) throws IOException {
         // Call out via static to avoid accidental references to this
         return getChild(this, uuid);
+    }
+
+    public Directory resolve(String name) {
+        return new Directory(Optional.of(this), this.path.resolve(name));
     }
 }
