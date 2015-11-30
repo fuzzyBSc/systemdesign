@@ -53,7 +53,7 @@ import org.eclipse.jgit.util.FS;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class GitVersionControl implements VersionControl {
 

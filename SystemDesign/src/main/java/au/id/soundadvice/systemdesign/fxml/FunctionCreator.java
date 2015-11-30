@@ -27,11 +27,11 @@
 package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
-import au.id.soundadvice.systemdesign.model.baselines.EditState;
+import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.model.baselines.UndoBuffer;
+import au.id.soundadvice.systemdesign.state.UndoBuffer;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;

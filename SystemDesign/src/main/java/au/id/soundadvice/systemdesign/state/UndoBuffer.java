@@ -24,7 +24,7 @@
  * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.model.baselines;
+package au.id.soundadvice.systemdesign.state;
 
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.concurrent.ChangeSubscribable;

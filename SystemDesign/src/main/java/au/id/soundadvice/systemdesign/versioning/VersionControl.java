@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public interface VersionControl extends Closeable {
 

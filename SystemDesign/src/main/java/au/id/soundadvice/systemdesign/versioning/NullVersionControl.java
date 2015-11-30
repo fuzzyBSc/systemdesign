@@ -34,7 +34,7 @@ import java.util.stream.Stream;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class NullVersionControl implements VersionControl {
 

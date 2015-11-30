@@ -32,7 +32,7 @@ import java.util.Optional;
 
 /**
  *
- * @author fuzzy
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class VersionInfo {
 
