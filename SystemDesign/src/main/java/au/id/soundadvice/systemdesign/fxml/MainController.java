@@ -42,6 +42,7 @@ import java.util.ResourceBundle;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -86,6 +87,12 @@ public class MainController implements Initializable {
     @FXML
     private MenuItem downMenuItem;
     @FXML
+    private Menu diffBranchMenu;
+    @FXML
+    private Menu diffVersionMenu;
+    @FXML
+    private MenuItem diffNoneMenuItem;
+    @FXML
     private TabPane tabs;
 
     private final EditState edit;
@@ -99,6 +106,7 @@ public class MainController implements Initializable {
     private PhysicalSchematicController schematicController;
     private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
+    private VersionMenuController versionMenuController;
     private final Interactions interactions;
 
     public MainController(Interactions interactions, EditState edit) {
@@ -180,6 +188,10 @@ public class MainController implements Initializable {
                 event.consume();
             }
         });
+
+        versionMenuController = new VersionMenuController(
+                edit, diffBranchMenu, diffVersionMenu, diffNoneMenuItem);
+        versionMenuController.start();
 
         edit.subscribe(buttonDisable);
         buttonDisable.run();

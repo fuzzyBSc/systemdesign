@@ -1,0 +1,108 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * This is free and unencumbered software released into the public domain.
+ *
+ * Anyone is free to copy, modify, publish, use, compile, sell, or
+ * distribute this software, either in source code form or as a compiled
+ * binary, for any purpose, commercial or non-commercial, and by any
+ * means.
+ *
+ * In jurisdictions that recognize copyright laws, the author or authors
+ * of this software dedicate any and all copyright interest in the
+ * software to the public domain. We make this dedication for the benefit
+ * of the public at large and to the detriment of our heirs and
+ * successors. We intend this dedication to be an overt act of
+ * relinquishment in perpetuity of all present and future rights to this
+ * software under copyright law.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * For more information, please refer to <http://unlicense.org/>
+ */
+package au.id.soundadvice.systemdesign.fxml;
+
+import au.id.soundadvice.systemdesign.state.EditState;
+import au.id.soundadvice.systemdesign.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import java.io.IOException;
+import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+
+/**
+ *
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ */
+public class VersionMenuController {
+
+    private static final Logger LOG = Logger.getLogger(VersionMenuController.class.getName());
+
+    private final EditState edit;
+    private final Menu diffBranchMenu;
+    private final Menu diffVersionMenu;
+    private final MenuItem diffNoneMenuItem;
+
+    public VersionMenuController(
+            EditState edit,
+            Menu diffBranchMenu, Menu diffVersionMenu, MenuItem diffNoneMenuItem) {
+        this.edit = edit;
+        this.diffBranchMenu = diffBranchMenu;
+        this.diffVersionMenu = diffVersionMenu;
+        this.diffNoneMenuItem = diffNoneMenuItem;
+    }
+
+    private static void startMenu(
+            EditState edit, Menu menu,
+            Function<VersionControl, Stream<VersionInfo>> getter) {
+        // Insert dummy items into menus, otherwise showing event won't fire :(
+        MenuItem dummy = new MenuItem("dummy");
+        dummy.setVisible(false);
+        menu.getItems().add(dummy);
+
+        menu.addEventHandler(Menu.ON_SHOWING, e -> {
+            menu.getItems().clear();
+            menu.getItems().addAll(
+                    getter.apply(edit.getVersionControl())
+                    .map(versionInfo -> {
+                        MenuItem item = new MenuItem(versionInfo.getDescription());
+                        return item;
+                    })
+                    .collect(Collectors.toList()));
+            if (menu.getItems().isEmpty()) {
+                MenuItem notFound = new MenuItem("None Found");
+                notFound.setDisable(true);
+                menu.getItems().add(notFound);
+            }
+        });
+    }
+
+    public void start() {
+        startMenu(edit, diffBranchMenu, versionControl -> {
+            try {
+                return versionControl.getBranches();
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+                return Stream.empty();
+            }
+        });
+        startMenu(edit, diffVersionMenu, versionControl -> {
+            try {
+                return versionControl.getVersions();
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+                return Stream.empty();
+            }
+        });
+    }
+
+}

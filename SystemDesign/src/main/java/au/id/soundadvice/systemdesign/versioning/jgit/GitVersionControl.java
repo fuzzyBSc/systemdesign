@@ -34,7 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,36 +75,57 @@ public class GitVersionControl implements VersionControl {
     private final Path repositoryRoot;
 
     @Override
-    public Stream<VersionInfo> getVersions() throws IOException {
+    public Stream<VersionInfo> getBranches() throws IOException {
         try {
-            List<Ref> branches = repo.branchList().setListMode(ListMode.ALL).call();
-            List<Ref> tags = repo.tagList().call();
-            return Stream.concat(branches.stream(), tags.stream())
-                    .flatMap(ref -> {
-                        try {
-                            Iterable<RevCommit> iterable
-                                    = repo.log().add(ref.getObjectId()).setMaxCount(1).call();
-                            return StreamSupport.stream(iterable.spliterator(), false)
-                                    .map(commit -> {
-                                        RevCommit[] parents = commit.getParents();
-                                        Calendar timestamp = Calendar.getInstance();
-                                        timestamp.setTimeInMillis(commit.getCommitTime() * 1000);
-                                        return new VersionInfo(
-                                                ref.getObjectId().getName(),
-                                                commit.getShortMessage(),
-                                                timestamp,
-                                                parents.length == 0
-                                                        ? Optional.empty()
-                                                        : Optional.of(parents[0].getId().getName()));
-                                    });
-                        } catch (MissingObjectException | IncorrectObjectTypeException | GitAPIException ex) {
-                            LOG.log(Level.WARNING, null, ex);
-                            return Stream.empty();
-                        }
-                    });
+            return refToVersionInfo(repo.branchList().setListMode(ListMode.ALL).call().stream());
         } catch (GitAPIException ex) {
             throw new IOException(ex);
         }
+    }
+
+    @Override
+    public Stream<VersionInfo> getVersions() throws IOException {
+        try {
+            return refToVersionInfo(repo.tagList().call().stream());
+            // TODO: Support remote tags in the future?
+            // Currently authentication issues are getting my way.
+//            return refToVersionInfo(repo.lsRemote().setTags(true).call().stream());
+        } catch (GitAPIException ex) {
+            throw new IOException(ex);
+        }
+    }
+
+    private Stream<VersionInfo> refToVersionInfo(Stream<Ref> refs) {
+        return refs.flatMap(ref -> {
+            try {
+                Iterable<RevCommit> iterable
+                        = repo.log().add(ref.getObjectId()).setMaxCount(1).call();
+                return StreamSupport.stream(iterable.spliterator(), false)
+                        .map(commit -> {
+                            RevCommit[] parents = commit.getParents();
+                            Calendar timestamp = Calendar.getInstance();
+                            timestamp.setTimeInMillis(commit.getCommitTime() * 1000);
+                            String name = ref.getName();
+                            if (name.startsWith("refs/tags/")) {
+                                name = name.substring(10);
+                            } else if (name.startsWith("refs/heads/")) {
+                                name = name.substring(11);
+                            } else if (name.startsWith("refs/remotes/")) {
+                                name = name.substring(13);
+                            }
+                            return new VersionInfo(
+                                    ref.getObjectId().getName(),
+                                    name,
+                                    timestamp,
+                                    parents.length == 0
+                                            ? Optional.empty()
+                                            : Optional.of(parents[0].getId().getName()));
+                        });
+            } catch (MissingObjectException | IncorrectObjectTypeException | GitAPIException ex) {
+                LOG.log(Level.WARNING, null, ex);
+                return Stream.empty();
+            }
+        });
     }
 
     @Override

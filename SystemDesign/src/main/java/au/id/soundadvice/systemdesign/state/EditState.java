@@ -54,6 +54,10 @@ import java.util.logging.Logger;
  */
 public class EditState {
 
+    public VersionControl getVersionControl() {
+        return versionControl.get();
+    }
+
     private static final Logger LOG = Logger.getLogger(EditState.class.getName());
 
     public Optional<Directory> getCurrentDirectory() {

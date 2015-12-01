@@ -39,6 +39,11 @@ import java.util.stream.Stream;
 public class NullVersionControl implements VersionControl {
 
     @Override
+    public Stream<VersionInfo> getBranches() {
+        return Stream.empty();
+    }
+
+    @Override
     public Stream<VersionInfo> getVersions() {
         return Stream.empty();
     }

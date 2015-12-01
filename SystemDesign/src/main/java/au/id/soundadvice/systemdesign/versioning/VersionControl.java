@@ -47,6 +47,8 @@ public interface VersionControl extends Closeable {
         }
     }
 
+    public Stream<VersionInfo> getBranches() throws IOException;
+
     public Stream<VersionInfo> getVersions() throws IOException;
 
     public void changed(Path filename) throws IOException;
