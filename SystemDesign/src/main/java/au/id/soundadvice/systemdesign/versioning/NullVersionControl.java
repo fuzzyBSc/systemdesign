@@ -27,9 +27,11 @@
  */
 package au.id.soundadvice.systemdesign.versioning;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -69,6 +71,15 @@ public class NullVersionControl implements VersionControl {
     @Override
     public void renameDirectory(Path from, Path to) throws IOException {
         Files.move(from, to);
+    }
+
+    @Override
+    public Optional<BufferedReader> getBufferedReader(Path path, Optional<VersionInfo> versionInfo) throws IOException {
+        if (Files.exists(path)) {
+            return Optional.of(Files.newBufferedReader(path));
+        } else {
+            return Optional.empty();
+        }
     }
 
 }

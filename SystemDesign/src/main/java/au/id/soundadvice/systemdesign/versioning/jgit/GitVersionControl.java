@@ -29,7 +29,10 @@ package au.id.soundadvice.systemdesign.versioning.jgit;
 
 import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,10 +47,17 @@ import org.eclipse.jgit.api.ListBranchCommand.ListMode;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.ObjectStream;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.util.FS;
 
 /**
@@ -114,7 +124,7 @@ public class GitVersionControl implements VersionControl {
                                 name = name.substring(13);
                             }
                             return new VersionInfo(
-                                    ref.getObjectId().getName(),
+                                    ref.getObjectId().name(),
                                     name,
                                     timestamp,
                                     parents.length == 0
@@ -172,6 +182,37 @@ public class GitVersionControl implements VersionControl {
             repo.rm().addFilepattern(fromPattern.toString()).call();
         } catch (GitAPIException ex) {
             throw new IOException(ex);
+        }
+    }
+
+    @Override
+    public Optional<BufferedReader> getBufferedReader(Path path, Optional<VersionInfo> version) throws IOException {
+        if (version.isPresent()) {
+            ObjectId id = ObjectId.fromString(version.get().getId());
+            try (RevWalk revWalk = new RevWalk(repo.getRepository())) {
+                RevCommit commit = revWalk.parseCommit(id);
+                RevTree tree = commit.getTree();
+                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
+                    treeWalk.addTree(tree);
+                    treeWalk.setRecursive(true);
+                    Path pattern = this.repositoryRoot.relativize(path);
+                    treeWalk.setFilter(PathFilter.create(pattern.toString()));
+                    if (treeWalk.next()) {
+                        ObjectLoader loader = repo.getRepository().open(treeWalk.getObjectId(0));
+                        ObjectStream stream = loader.openStream();
+                        InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+                        return Optional.of(new BufferedReader(reader));
+                    } else {
+                        // Not found
+                        return Optional.empty();
+                    }
+                }
+            }
+        }
+        if (Files.exists(path)) {
+            return Optional.of(Files.newBufferedReader(path));
+        } else {
+            return Optional.empty();
         }
     }
 

@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -75,6 +76,9 @@ public class VersionMenuController {
                     getter.apply(edit.getVersionControl())
                     .map(versionInfo -> {
                         MenuItem item = new MenuItem(versionInfo.getDescription());
+                        item.setOnAction(e2 -> {
+                            edit.setDiffVersion(Optional.of(versionInfo));
+                        });
                         return item;
                     })
                     .collect(Collectors.toList()));
@@ -102,6 +106,9 @@ public class VersionMenuController {
                 LOG.log(Level.WARNING, null, ex);
                 return Stream.empty();
             }
+        });
+        diffNoneMenuItem.setOnAction(e2 -> {
+            edit.setDiffVersion(Optional.empty());
         });
     }
 

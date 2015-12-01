@@ -355,7 +355,6 @@ class LogicalSchematicController {
                 name = "Unallocated Functions";
             }
             tab.setText(name);
-
         }
     }
 }

@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
@@ -43,6 +43,8 @@ import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
+import au.id.soundadvice.systemdesign.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -156,10 +158,14 @@ public class Baseline {
      * Load an allocated baseline from the nominated directory.
      *
      * @param directory The directory to load from
+     * @param versionControl The version control system to search
+     * @param version The version to read
      * @return
      * @throws java.io.IOException
      */
-    public static Baseline load(Directory directory) throws IOException {
+    public static Baseline load(
+            Directory directory,
+            VersionControl versionControl, Optional<VersionInfo> version) throws IOException {
         Optional<Identity> identity = directory.getIdentity();
         identity.orElseThrow(() -> new IOException("No Item found in directory"));
 
@@ -167,139 +173,176 @@ public class Baseline {
 
         relations.add(identity.get());
 
-        if (Files.exists(directory.getItems())) {
-            try (BeanReader<ItemBean> reader = BeanReader.forPath(ItemBean.class, directory.getItems())) {
-                for (;;) {
-                    Optional<ItemBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        relations.add(new Item(identity.get().getUuid(), bean.get()));
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<ItemBean>> optional = BeanReader.forPath(
+                    ItemBean.class, directory.getItems(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<ItemBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<ItemBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            relations.add(new Item(identity.get().getUuid(), bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        if (Files.exists(directory.getItemViews())) {
-            try (BeanReader<ItemViewBean> reader = BeanReader.forPath(ItemViewBean.class, directory.getItemViews())) {
-                for (;;) {
-                    Optional<ItemViewBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        relations.add(new ItemView(bean.get()));
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<ItemViewBean>> optional = BeanReader.forPath(
+                    ItemViewBean.class, directory.getItemViews(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<ItemViewBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<ItemViewBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            relations.add(new ItemView(bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        if (Files.exists(directory.getInterfaces())) {
-            try (BeanReader<InterfaceBean> reader = BeanReader.forPath(InterfaceBean.class, directory.getInterfaces())) {
-                for (;;) {
-                    Optional<InterfaceBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        relations.add(new Interface(bean.get()));
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<InterfaceBean>> optional = BeanReader.forPath(
+                    InterfaceBean.class, directory.getInterfaces(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<InterfaceBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<InterfaceBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            relations.add(new Interface(bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        if (Files.exists(directory.getFunctions())) {
-            try (BeanReader<FunctionBean> reader = BeanReader.forPath(FunctionBean.class, directory.getFunctions())) {
-                for (;;) {
-                    Optional<FunctionBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        relations.add(new Function(bean.get()));
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<FunctionBean>> optional = BeanReader.forPath(
+                    FunctionBean.class, directory.getFunctions(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<FunctionBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<FunctionBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            relations.add(new Function(bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        if (Files.exists(directory.getFunctionViews())) {
-            try (BeanReader<FunctionViewBean> reader = BeanReader.forPath(FunctionViewBean.class, directory.getFunctionViews())) {
-                for (;;) {
-                    Optional<FunctionViewBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        relations.add(new FunctionView(bean.get()));
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<FunctionViewBean>> optional = BeanReader.forPath(
+                    FunctionViewBean.class, directory.getFunctionViews(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<FunctionViewBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<FunctionViewBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            relations.add(new FunctionView(bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
         Map<String, UUID> flowTypes = new HashMap<>();
-        if (Files.exists(directory.getFlowTypes())) {
-            try (BeanReader<FlowTypeBean> reader = BeanReader.forPath(FlowTypeBean.class, directory.getFlowTypes())) {
-                for (;;) {
-                    Optional<FlowTypeBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        FlowType flowType = new FlowType(bean.get());
-                        relations.add(flowType);
-                        flowTypes.put(flowType.getName(), flowType.getUuid());
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (Files.exists(directory.getFlows())) {
-            try (BeanReader<FlowBean> reader = BeanReader.forPath(FlowBean.class, directory.getFlows())) {
-                for (;;) {
-                    Optional<FlowBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        UUID uuid = bean.get().getTypeUUID();
-                        if (uuid == null) {
-                            String typeName = bean.get().getType();
-                            if (typeName == null) {
-                                // Invalid bean
-                                continue;
-                            }
-                            // Legacy bean: v0.2 support
-                            uuid = flowTypes.get(typeName);
-                            if (uuid == null) {
-                                FlowType flowType = FlowType.create(typeName);
-                                uuid = flowType.getUuid();
-                                relations.add(flowType);
-                                flowTypes.put(typeName, uuid);
-                            }
-                            bean.get().setType(uuid.toString());
+        {
+            Optional<BeanReader<FlowTypeBean>> optional = BeanReader.forPath(
+                    FlowTypeBean.class, directory.getFlowTypes(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<FlowTypeBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<FlowTypeBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            FlowType flowType = new FlowType(bean.get());
+                            relations.add(flowType);
+                            flowTypes.put(flowType.getName(), flowType.getUuid());
+                        } else {
+                            break;
                         }
-                        relations.add(new Flow(bean.get()));
-                    } else {
-                        break;
                     }
                 }
             }
         }
 
-        if (Files.exists(directory.getBudgets())) {
-            try (BeanReader<BudgetBean> reader = BeanReader.forPath(BudgetBean.class, directory.getBudgets())) {
-                for (;;) {
-                    Optional<BudgetBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        Budget model = new Budget(bean.get());
-                        relations.add(model);
-                    } else {
-                        break;
+        {
+            Optional<BeanReader<FlowBean>> optional = BeanReader.forPath(
+                    FlowBean.class, directory.getFlows(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<FlowBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<FlowBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            UUID uuid = bean.get().getTypeUUID();
+                            if (uuid == null) {
+                                String typeName = bean.get().getType();
+                                if (typeName == null) {
+                                    // Invalid bean
+                                    continue;
+                                }
+                                // Legacy bean: v0.2 support
+                                uuid = flowTypes.get(typeName);
+                                if (uuid == null) {
+                                    FlowType flowType = FlowType.create(typeName);
+                                    uuid = flowType.getUuid();
+                                    relations.add(flowType);
+                                    flowTypes.put(typeName, uuid);
+                                }
+                                bean.get().setType(uuid.toString());
+                            }
+                            relations.add(new Flow(bean.get()));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
-        if (Files.exists(directory.getBudgetAllocations())) {
-            try (BeanReader<BudgetAllocationBean> reader = BeanReader.forPath(BudgetAllocationBean.class, directory.getBudgetAllocations())) {
-                for (;;) {
-                    Optional<BudgetAllocationBean> bean = reader.read();
-                    if (bean.isPresent()) {
-                        BudgetAllocation model = new BudgetAllocation(bean.get());
-                        relations.add(model);
-                    } else {
-                        break;
+
+        {
+            Optional<BeanReader<BudgetBean>> optional = BeanReader.forPath(
+                    BudgetBean.class, directory.getBudgets(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<BudgetBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<BudgetBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            Budget model = new Budget(bean.get());
+                            relations.add(model);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        {
+            Optional<BeanReader<BudgetAllocationBean>> optional = BeanReader.forPath(
+                    BudgetAllocationBean.class, directory.getBudgetAllocations(), versionControl, version);
+            if (optional.isPresent()) {
+                try (BeanReader<BudgetAllocationBean> reader = optional.get()) {
+                    for (;;) {
+                        Optional<BudgetAllocationBean> bean = reader.read();
+                        if (bean.isPresent()) {
+                            BudgetAllocation model = new BudgetAllocation(bean.get());
+                            relations.add(model);
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -429,7 +472,7 @@ public class Baseline {
         return store.getReverse(functions.getLeft(), Flow.class).parallel()
                 .filter(candidate -> {
                     return functions.getRight().equals(candidate.getRight().getUuid())
-                    && type.equals(candidate.getType().getUuid());
+                            && type.equals(candidate.getType().getUuid());
                 }).findAny();
     }
 

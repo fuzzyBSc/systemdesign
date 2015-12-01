@@ -36,6 +36,7 @@ import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
 import au.id.soundadvice.systemdesign.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -89,6 +90,7 @@ public class EditState {
         } catch (IOException ex) {
             LOG.log(Level.WARNING, null, ex);
         }
+        this.diffBaseline.set(Optional.empty());
         this.lastChild.clear();
         this.undo.reset(state);
         this.savedState.set(state);
@@ -113,10 +115,11 @@ public class EditState {
     }
 
     public void loadParent() throws IOException {
-        Optional<Directory> dir = currentDirectory.get();
-        if (dir.isPresent()) {
+        Optional<Directory> parentDir = currentDirectory.get()
+                .map(Directory::getParent);
+        if (parentDir.isPresent()) {
             UndoState state = undo.get();
-            loadImpl(dir.get().getParent());
+            loadImpl(parentDir.get());
             lastChild.push(Identity.find(state.getAllocated()));
         } else {
             throw new IOException("Cannot load from null directory");
@@ -151,9 +154,20 @@ public class EditState {
             if (systemOfInterest.isPresent()) {
                 state = state.setFunctional(state.getAllocated());
                 state = state.setAllocated(Baseline.create(child));
-                currentDirectory.set(Optional.of(childDir));
+                Optional<Directory> newDir = Optional.of(childDir);
+                currentDirectory.set(newDir);
+                VersionControl newVersionControl = VersionControl.forPath(childDir.getPath());
+                VersionControl old = this.versionControl.getAndSet(newVersionControl);
+                if (old != newVersionControl) {
+                    try {
+                        old.close();
+                    } catch (IOException ex) {
+                        LOG.log(Level.WARNING, null, ex);
+                    }
+                }
                 undo.reset(state);
                 savedState.set(state);
+                loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
             } else {
                 throw new IOException("No such child");
             }
@@ -181,7 +195,8 @@ public class EditState {
 
     private void loadImpl(Directory dir) throws IOException {
         UndoState state = UndoState.load(dir);
-        currentDirectory.set(Optional.of(dir));
+        Optional<Directory> newDir = Optional.of(dir);
+        currentDirectory.set(newDir);
         VersionControl newVersionControl = VersionControl.forPath(dir.getPath());
         VersionControl old = this.versionControl.getAndSet(newVersionControl);
         if (old != newVersionControl) {
@@ -193,6 +208,7 @@ public class EditState {
         }
         undo.reset(state);
         savedState.set(state);
+        loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
 
         // Set undo again here to allow automatic changes to be undone
         undo.update(AutoFix.all());
@@ -217,7 +233,8 @@ public class EditState {
             state.saveTo(transaction, dir);
             transaction.commit();
         }
-        currentDirectory.set(Optional.of(dir));
+        Optional<Directory> newDir = Optional.of(dir);
+        currentDirectory.set(newDir);
         VersionControl old = this.versionControl.getAndSet(newVersionControl);
         if (old != newVersionControl) {
             try {
@@ -227,14 +244,39 @@ public class EditState {
             }
         }
         savedState.set(state);
+        loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
     }
 
     public void saveTo(Directory dir) throws IOException {
         saveTo(dir, VersionControl.forPath(dir.getPath()));
     }
 
+    public void setDiffVersion(Optional<VersionInfo> version) {
+        this.diffVersion.set(version);
+        loadDiffBaseline(currentDirectory.get(), versionControl.get(), version);
+    }
+
+    private void loadDiffBaseline(
+            Optional<Directory> path, VersionControl versioning, Optional<VersionInfo> version) {
+        if (path.isPresent() && version.isPresent()) {
+            try {
+                Baseline was = Baseline.load(path.get(), versioning, version);
+                diffBaseline.set(Optional.of(was));
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
+                diffBaseline.set(Optional.empty());
+            }
+        } else {
+            diffBaseline.set(Optional.empty());
+        }
+    }
+
     private final AtomicReference<Optional<Directory>> currentDirectory;
     private final AtomicReference<VersionControl> versionControl;
+    private final AtomicReference<Optional<VersionInfo>> diffVersion
+            = new AtomicReference<>(Optional.empty());
+    private final AtomicReference<Optional<Baseline>> diffBaseline
+            = new AtomicReference<>(Optional.empty());
     private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;
     private final AtomicReference<UndoState> savedState;
@@ -260,7 +302,18 @@ public class EditState {
         if (current.isPresent() && current.get().getPath().equals(from)) {
             VersionControl versioning = versionControl.get();
             versioning.renameDirectory(from, to);
-            currentDirectory.set(Optional.of(Directory.forPath(to)));
+            Optional<Directory> newDirectory = Optional.of(Directory.forPath(to));
+            currentDirectory.set(newDirectory);
+            VersionControl newVersionControl = VersionControl.forPath(to);
+            VersionControl old = this.versionControl.getAndSet(newVersionControl);
+            if (old != newVersionControl) {
+                try {
+                    old.close();
+                } catch (IOException ex) {
+                    LOG.log(Level.WARNING, null, ex);
+                }
+            }
+            loadDiffBaseline(newDirectory, newVersionControl, diffVersion.get());
             changed.changed();
         }
     }

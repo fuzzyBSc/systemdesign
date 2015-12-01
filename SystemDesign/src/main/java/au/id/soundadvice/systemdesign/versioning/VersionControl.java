@@ -28,9 +28,11 @@
 package au.id.soundadvice.systemdesign.versioning;
 
 import au.id.soundadvice.systemdesign.versioning.jgit.GitVersionControl;
+import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -58,5 +60,8 @@ public interface VersionControl extends Closeable {
     public void commit() throws IOException;
 
     public void renameDirectory(Path from, Path to) throws IOException;
+
+    public Optional<BufferedReader> getBufferedReader(
+            Path path, Optional<VersionInfo> versionInfo) throws IOException;
 
 }

@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.files;
 
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.model.Identity;
+import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -93,16 +94,20 @@ public class Directory {
         if (Files.isDirectory(path)) {
             path = path.resolve("identity.csv");
         }
-        if (Files.exists(path)) {
-            try (BeanReader<IdentityBean> reader = BeanReader.forPath(IdentityBean.class, path)) {
-                // Only read the first entry
-                return reader.read().map(bean -> new Identity(bean));
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, null, ex);
+        try {
+            Optional<BeanReader<IdentityBean>> reader = BeanReader.forPath(
+                    IdentityBean.class, path,
+                    new NullVersionControl(), Optional.empty());
+            if (reader.isPresent()) {
+                try (BeanReader<IdentityBean> closeable = reader.get()) {
+                    // Only read the first entry
+                    return closeable.read().map(bean -> new Identity(bean));
+                }
+            } else {
                 return Optional.empty();
             }
-        } else {
-            // A nonexistent file is treated as empty
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, null, ex);
             return Optional.empty();
         }
     }

@@ -37,8 +37,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.UUID;
-import javafx.scene.input.KeyCode;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.junit.Rule;
@@ -78,7 +78,8 @@ public class AllocatedBaselineTest {
         }
 
         System.out.println("Load from nonexistant");
-        Baseline baseline = Baseline.load(subsystemDirectory);
+        Baseline baseline = Baseline.load(
+                subsystemDirectory, new NullVersionControl(), Optional.empty());
         assertFalse(Item.find(baseline).iterator().hasNext());
         assertFalse(Interface.find(baseline).iterator().hasNext());
         assertFalse(Function.find(baseline).iterator().hasNext());
@@ -89,7 +90,8 @@ public class AllocatedBaselineTest {
             baseline.saveTo(transaction, subsystemDirectory);
             transaction.commit();
         }
-        baseline = Baseline.load(subsystemDirectory);
+        baseline = Baseline.load(
+                subsystemDirectory, new NullVersionControl(), Optional.empty());
         assertFalse(Item.find(baseline).iterator().hasNext());
         assertFalse(Interface.find(baseline).iterator().hasNext());
         assertFalse(Function.find(baseline).iterator().hasNext());
