@@ -28,8 +28,6 @@ package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,13 +102,12 @@ public class UndoState {
 
     public static UndoState load(Directory directory) throws IOException {
         Directory functionalDirectory = directory.getParent();
-        VersionControl versionControl = new NullVersionControl();
         if (functionalDirectory.getIdentity().isPresent()) {
             // Subsystem design - load functional baseline as well
             Baseline functionalBaseline = Baseline.load(
-                    functionalDirectory, versionControl, Optional.empty());
+                    functionalDirectory, functionalDirectory);
             Baseline allocatedBaseline = Baseline.load(
-                    directory, versionControl, Optional.empty());
+                    directory, directory);
             return new UndoState(
                     functionalBaseline,
                     allocatedBaseline);
@@ -118,7 +115,7 @@ public class UndoState {
         // Top-level design
         return new UndoState(
                 Baseline.empty(),
-                Baseline.load(directory, versionControl, Optional.empty()));
+                Baseline.load(directory, directory));
     }
 
     public void saveTo(SaveTransaction transaction, Directory directory) throws IOException {

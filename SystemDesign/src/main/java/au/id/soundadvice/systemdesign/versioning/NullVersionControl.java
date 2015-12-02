@@ -74,7 +74,10 @@ public class NullVersionControl implements VersionControl {
     }
 
     @Override
-    public Optional<BufferedReader> getBufferedReader(Path path, Optional<VersionInfo> versionInfo) throws IOException {
+    public Optional<BufferedReader> getBufferedReader(
+            IdentityValidator identity,
+            String filename, Optional<VersionInfo> versionInfo) throws IOException {
+        Path path = identity.getDirectoryPath().resolve(filename);
         if (Files.exists(path)) {
             return Optional.of(Files.newBufferedReader(path));
         } else {

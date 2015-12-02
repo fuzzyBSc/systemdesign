@@ -62,6 +62,8 @@ public interface VersionControl extends Closeable {
     public void renameDirectory(Path from, Path to) throws IOException;
 
     public Optional<BufferedReader> getBufferedReader(
-            Path path, Optional<VersionInfo> versionInfo) throws IOException;
+            IdentityValidator identity,
+            String file,
+            Optional<VersionInfo> versionInfo) throws IOException;
 
 }

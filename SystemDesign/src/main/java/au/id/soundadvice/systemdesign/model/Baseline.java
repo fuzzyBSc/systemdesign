@@ -39,22 +39,23 @@ import au.id.soundadvice.systemdesign.beans.ItemViewBean;
 import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.BeanReader;
 import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.files.FileOpener;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationContext;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
@@ -136,10 +137,10 @@ public class Baseline {
         return new BaselineAnd(this, relation);
     }
 
-    private static final Baseline empty = create(Identity.create());
+    private static final Baseline EMPTY = create(Identity.create());
 
     public static Baseline empty() {
-        return empty;
+        return EMPTY;
     }
 
     /**
@@ -154,18 +155,33 @@ public class Baseline {
         return new Baseline(RelationStore.empty().add(identity));
     }
 
+    private static <T, R extends Relation> void addRelations(
+            List<Relation> relations,
+            FileOpener opener, Class<T> beanClass,
+            java.util.function.Function<? super T, ? extends R> mapper) throws IOException {
+        Optional<BufferedReader> buffered = opener.open(beanClass);
+        try (BeanReader<T> reader = BeanReader.fromReader(beanClass, buffered)) {
+            relations.addAll(
+                    reader.lines()
+                    .map(mapper)
+                    .collect(Collectors.toList()));
+        } catch (UncheckedIOException ex) {
+            throw ex.getCause();
+        }
+    }
+
     /**
      * Load an allocated baseline from the nominated directory.
      *
      * @param directory The directory to load from
-     * @param versionControl The version control system to search
-     * @param version The version to read
+     * @param opener An interface for opening files from the directory that may
+     * be associated with a specific historical version for diff support
+     * purposes.
      * @return
      * @throws java.io.IOException
      */
     public static Baseline load(
-            Directory directory,
-            VersionControl versionControl, Optional<VersionInfo> version) throws IOException {
+            Directory directory, FileOpener opener) throws IOException {
         Optional<Identity> identity = directory.getIdentity();
         identity.orElseThrow(() -> new IOException("No Item found in directory"));
 
@@ -173,180 +189,39 @@ public class Baseline {
 
         relations.add(identity.get());
 
-        {
-            Optional<BeanReader<ItemBean>> optional = BeanReader.forPath(
-                    ItemBean.class, directory.getItems(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<ItemBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<ItemBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            relations.add(new Item(identity.get().getUuid(), bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        addRelations(relations, opener,
+                ItemBean.class,
+                bean -> new Item(identity.get().getUuid(), bean));
+        addRelations(relations, opener, ItemViewBean.class, ItemView::new);
+        addRelations(relations, opener, InterfaceBean.class, Interface::new);
+        addRelations(relations, opener, FunctionBean.class, Function::new);
+        addRelations(relations, opener, FunctionViewBean.class, FunctionView::new);
+        addRelations(relations, opener, FlowTypeBean.class, FlowType::new);
 
-        {
-            Optional<BeanReader<ItemViewBean>> optional = BeanReader.forPath(
-                    ItemViewBean.class, directory.getItemViews(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<ItemViewBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<ItemViewBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            relations.add(new ItemView(bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<InterfaceBean>> optional = BeanReader.forPath(
-                    InterfaceBean.class, directory.getInterfaces(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<InterfaceBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<InterfaceBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            relations.add(new Interface(bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<FunctionBean>> optional = BeanReader.forPath(
-                    FunctionBean.class, directory.getFunctions(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<FunctionBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<FunctionBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            relations.add(new Function(bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<FunctionViewBean>> optional = BeanReader.forPath(
-                    FunctionViewBean.class, directory.getFunctionViews(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<FunctionViewBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<FunctionViewBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            relations.add(new FunctionView(bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        Map<String, UUID> flowTypes = new HashMap<>();
-        {
-            Optional<BeanReader<FlowTypeBean>> optional = BeanReader.forPath(
-                    FlowTypeBean.class, directory.getFlowTypes(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<FlowTypeBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<FlowTypeBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            FlowType flowType = new FlowType(bean.get());
+        Map<String, UUID> flowTypes = relations.stream()
+                .filter(relation -> relation instanceof FlowType)
+                .collect(Collectors.toMap(
+                        relation -> ((FlowType) relation).getName(),
+                        relation -> ((FlowType) relation).getUuid()));
+        addRelations(relations, opener, FlowBean.class,
+                bean -> {
+                    UUID uuid = bean.getTypeUUID();
+                    if (uuid == null) {
+                        String typeName = bean.getType();
+                        // Legacy bean: v0.2 support
+                        uuid = flowTypes.get(typeName);
+                        if (uuid == null) {
+                            FlowType flowType = FlowType.create(typeName);
+                            uuid = flowType.getUuid();
                             relations.add(flowType);
-                            flowTypes.put(flowType.getName(), flowType.getUuid());
-                        } else {
-                            break;
+                            flowTypes.put(typeName, uuid);
                         }
+                        bean.setType(uuid.toString());
                     }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<FlowBean>> optional = BeanReader.forPath(
-                    FlowBean.class, directory.getFlows(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<FlowBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<FlowBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            UUID uuid = bean.get().getTypeUUID();
-                            if (uuid == null) {
-                                String typeName = bean.get().getType();
-                                if (typeName == null) {
-                                    // Invalid bean
-                                    continue;
-                                }
-                                // Legacy bean: v0.2 support
-                                uuid = flowTypes.get(typeName);
-                                if (uuid == null) {
-                                    FlowType flowType = FlowType.create(typeName);
-                                    uuid = flowType.getUuid();
-                                    relations.add(flowType);
-                                    flowTypes.put(typeName, uuid);
-                                }
-                                bean.get().setType(uuid.toString());
-                            }
-                            relations.add(new Flow(bean.get()));
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<BudgetBean>> optional = BeanReader.forPath(
-                    BudgetBean.class, directory.getBudgets(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<BudgetBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<BudgetBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            Budget model = new Budget(bean.get());
-                            relations.add(model);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            Optional<BeanReader<BudgetAllocationBean>> optional = BeanReader.forPath(
-                    BudgetAllocationBean.class, directory.getBudgetAllocations(), versionControl, version);
-            if (optional.isPresent()) {
-                try (BeanReader<BudgetAllocationBean> reader = optional.get()) {
-                    for (;;) {
-                        Optional<BudgetAllocationBean> bean = reader.read();
-                        if (bean.isPresent()) {
-                            BudgetAllocation model = new BudgetAllocation(bean.get());
-                            relations.add(model);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+                    return new Flow(bean);
+                });
+        addRelations(relations, opener, BudgetBean.class, Budget::new);
+        addRelations(relations, opener, BudgetAllocationBean.class, BudgetAllocation::new);
 
         return new Baseline(RelationStore.valueOf(relations.stream()));
     }

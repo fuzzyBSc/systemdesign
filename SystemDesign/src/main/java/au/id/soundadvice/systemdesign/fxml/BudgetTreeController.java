@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.fxml;
@@ -105,7 +105,7 @@ public class BudgetTreeController {
 
         @Override
         public void run() {
-            UndoState state = edit.getUndo().get();
+            UndoState state = edit.getState();
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
             Optional<Item> system = state.getSystemOfInterest();
@@ -136,10 +136,10 @@ public class BudgetTreeController {
                         .orElse(Stream.empty());
                 parentAmounts = Stream.concat(zeroAmounts, realAmounts)
                         .collect(Collectors.groupingBy(
-                                        BudgetSummary::getKey,
-                                        Collectors.reducing(
-                                                BudgetSummary.ZERO,
-                                                BudgetSummary::add)));
+                                BudgetSummary::getKey,
+                                Collectors.reducing(
+                                        BudgetSummary.ZERO,
+                                        BudgetSummary::add)));
             }
 
             Map<Budget.Key, List<BudgetSummary>> childAmounts;
@@ -149,42 +149,42 @@ public class BudgetTreeController {
                         .map(Budget::getKey)
                         .flatMap(key -> {
                             return internalItems.stream()
-                            .flatMap(item -> {
-                                return Stream.of(new BudgetSummary(
+                                    .flatMap(item -> {
+                                        return Stream.of(new BudgetSummary(
                                                 key, Optional.of(item), Range.ZERO));
-                            });
+                                    });
                         });
 
                 // Add the real budgets in
                 Stream<BudgetSummary> realAmounts = Budget.find(allocated)
                         .flatMap(budget -> {
                             return budget.findAllocations(allocated)
-                            .map(allocation -> {
-                                Item item = allocation.getItem(allocated);
-                                return new BudgetSummary(
-                                        budget.getKey(),
-                                        Optional.of(item),
-                                        allocation.getAmount()
-                                );
-                            });
+                                    .map(allocation -> {
+                                        Item item = allocation.getItem(allocated);
+                                        return new BudgetSummary(
+                                                budget.getKey(),
+                                                Optional.of(item),
+                                                allocation.getAmount()
+                                        );
+                                    });
                         });
 
                 // Add the zeroed and real budgets together for each key and item
                 Map<Budget.Key, Map<Optional<Item>, Optional<BudgetSummary>>> collectedAmounts
                         = Stream.concat(zeroAmounts, realAmounts)
                         .collect(Collectors.groupingBy(
-                                        BudgetSummary::getKey,
-                                        Collectors.groupingBy(
-                                                BudgetSummary::getItem,
-                                                Collectors.reducing(
-                                                        BudgetSummary::add))));
+                                BudgetSummary::getKey,
+                                Collectors.groupingBy(
+                                        BudgetSummary::getItem,
+                                        Collectors.reducing(
+                                                BudgetSummary::add))));
 
                 // Summarise the summed values
                 childAmounts = collectedAmounts.values().stream()
                         .flatMap(map -> map.values().stream())
                         .map(Optional::get)
                         .sorted((l, r) -> l.getItem().get().getDisplayName().compareTo(
-                                        r.getItem().get().getDisplayName()))
+                                r.getItem().get().getDisplayName()))
                         .collect(Collectors.groupingBy(BudgetSummary::getKey));
             }
 
@@ -218,8 +218,8 @@ public class BudgetTreeController {
                         );
                         Range parentSum = functionalBudget.getAmount();
                         Range childSum = allocatedBudgets.stream()
-                        .map(BudgetSummary::getAmount)
-                        .reduce(Range.ZERO, Range::add);
+                                .map(BudgetSummary::getAmount)
+                                .reduce(Range.ZERO, Range::add);
                         Range difference = childSum.subtract(parentSum);
                         if (!difference.isExactZero()) {
                             parent.getChildren().add(
@@ -269,7 +269,7 @@ public class BudgetTreeController {
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction(event -> {
                 BudgetSummary summary = getItem();
-                edit.update(state -> Budget.removeFromAllocated(state, summary.getKey()));
+                edit.updateState(state -> Budget.removeFromAllocated(state, summary.getKey()));
                 event.consume();
             });
             this.editableProperty().bind(this.itemProperty().isNotNull());
@@ -303,23 +303,20 @@ public class BudgetTreeController {
 
                 setText(getString());
                 setGraphic(getTreeItem().getGraphic());
+            } else /*
+             * If the cancelEdit is due to a loss of focus, override it. Commit
+             * instead.
+             */ if (textField.isPresent() && getItem().hasKey()) {
+                commitEdit(getItem());
             } else {
-                /*
-                 * If the cancelEdit is due to a loss of focus, override it.
-                 * Commit instead.
-                 */
-                if (textField.isPresent() && getItem().hasKey()) {
-                    commitEdit(getItem());
-                } else {
-                    super.cancelEdit();
-                }
+                super.cancelEdit();
             }
         }
 
         @Override
         public void commitEdit(BudgetSummary summary) {
             AtomicReference<BudgetSummary> result = new AtomicReference<>();
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Optional<Item> optionalItem = summary.getItem();
                 Baseline baseline;
                 boolean allocatedBaseline = optionalItem.isPresent();
@@ -369,18 +366,16 @@ public class BudgetTreeController {
             if (empty) {
                 setText(null);
                 setGraphic(null);
-            } else {
-                if (isEditing()) {
-                    setText(null);
-                    if (textField.isPresent()) {
-                        textField.get().setText(getString());
-                        setGraphic(textField.get());
-                    }
-                } else {
-                    setText(getString());
-                    setGraphic(getTreeItem().getGraphic());
-                    setContextMenu(contextMenu);
+            } else if (isEditing()) {
+                setText(null);
+                if (textField.isPresent()) {
+                    textField.get().setText(getString());
+                    setGraphic(textField.get());
                 }
+            } else {
+                setText(getString());
+                setGraphic(getTreeItem().getGraphic());
+                setContextMenu(contextMenu);
             }
         }
 

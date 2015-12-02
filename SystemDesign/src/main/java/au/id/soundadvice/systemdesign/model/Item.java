@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
@@ -34,6 +34,7 @@ import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -206,6 +207,47 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
     }
 
     /**
+     * Restore a deleted Item.
+     *
+     * @param was The baseline to restore from
+     * @param allocated The baseline to restore into
+     * @param item The item to restore
+     * @return The updated baseline
+     */
+    @CheckReturnValue
+    public static BaselineAnd<Item> restore(Baseline was, Baseline allocated, Item item) {
+        // Item and view
+        ItemView view = item.getView(was);
+        allocated = allocated.add(item);
+        allocated = allocated.add(view);
+
+        {
+            Iterator<Interface> it = item.findInterfaces(was).iterator();
+            while (it.hasNext()) {
+                Interface iface = it.next();
+                Optional<Item> otherItem = allocated.get(iface.otherEnd(was, item));
+                if (otherItem.isPresent()) {
+                    allocated = Interface.restore(was, allocated, iface).getBaseline();
+                }
+            }
+        }
+        {
+            Iterator<BudgetAllocation> it = item.findBudgetAllocations(was).iterator();
+            while (it.hasNext()) {
+                allocated = allocated.add(it.next());
+            }
+        }
+        {
+            Iterator<Function> it = item.findOwnedFunctions(was).iterator();
+            while (it.hasNext()) {
+                allocated = Function.restore(was, allocated, it.next()).getBaseline();
+            }
+        }
+
+        return allocated.and(item);
+    }
+
+    /**
      * Remove an item from a baseline.
      *
      * @param baseline The baseline to update
@@ -222,7 +264,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
      * @param baseline This item's baseline
      * @return
      */
-    public Stream<Function> getOwnedFunctions(Baseline baseline) {
+    public Stream<Function> findOwnedFunctions(Baseline baseline) {
         return baseline.getReverse(uuid, Function.class);
     }
 
@@ -232,7 +274,7 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
      * @param baseline The level of the system to search within
      * @return
      */
-    public Stream<Interface> getInterfaces(Baseline baseline) {
+    public Stream<Interface> findInterfaces(Baseline baseline) {
         return baseline.getReverse(uuid, Interface.class);
     }
 
@@ -355,10 +397,10 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
     }
 
     public ItemView getView(Baseline baseline) {
-        return getViews(baseline).findAny().get();
+        return findViews(baseline).findAny().get();
     }
 
-    public Stream<ItemView> getViews(Baseline baseline) {
+    public Stream<ItemView> findViews(Baseline baseline) {
         return baseline.getReverse(uuid, ItemView.class);
     }
 }

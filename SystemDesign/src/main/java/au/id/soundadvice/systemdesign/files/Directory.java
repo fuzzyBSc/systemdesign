@@ -28,7 +28,10 @@ package au.id.soundadvice.systemdesign.files;
 
 import au.id.soundadvice.systemdesign.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.model.Identity;
-import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
+import au.id.soundadvice.systemdesign.versioning.IdentityValidator;
+import au.id.soundadvice.systemdesign.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -45,9 +48,10 @@ import java.util.stream.StreamSupport;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Directory {
+public class Directory implements IdentityValidator, FileOpener {
 
     private static final Logger LOG = Logger.getLogger(Directory.class.getName());
+    private static final String IDENTITY_CSV = "identity.csv";
 
     @Override
     public String toString() {
@@ -61,7 +65,7 @@ public class Directory {
     private Directory(Optional<Directory> parent, Path root) {
         this.parent = parent;
         this.path = root;
-        this.identityFile = root.resolve("identity.csv");
+        this.identityFile = root.resolve(IDENTITY_CSV);
         this.itemsFile = root.resolve("items.csv");
         this.itemViewsFile = root.resolve("itemViews.csv");
         this.interfacesFile = root.resolve("interfaces.csv");
@@ -92,23 +96,24 @@ public class Directory {
 
     public static Optional<Identity> getIdentity(Path path) {
         if (Files.isDirectory(path)) {
-            path = path.resolve("identity.csv");
+            path = path.resolve(IDENTITY_CSV);
         }
-        try {
-            Optional<BeanReader<IdentityBean>> reader = BeanReader.forPath(
-                    IdentityBean.class, path,
-                    new NullVersionControl(), Optional.empty());
-            if (reader.isPresent()) {
-                try (BeanReader<IdentityBean> closeable = reader.get()) {
-                    // Only read the first entry
-                    return closeable.read().map(bean -> new Identity(bean));
-                }
-            } else {
+        if (Files.exists(path)) {
+            try (BufferedReader buffered = Files.newBufferedReader(path)) {
+                return getIdentity(buffered);
+            } catch (IOException ex) {
+                LOG.log(Level.WARNING, null, ex);
                 return Optional.empty();
             }
-        } catch (IOException ex) {
-            LOG.log(Level.WARNING, null, ex);
+        } else {
             return Optional.empty();
+        }
+    }
+
+    public static Optional<Identity> getIdentity(BufferedReader buffered) throws IOException {
+        try (BeanReader<IdentityBean> reader = BeanReader.fromReader(
+                IdentityBean.class, buffered)) {
+            return reader.lines().map(Identity::new).findFirst();
         }
     }
 
@@ -189,5 +194,68 @@ public class Directory {
 
     public Directory resolve(String name) {
         return new Directory(Optional.of(this), this.path.resolve(name));
+    }
+
+    @Override
+    public String getIdentityFileName() {
+        return IDENTITY_CSV;
+    }
+
+    @Override
+    public Path getDirectoryPath() {
+        return path;
+    }
+
+    @Override
+    public boolean isIdentityMatched(BufferedReader reader) {
+        try {
+            Optional<Identity> sample = getIdentity(reader);
+            Optional<Identity> authorative = getIdentity(getIdentityFile());
+            return authorative.isPresent() && authorative.equals(sample);
+        } catch (IOException ex) {
+            LOG.log(Level.SEVERE, null, ex);
+            return false;
+        }
+    }
+
+    public String getFileNameForClass(Class<?> clazz) {
+        String name = clazz.getSimpleName();
+        // Bean is redundant on disks
+        if (name.endsWith("Bean")) {
+            name = name.substring(0, name.length() - 4);
+        }
+        // Lower camel case
+        char firstCharToLower = Character.toLowerCase(name.charAt(0));
+        if ("identity".equals(name)) {
+            // Singular
+            name = firstCharToLower + name.substring(1) + ".csv";
+        } else {
+            // Plural
+            name = firstCharToLower + name.substring(1) + "s.csv";
+        }
+        return name;
+    }
+
+    public FileOpener getOpenerForVersion(
+            VersionControl versionControl, Optional<VersionInfo> version) {
+        if (version.isPresent()) {
+            return clazz -> {
+                String name = getFileNameForClass(clazz);
+                return versionControl.getBufferedReader(
+                        Directory.this, name, version);
+            };
+        } else {
+            return this;
+        }
+    }
+
+    @Override
+    public Optional<BufferedReader> open(Class<?> clazz) throws IOException {
+        Path filepath = path.resolve(getFileNameForClass(clazz));
+        if (Files.exists(filepath)) {
+            return Optional.of(Files.newBufferedReader(filepath));
+        } else {
+            return Optional.empty();
+        }
     }
 }

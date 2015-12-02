@@ -136,7 +136,7 @@ public class FlowConsistency {
         Map<Function, Map<FlowType, Direction>> childFlows = getFlowTypes(
                 problemAllocated,
                 externalAllocatedFunction,
-                externalAllocatedFunction.getFlows(problemAllocated),
+                externalAllocatedFunction.findFlows(problemAllocated),
                 optionalFunction -> optionalFunction
                 .flatMap(function -> problemAllocated.get(function))
                 .flatMap(function -> function.getTrace(problemFunctional))

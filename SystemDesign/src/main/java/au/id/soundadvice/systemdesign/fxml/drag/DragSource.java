@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.files.Identifiable;
-import static au.id.soundadvice.systemdesign.fxml.drag.DragTarget.uuidPrefix;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javafx.scene.Node;
@@ -35,6 +34,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
+import static au.id.soundadvice.systemdesign.fxml.drag.DragTarget.UUID_PREFIX;
 
 /**
  *
@@ -68,7 +68,7 @@ public class DragSource {
         Dragboard db = node.startDragAndDrop(TransferMode.ANY);
         ClipboardContent content = new ClipboardContent();
         content.put(DataFormat.PLAIN_TEXT, source.toString());
-        content.put(DataFormat.URL, uuidPrefix + source.getUuid());
+        content.put(DataFormat.URL, UUID_PREFIX + source.getUuid());
         db.setContent(content);
         node.getStyleClass().add("dragSource");
     }

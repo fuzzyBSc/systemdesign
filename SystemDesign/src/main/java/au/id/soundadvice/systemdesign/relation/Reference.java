@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.relation;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -91,7 +92,8 @@ public class Reference<F, T extends Relation> {
          * Referential integrity should be guaranteed by the context, so no need
          * to check isPresent.
          */
-        return context.get(to.getUuid(), to.getType()).get();
+        Optional<T> optionalContext = context.get(to.getUuid(), to.getType());
+        return optionalContext.get();
     }
 
     private final F from;

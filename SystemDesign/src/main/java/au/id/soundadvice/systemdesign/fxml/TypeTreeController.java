@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.fxml;
@@ -77,7 +77,7 @@ public class TypeTreeController {
 
         @Override
         public void run() {
-            Baseline allocated = edit.getUndo().get().getAllocated();
+            Baseline allocated = edit.getAllocated();
             TreeItem root = new TreeItem();
             root.setExpanded(true);
             root.getChildren().addAll(
@@ -145,14 +145,11 @@ public class TypeTreeController {
 
                 setText(getString());
                 setGraphic(getTreeItem().getGraphic());
-            } else {
-                /*
-                 * If the cancelEdit is due to a loss of focus, override it.
-                 * Commit instead.
-                 */
-                if (textField.isPresent()) {
-                    commitEdit(getItem());
-                }
+            } else /*
+             * If the cancelEdit is due to a loss of focus, override it. Commit
+             * instead.
+             */ if (textField.isPresent()) {
+                commitEdit(getItem());
             }
         }
 
@@ -178,18 +175,16 @@ public class TypeTreeController {
             if (empty) {
                 setText(null);
                 setGraphic(null);
-            } else {
-                if (isEditing()) {
-                    setText(null);
-                    if (textField.isPresent()) {
-                        textField.get().setText(getString());
-                        setGraphic(textField.get());
-                    }
-                } else {
-                    setText(getString());
-                    setGraphic(getTreeItem().getGraphic());
-                    setContextMenu(contextMenu);
+            } else if (isEditing()) {
+                setText(null);
+                if (textField.isPresent()) {
+                    textField.get().setText(getString());
+                    setGraphic(textField.get());
                 }
+            } else {
+                setText(getString());
+                setGraphic(getTreeItem().getGraphic());
+                setContextMenu(contextMenu);
             }
         }
 

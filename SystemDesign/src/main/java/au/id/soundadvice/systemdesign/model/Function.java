@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,12 +21,13 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.beans.FunctionBean;
 import au.id.soundadvice.systemdesign.fxml.UniqueName;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
@@ -179,7 +180,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         Optional<Item> systemOfInterest = state.getSystemOfInterest();
         if (systemOfInterest.isPresent()
                 && !external.item.getUuid().equals(systemOfInterest.get().getUuid())) {
-            return external.getFlows(functional)
+            return external.findFlows(functional)
                     .filter(flow -> flow.hasEnd(functional, systemOfInterest.get()))
                     .map(flow -> flow.otherEnd(functional, external))
                     .distinct();
@@ -212,7 +213,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         // Also add the coresponding views
         Iterator<Function> it = getSystemFunctionsForExternalFunction(state, external).iterator();
         // Pick a sample view to copy
-        Optional<FunctionView> sampleView = external.getViews(functional).findAny();
+        Optional<FunctionView> sampleView = external.findViews(functional).findAny();
         while (it.hasNext()) {
             Function systemFunction = it.next();
             /*
@@ -228,6 +229,48 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
     }
 
     /**
+     * Restore a deleted Function.
+     *
+     * @param was The baseline to restore from
+     * @param allocated The baseline to restore into
+     * @param function The function to restore
+     * @return The updated baseline
+     */
+    public static BaselineAnd<Function> restore(Baseline was, Baseline allocated, Function function) {
+        allocated = allocated.add(function);
+        {
+            Iterator<FunctionView> it = function.findViews(was).iterator();
+            while (it.hasNext()) {
+                allocated = allocated.add(it.next());
+            }
+        }
+        {
+            Iterator<Flow> it = function.findFlows(was).iterator();
+            while (it.hasNext()) {
+                Flow flow = it.next();
+                Optional<Function> otherFunction = allocated.get(flow.otherEnd(was, function));
+                if (otherFunction.isPresent()) {
+                    // Create the type if necessary
+                    FlowType type = flow.getType().getTarget(was.getContext());
+                    {
+                        Optional<FlowType> existing = FlowType.find(allocated, type.getName());
+                        if (existing.isPresent()) {
+                            type = existing.get();
+                        } else {
+                            allocated = allocated.add(type);
+                        }
+                    }
+                    Direction direction = flow.getDirectionFrom(function);
+                    allocated = Flow.add(allocated,
+                            function, otherFunction.get(),
+                            type, direction).getBaseline();
+                }
+            }
+        }
+        return allocated.and(function);
+    }
+
+    /**
      * Remove an function from a baseline.
      *
      * @param baseline The baseline to update
@@ -238,11 +281,11 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         return baseline.remove(uuid);
     }
 
-    public Stream<FunctionView> getViews(Baseline baseline) {
+    public Stream<FunctionView> findViews(Baseline baseline) {
         return baseline.getReverse(uuid, FunctionView.class);
     }
 
-    public Stream<Flow> getFlows(Baseline baseline) {
+    public Stream<Flow> findFlows(Baseline baseline) {
         return baseline.getReverse(uuid, Flow.class);
     }
 
@@ -332,7 +375,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
             return baseline.and(this);
         }
         {
-            Iterator<Flow> toRemove = getFlows(baseline).iterator();
+            Iterator<Flow> toRemove = findFlows(baseline).iterator();
             while (toRemove.hasNext()) {
                 Flow flow = toRemove.next();
                 baseline = flow.removeFrom(baseline);
@@ -340,7 +383,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         }
         Optional<FunctionView> sampleView = Optional.empty();
         {
-            Iterator<FunctionView> toRemove = getViews(baseline).iterator();
+            Iterator<FunctionView> toRemove = findViews(baseline).iterator();
             while (toRemove.hasNext()) {
                 FunctionView view = toRemove.next();
                 // Preserve as sample

@@ -86,7 +86,7 @@ public class DirectoryNameMismatch implements ProblemFactory {
             Path path = dir.get().getPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
-                String identity = Identity.find(edit.getUndo().get().getAllocated()).toString();
+                String identity = Identity.find(edit.getAllocated()).toString();
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
                     Path renameTo = path.getParent().resolve(identity);
                     if (!Files.exists(renameTo)) {

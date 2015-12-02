@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.fxml;
@@ -81,22 +81,20 @@ public class LogicalTabs {
 
         @Override
         public void run() {
-            UndoState state = edit.getUndo().get();
+            UndoState state = edit.getState();
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
             Optional<Item> systemOfInterest = state.getSystemOfInterest();
             Map<Optional<Function>, Function> parentFunctions;
             if (systemOfInterest.isPresent()) {
-                parentFunctions = systemOfInterest.get().getOwnedFunctions(functional).collect(
+                parentFunctions = systemOfInterest.get().findOwnedFunctions(functional).collect(
                         Collectors.toMap(
                                 function -> Optional.of(function),
                                 java.util.function.Function.identity()));
+            } else if (Function.find(allocated).findAny().isPresent()) {
+                parentFunctions = Collections.singletonMap(Optional.empty(), null);
             } else {
-                if (Function.find(allocated).findAny().isPresent()) {
-                    parentFunctions = Collections.singletonMap(Optional.empty(), null);
-                } else {
-                    parentFunctions = Collections.emptyMap();
-                }
+                parentFunctions = Collections.emptyMap();
             }
             /*
              * Each function on the system of interest gets its own diagram
@@ -109,9 +107,9 @@ public class LogicalTabs {
                     .forEachOrdered(entry -> {
                         // Add new tabs
                         LogicalSchematicController newTab
-                        = new LogicalSchematicController(
-                                interactions, edit, tabs,
-                                entry.getKey().map(uuid -> entry.getValue()));
+                                = new LogicalSchematicController(
+                                        interactions, edit, tabs,
+                                        entry.getKey().map(uuid -> entry.getValue()));
                         controllers.put(entry.getKey(), newTab);
                         newTab.start();
                     });
@@ -138,23 +136,23 @@ public class LogicalTabs {
             Map<UndirectedPair, List<Flow>> flowsForViews = flows.entrySet().parallelStream()
                     .flatMap(entry -> {
                         List<FunctionView> leftViews
-                        = entry.getKey().getLeft().getViews(allocated)
-                        .collect(Collectors.toList());
+                                = entry.getKey().getLeft().findViews(allocated)
+                                .collect(Collectors.toList());
                         List<FunctionView> rightViews
-                        = entry.getKey().getRight().getViews(allocated)
-                        .collect(Collectors.toList());
+                                = entry.getKey().getRight().findViews(allocated)
+                                .collect(Collectors.toList());
                         // Build up the cross-product of leftViews and right views
                         return leftViews.parallelStream()
-                        .flatMap(leftView -> {
-                            return rightViews.parallelStream()
-                            .flatMap(rightView -> {
-                                return Stream.of(new Pair<>(
-                                                new UndirectedPair(
-                                                        leftView.getUuid(),
-                                                        rightView.getUuid()),
-                                                entry.getValue()));
-                            });
-                        });
+                                .flatMap(leftView -> {
+                                    return rightViews.parallelStream()
+                                            .flatMap(rightView -> {
+                                                return Stream.of(new Pair<>(
+                                                        new UndirectedPair(
+                                                                leftView.getUuid(),
+                                                                rightView.getUuid()),
+                                                        entry.getValue()));
+                                            });
+                                });
                     })
                     .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
 
@@ -165,10 +163,10 @@ public class LogicalTabs {
             perDrawingFunctionViews.entrySet().stream()
                     .forEach(entry -> {
                         Optional<LogicalSchematicController> controller
-                        = Optional.ofNullable(controllers.get(entry.getKey()));
+                                = Optional.ofNullable(controllers.get(entry.getKey()));
                         if (controller.isPresent()) {
                             Map<UUID, FunctionView> childFunctions = entry.getValue().parallelStream()
-                            .collect(Identifiable.toMap());
+                                    .collect(Identifiable.toMap());
                             controller.get().populate(
                                     allocated, childFunctions, flowsForViews);
                         } else {

@@ -52,7 +52,7 @@ public class UntracedFunctionsTest {
     public void testGetProblems() {
         System.out.println("getProblems");
         EditState edit = EditState.init(Executors.newCachedThreadPool());
-        edit.update(state -> {
+        edit.updateState(state -> {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
             BaselineAnd<Item> itemTuple = Item.create(

@@ -48,7 +48,7 @@ public class FunctionViewAutoFix {
         final UndoState preRemoveState = state;
         Stream<FunctionView> removals = Function.find(preRemoveState.getAllocated())
                 .flatMap(function -> {
-                    return function.getViews(preRemoveState.getAllocated())
+                    return function.findViews(preRemoveState.getAllocated())
                     .flatMap(view -> {
                         Baseline functional = preRemoveState.getFunctional();
                         if (function.isExternal()) {
@@ -65,7 +65,7 @@ public class FunctionViewAutoFix {
                                 return Stream.of(view);
                             }
                             Function systemFunction = drawing.get();
-                            boolean flowsExist = systemFunction.getFlows(functional)
+                            boolean flowsExist = systemFunction.findFlows(functional)
                             .map(flow -> flow.otherEnd(functional, systemFunction).getUuid())
                             .anyMatch(externalFunctionUUID -> externalFunctionUUID.equals(function.getUuid()));
                             if (flowsExist) {
@@ -108,7 +108,7 @@ public class FunctionViewAutoFix {
                     Baseline functional = preAddState.getFunctional();
                     Baseline allocated = preAddState.getAllocated();
                     Map<Optional<Function>, FunctionView> views
-                    = function.getViews(allocated)
+                    = function.findViews(allocated)
                     .collect(Collectors.toMap(
                                     functionView -> functionView.getDrawing(functional),
                                     java.util.function.Function.identity()));
@@ -120,7 +120,7 @@ public class FunctionViewAutoFix {
                             return Stream.empty();
                         }
                         // Get the flows to/from the external function
-                        return function.getFlows(functional)
+                        return function.findFlows(functional)
                         .map(flow -> flow.otherEnd(functional, function))
                         .filter(otherEndFunction -> {
                             /*

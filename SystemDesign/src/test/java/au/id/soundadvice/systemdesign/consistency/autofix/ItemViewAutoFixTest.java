@@ -57,7 +57,7 @@ public class ItemViewAutoFixTest {
             Item item = pair.getRelation();
             missingViewItem.set(item);
             allocated = item.getView(allocated).removeFrom(allocated);
-            assertEquals(0, item.getViews(allocated).count());
+            assertEquals(0, item.findViews(allocated).count());
             return allocated;
         });
         AtomicReference<Item> extraViewItem = new AtomicReference<>();
@@ -69,12 +69,12 @@ public class ItemViewAutoFixTest {
             extraViewItem.set(item);
             allocated = ItemView.create(allocated, item, Point2D.ZERO, Color.LIGHTYELLOW)
                     .getBaseline();
-            assertEquals(2, item.getViews(allocated).count());
+            assertEquals(2, item.findViews(allocated).count());
             return allocated;
         });
         UndoState result = ItemViewAutoFix.fix(state);
-        assertEquals(1, missingViewItem.get().getViews(result.getAllocated()).count());
-        assertEquals(1, extraViewItem.get().getViews(result.getAllocated()).count());
+        assertEquals(1, missingViewItem.get().findViews(result.getAllocated()).count());
+        assertEquals(1, extraViewItem.get().findViews(result.getAllocated()).count());
     }
 
 }

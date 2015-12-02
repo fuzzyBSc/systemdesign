@@ -27,6 +27,7 @@
  */
 package au.id.soundadvice.systemdesign.versioning.jgit;
 
+import au.id.soundadvice.systemdesign.versioning.IdentityValidator;
 import au.id.soundadvice.systemdesign.versioning.VersionControl;
 import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.BufferedReader;
@@ -38,10 +39,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Calendar;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import javafx.util.Pair;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand.ListMode;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -54,10 +57,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.util.FS;
 
 /**
@@ -185,34 +186,98 @@ public class GitVersionControl implements VersionControl {
         }
     }
 
-    @Override
-    public Optional<BufferedReader> getBufferedReader(Path path, Optional<VersionInfo> version) throws IOException {
-        if (version.isPresent()) {
-            ObjectId id = ObjectId.fromString(version.get().getId());
-            try (RevWalk revWalk = new RevWalk(repo.getRepository())) {
-                RevCommit commit = revWalk.parseCommit(id);
-                RevTree tree = commit.getTree();
-                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
-                    treeWalk.addTree(tree);
-                    treeWalk.setRecursive(true);
-                    Path pattern = this.repositoryRoot.relativize(path);
-                    treeWalk.setFilter(PathFilter.create(pattern.toString()));
-                    if (treeWalk.next()) {
-                        ObjectLoader loader = repo.getRepository().open(treeWalk.getObjectId(0));
-                        ObjectStream stream = loader.openStream();
-                        InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
-                        return Optional.of(new BufferedReader(reader));
+//    private final AtomicReference<Optional<Pair<String, List<DiffEntry>>>> diffCache
+//            = new AtomicReference<>(Optional.empty());
+    private final AtomicReference<Pair<String, ObjectId>> diffCache
+            = new AtomicReference<>(new Pair<>(null, ObjectId.zeroId()));
+
+    /**
+     * Find the tree that contains the required identity.
+     *
+     * @return The ObjectId of the tree (directory) that contains the matching
+     * identity within the supplied hierarchy.
+     */
+    private ObjectId findMatchingIdentity(
+            IdentityValidator identityValidator,
+            ObjectId tree) throws IOException {
+        try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
+            treeWalk.setRecursive(false);
+            treeWalk.addTree(tree);
+
+            while (treeWalk.next()) {
+                if (treeWalk.isSubtree()) {
+                    ObjectId candidateId = findMatchingIdentity(
+                            identityValidator, treeWalk.getObjectId(0));
+                    if (ObjectId.zeroId().equals(candidateId)) {
+                        // Keep searching
                     } else {
-                        // Not found
-                        return Optional.empty();
+                        return candidateId;
+                    }
+                } else if (identityValidator.getIdentityFileName().equals(treeWalk.getNameString())) {
+                    // Read the identity file
+                    ObjectLoader loader = repo.getRepository().open(
+                            treeWalk.getObjectId(0));
+                    ObjectStream stream = loader.openStream();
+                    InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+                    if (identityValidator.isIdentityMatched(new BufferedReader(reader))) {
+                        // We found it
+                        return tree;
                     }
                 }
             }
+            return ObjectId.zeroId();
         }
-        if (Files.exists(path)) {
-            return Optional.of(Files.newBufferedReader(path));
+    }
+
+    @Override
+    public Optional<BufferedReader> getBufferedReader(
+            IdentityValidator identityValidator,
+            String filename, Optional<VersionInfo> version) throws IOException {
+        if (version.isPresent()) {
+            Pair<String, ObjectId> diff = diffCache.get();
+            if (!version.get().getId().equals(diff.getKey())) {
+                // Grab the id of the commit we are trying to diff against
+                ObjectId id = ObjectId.fromString(version.get().getId());
+                try (RevWalk revWalk = new RevWalk(repo.getRepository())) {
+                    // Read the commit
+                    RevCommit commit = revWalk.parseCommit(id);
+                    ObjectId matchedDirectory = findMatchingIdentity(
+                            identityValidator, commit.getTree());
+                    diff = new Pair<>(version.get().getId(), matchedDirectory);
+                    diffCache.set(diff);
+                }
+            }
+
+            if (ObjectId.zeroId().equals(diff.getValue())) {
+                // No such tree
+                return Optional.empty();
+            } else {
+                // Find the file in this tree
+                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
+                    treeWalk.setRecursive(false);
+                    treeWalk.addTree(diff.getValue());
+
+                    while (treeWalk.next()) {
+                        if (filename.equals(treeWalk.getNameString())) {
+                            // Read the file
+                            ObjectLoader loader = repo.getRepository().open(
+                                    treeWalk.getObjectId(0));
+                            ObjectStream stream = loader.openStream();
+                            InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+                            return Optional.of(new BufferedReader(reader));
+                        }
+                    }
+                    // No such file
+                    return Optional.empty();
+                }
+            }
         } else {
-            return Optional.empty();
+            Path path = identityValidator.getDirectoryPath().resolve(filename);
+            if (Files.exists(path)) {
+                return Optional.of(Files.newBufferedReader(path));
+            } else {
+                return Optional.empty();
+            }
         }
     }
 

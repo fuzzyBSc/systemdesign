@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.state.UndoBuffer;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
@@ -83,7 +82,7 @@ public class Interactions {
 
     public Item createItem(Point2D origin) {
         AtomicReference<Item> result = new AtomicReference<>();
-        edit.update(state -> {
+        edit.updateState(state -> {
             Color color = state.getSystemOfInterest()
                     .map(item -> item.getView(state.getFunctional()))
                     .map(ItemView::getColor)
@@ -107,8 +106,7 @@ public class Interactions {
         String unit;
         {
             // User interaction - read only
-            UndoState state = edit.getUndo().get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
 
             Optional<String> optionalName = textInput(
                     "Enter name for budget",
@@ -139,8 +137,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoState state = edit.getUndo().get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             if (item.isExternal() || !allocated.get(item).isPresent()) {
                 return;
             }
@@ -168,8 +165,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            if (item.isExternal() || !undo.get().getAllocated().get(item).isPresent()) {
+            if (item.isExternal() || !edit.getAllocated().get(item).isPresent()) {
                 return;
             }
 
@@ -199,8 +195,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            if (item.isExternal() || !undo.get().getAllocated().get(item).isPresent()) {
+            if (item.isExternal() || !edit.getAllocated().get(item).isPresent()) {
                 return;
             }
 
@@ -229,9 +224,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            UndoState state = undo.get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             if (function.isExternal() || !allocated.get(function).isPresent()) {
                 return;
             }
@@ -262,9 +255,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            UndoState state = undo.get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             Optional<Budget> budget = Budget.find(allocated, key).findAny();
             if (!budget.isPresent()) {
                 return;
@@ -273,7 +264,7 @@ public class Interactions {
             result = textInput("Rename " + key.getName(), key.getName());
         }
         if (result.isPresent()) {
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Budget.Key newKey = key.setName(result.get());
                 {
                     Baseline functional = state.getFunctional();
@@ -302,9 +293,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            UndoBuffer<UndoState> undo = edit.getUndo();
-            UndoState state = undo.get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             Optional<Budget> budget = Budget.find(allocated, key).findAny();
             if (!budget.isPresent()) {
                 return;
@@ -313,7 +302,7 @@ public class Interactions {
             result = textInput("Set " + key.getName() + " unit", key.getUnit());
         }
         if (result.isPresent()) {
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Budget.Key newKey = key.setUnit(result.get());
                 {
                     Baseline functional = state.getFunctional();
@@ -342,8 +331,7 @@ public class Interactions {
         Optional<Color> result;
         {
             // User interaction - read only
-            UndoState state = edit.getUndo().get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             if (item.isExternal() || !allocated.get(item).isPresent()) {
                 return;
             }
@@ -418,7 +406,7 @@ public class Interactions {
                 directionFromExternal = Direction.None;
             }
             if (internal != null && systemFunction.isPresent() && external != null) {
-                Set<UUID> alreadyUsed = internal.getFlows(allocated).parallel()
+                Set<UUID> alreadyUsed = internal.findFlows(allocated).parallel()
                         .filter(flow -> {
                             return flow.otherEnd(allocated, internal).equals(external)
                                     && flow.getDirectionFrom(external).contains(directionFromExternal);
@@ -427,7 +415,7 @@ public class Interactions {
                         .map(Reference::getUuid)
                         .collect(Collectors.toSet());
 
-                Optional<FlowType> functionalType = external.getFlows(functional)
+                Optional<FlowType> functionalType = external.findFlows(functional)
                         .filter(flow -> {
                             return flow.hasEnd(systemFunction.get())
                                     && flow.getDirectionFrom(external).contains(directionFromExternal);
@@ -458,7 +446,7 @@ public class Interactions {
     }
 
     public void addFlow(Function source, Function target) {
-        edit.update(state -> {
+        edit.updateState(state -> {
             Baseline allocated = state.getAllocated();
             Optional<Function> left = allocated.get(source);
             Optional<Function> right = allocated.get(target);
@@ -484,8 +472,7 @@ public class Interactions {
         Optional<String> interactionResult;
         {
             // User interaction, read-only
-            UndoState state = edit.getUndo().get();
-            Baseline allocated = state.getAllocated();
+            Baseline allocated = edit.getAllocated();
             Optional<Flow> current = allocated.get(flow);
             if (!current.isPresent()) {
                 return;
@@ -500,7 +487,7 @@ public class Interactions {
         }
         if (interactionResult.isPresent()) {
             String typeName = interactionResult.get();
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Baseline allocated = state.getAllocated();
                 Optional<Flow> current = allocated.get(flow);
                 if (!current.isPresent()) {
@@ -545,8 +532,7 @@ public class Interactions {
     }
 
     public void navigateDown(Item item) {
-        UndoState state = edit.getUndo().get();
-        this.navigateDown(item.asIdentity(state.getAllocated()));
+        this.navigateDown(item.asIdentity(edit.getAllocated()));
     }
 
     public void navigateDown(Identity identity) {

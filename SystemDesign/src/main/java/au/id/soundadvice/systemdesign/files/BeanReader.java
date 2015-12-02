@@ -27,26 +27,31 @@
 package au.id.soundadvice.systemdesign.files;
 
 import au.com.bytecode.opencsv.CSVReader;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
+import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import javafx.scene.paint.Color;
 
 /**
@@ -57,25 +62,81 @@ import javafx.scene.paint.Color;
  */
 public class BeanReader<T> implements Closeable {
 
-    public static <T> Optional<BeanReader<T>> forPath(
-            Class<T> clazz, Path path,
-            VersionControl versionControl, Optional<VersionInfo> version) throws IOException {
-        Optional<CSVReader> csvreader = versionControl.getBufferedReader(path, version)
-                .map(CSVReader::new);
-        if (csvreader.isPresent()) {
+    /**
+     * Create a BeanReader from a BufferedReader.
+     *
+     * @param <T> The bean class to read instances of
+     * @param clazz The bean class to read instances of
+     * @param buffered The BufferedReader
+     * @return The BeanReader
+     * @throws java.io.IOException
+     */
+    public static <T> BeanReader<T> fromReader(
+            Class<T> clazz, BufferedReader buffered) throws IOException {
+        return fromReader(clazz, Optional.of(buffered));
+    }
+
+    /**
+     * Create a BeanReader from a BufferedReader. If the BufferedReader is not
+     * present the bean reader will exist, but will emit no objects.
+     *
+     * @param <T> The bean class to read instances of
+     * @param clazz The bean class to read instances of
+     * @param buffered The BufferedReader
+     * @return The BeanReader
+     * @throws java.io.IOException
+     */
+    public static <T> BeanReader<T> fromReader(
+            Class<T> clazz, Optional<BufferedReader> buffered) throws IOException {
+        Optional<CSVReader> csvreader = buffered.map(CSVReader::new);
+        try {
+            return new BeanReader<>(clazz, csvreader);
+        } catch (IOException ex) {
             try {
-                return Optional.of(new BeanReader<>(clazz, csvreader.get()));
-            } catch (IOException ex) {
-                try {
+                if (csvreader.isPresent()) {
                     csvreader.get().close();
-                } catch (IOException ex2) {
-                    ex.addSuppressed(ex2);
                 }
-                throw ex;
+            } catch (IOException ex2) {
+                ex.addSuppressed(ex2);
             }
-        } else {
-            return Optional.empty();
+            throw ex;
         }
+    }
+
+    public Iterator<T> iterator() {
+        return new Iterator<T>() {
+            Optional<T> nextBean = Optional.empty();
+
+            @Override
+            public boolean hasNext() {
+                if (nextBean.isPresent()) {
+                    return true;
+                } else {
+                    try {
+                        nextBean = read();
+                        return (nextBean.isPresent());
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+            }
+
+            @Override
+            public T next() {
+                if (nextBean.isPresent() || hasNext()) {
+                    Optional<T> bean = nextBean;
+                    nextBean = Optional.empty();
+                    return bean.get();
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        };
+    }
+
+    public Stream<T> lines() {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                iterator(), Spliterator.ORDERED | Spliterator.NONNULL), false);
     }
 
     // Must keep pinnned here as PropertyEditorManager only holds weak references
@@ -89,25 +150,29 @@ public class BeanReader<T> implements Closeable {
         PropertyEditorManager.registerEditor(BigDecimal.class, bigDecimalEditorClass);
     }
 
-    public BeanReader(Class<T> clazz, CSVReader reader) throws IOException {
+    public BeanReader(Class<T> clazz, Optional<CSVReader> reader) throws IOException {
         try {
             this.clazz = clazz;
             this.reader = reader;
-            Map<String, PropertyDescriptor> properties = new HashMap<>();
-            for (PropertyDescriptor descriptor
-                    : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
-                properties.put(descriptor.getName(), descriptor);
-            }
-            String[] headerNames = reader.readNext();
-            if (headerNames == null) {
-                this.header = Collections.emptyList();
-            } else {
-                List<StringSetter<T>> tmpHeader = new ArrayList<>(headerNames.length);
-                for (String property : headerNames) {
-                    tmpHeader.add(new StringSetter<>(
-                            Optional.ofNullable(properties.get(property))));
+            if (reader.isPresent()) {
+                Map<String, PropertyDescriptor> properties = new HashMap<>();
+                for (PropertyDescriptor descriptor
+                        : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+                    properties.put(descriptor.getName(), descriptor);
                 }
-                this.header = Collections.unmodifiableList(tmpHeader);
+                String[] headerNames = reader.get().readNext();
+                if (headerNames == null) {
+                    this.header = Collections.emptyList();
+                } else {
+                    List<StringSetter<T>> tmpHeader = new ArrayList<>(headerNames.length);
+                    for (String property : headerNames) {
+                        tmpHeader.add(new StringSetter<>(
+                                Optional.ofNullable(properties.get(property))));
+                    }
+                    this.header = Collections.unmodifiableList(tmpHeader);
+                }
+            } else {
+                this.header = Collections.emptyList();
             }
         } catch (IntrospectionException ex) {
             throw new IOException(ex);
@@ -115,26 +180,32 @@ public class BeanReader<T> implements Closeable {
     }
 
     public Optional<T> read() throws IOException {
-        try {
-            String[] line = reader.readNext();
-            if (line == null) {
-                return Optional.empty();
+        if (reader.isPresent()) {
+            try {
+                String[] line = reader.get().readNext();
+                if (line == null) {
+                    return Optional.empty();
+                }
+                T result = clazz.newInstance();
+                for (int ii = 0; ii < header.size(); ++ii) {
+                    header.get(ii).setProperty(result, line[ii]);
+                }
+                return Optional.of(result);
+            } catch (InstantiationException |
+                    IllegalAccessException |
+                    ArrayIndexOutOfBoundsException ex) {
+                throw new IOException(ex);
             }
-            T result = clazz.newInstance();
-            for (int ii = 0; ii < header.size(); ++ii) {
-                header.get(ii).setProperty(result, line[ii]);
-            }
-            return Optional.of(result);
-        } catch (InstantiationException |
-                IllegalAccessException |
-                ArrayIndexOutOfBoundsException ex) {
-            throw new IOException(ex);
+        } else {
+            return Optional.empty();
         }
     }
 
     @Override
     public void close() throws IOException {
-        reader.close();
+        if (reader.isPresent()) {
+            reader.get().close();
+        }
     }
 
     private static final class StringSetter<T> {
@@ -163,7 +234,7 @@ public class BeanReader<T> implements Closeable {
     }
 
     private final Class<T> clazz;
-    private final CSVReader reader;
+    private final Optional<CSVReader> reader;
     private final List<StringSetter<T>> header;
 
     public Class<T> getClazz() {

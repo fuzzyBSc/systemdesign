@@ -49,7 +49,7 @@ public class FunctionConsistency {
     public static Predicate<? super Function> hasFlowsOnInterface(
             Baseline baseline, Interface iface) {
         return function -> {
-            return function.getFlows(baseline)
+            return function.findFlows(baseline)
                     .anyMatch(flow -> {
                         return iface.getUuid().equals(flow.getInterface().getUuid());
                     });
@@ -58,7 +58,7 @@ public class FunctionConsistency {
 
     private static Stream<Flow> getFlowsOnInterface(
             Baseline baseline, Function forFunction, Interface forInterface) {
-        return forFunction.getFlows(baseline)
+        return forFunction.findFlows(baseline)
                 .filter(flow -> forInterface.getUuid().equals(
                                 flow.getInterface().getUuid()));
     }
@@ -93,7 +93,7 @@ public class FunctionConsistency {
 
         Item externalItem = iface.otherEnd(problemFunctional, system.get());
 
-        return externalItem.getOwnedFunctions(problemFunctional)
+        return externalItem.findOwnedFunctions(problemFunctional)
                 .filter(hasFlowsOnInterface(problemFunctional, iface))
                 .flatMap(parentFunction -> {
                     Optional<Function> childFunction = problemAllocated.get(parentFunction);
@@ -166,7 +166,7 @@ public class FunctionConsistency {
         Baseline problemFunctional = state.getFunctional();
         Baseline problemAllocated = state.getAllocated();
 
-        return allocatedExternalItem.getOwnedFunctions(problemAllocated)
+        return allocatedExternalItem.findOwnedFunctions(problemAllocated)
                 .filter(allocatedExternalFunction -> {
                     return allocatedExternalFunction.isExternal()
                     && !Function.getSystemFunctionsForExternalFunction(

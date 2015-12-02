@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
@@ -52,7 +52,6 @@ public class ItemConsistency implements ProblemFactory {
             return state;
         }
         Baseline functional = state.getFunctional();
-        Baseline allocated = state.getAllocated();
         Optional<Interface> current = functional.get(iface);
         if (current.isPresent()) {
             iface = current.get();
@@ -64,7 +63,7 @@ public class ItemConsistency implements ProblemFactory {
         state = Item.flowDownExternal(state, parentItem).getState();
 
         Iterator<Function> functionsWithFlowsOnThisInterface
-                = parentItem.getOwnedFunctions(functional)
+                = parentItem.findOwnedFunctions(functional)
                 .filter(FunctionConsistency.hasFlowsOnInterface(functional, iface))
                 .iterator();
         while (functionsWithFlowsOnThisInterface.hasNext()) {
@@ -77,7 +76,7 @@ public class ItemConsistency implements ProblemFactory {
 
     @Override
     public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getUndo().get();
+        UndoState state = edit.getState();
         return Stream.concat(
                 checkConsistencyDown(state),
                 checkConsistencyUp(state));
@@ -97,7 +96,7 @@ public class ItemConsistency implements ProblemFactory {
         Baseline problemFunctional = state.getFunctional();
         Baseline problemAllocated = state.getAllocated();
 
-        return system.get().getInterfaces(problemFunctional)
+        return system.get().findInterfaces(problemFunctional)
                 .flatMap(iface -> {
                     Item parentItem = iface.otherEnd(problemFunctional, system.get());
                     if (parentItem.equals(system.get())) {
@@ -128,12 +127,12 @@ public class ItemConsistency implements ProblemFactory {
                         String name = parentItem.getDisplayName();
                         String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in\n" + parentId, Stream.of(
-                                                UpdateSolution.update("Flow down", solutionState
-                                                        -> flowItemDown(solutionState, iface)),
-                                                UpdateSolution.updateFunctional("Flow up", solutionFunctional
-                                                        -> iface.remove(solutionFunctional)
-                                                ))));
+                                name + " is missing in\n" + parentId, Stream.of(
+                                        UpdateSolution.update("Flow down", solutionState
+                                                -> flowItemDown(solutionState, iface)),
+                                        UpdateSolution.updateFunctional("Flow up", solutionFunctional
+                                                -> iface.remove(solutionFunctional)
+                                        ))));
                     }
                 });
     }
@@ -157,10 +156,10 @@ public class ItemConsistency implements ProblemFactory {
                 .filter(Item::isExternal)
                 .flatMap(externalAllocatedItem -> {
                     Optional<Interface> functionalInterface
-                    = system.get().getInterfaces(problemFunctional)
-                    .filter(iface -> externalAllocatedItem.getUuid().equals(
+                            = system.get().findInterfaces(problemFunctional)
+                            .filter(iface -> externalAllocatedItem.getUuid().equals(
                                     iface.otherEnd(problemFunctional, system.get()).getUuid()))
-                    .findAny();
+                            .findAny();
 
                     if (functionalInterface.isPresent()) {
                         // This item is fine. Check its functions.
@@ -176,25 +175,25 @@ public class ItemConsistency implements ProblemFactory {
                          * interface.
                          */
                         return Stream.of(new Problem(
-                                        name + " is missing in\n" + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
-                                                ),
-                                                UpdateSolution.updateFunctional("Flow up", solutionFunctional -> {
-                                                    return Interface.create(
-                                                            solutionFunctional, externalAllocatedItem, system.get())
+                                name + " is missing in\n" + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
+                                ),
+                                        UpdateSolution.updateFunctional("Flow up", solutionFunctional -> {
+                                            return Interface.create(
+                                                    solutionFunctional, externalAllocatedItem, system.get())
                                                     .getBaseline();
-                                                }))));
+                                        }))));
                     } else {
                         /*
                          * The parent instance of the external item doesn't
                          * exist at all
                          */
                         return Stream.of(new Problem(
-                                        name + " is missing in " + parentId, Stream.of(
-                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
-                                                ),
-                                                DisabledSolution.FlowUp)));
+                                name + " is missing in " + parentId, Stream.of(
+                                        UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                                -> externalAllocatedItem.removeFrom(solutionAllocated)
+                                        ),
+                                        DisabledSolution.FlowUp)));
                     }
                 });
     }

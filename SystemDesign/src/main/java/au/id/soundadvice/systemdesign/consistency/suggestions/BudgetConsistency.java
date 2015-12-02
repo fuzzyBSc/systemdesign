@@ -73,7 +73,7 @@ public class BudgetConsistency implements ProblemFactory {
 
         @Override
         public void solve(EditState edit) {
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Baseline source = direction.getSource(state);
                 Baseline target = direction.getTarget(state);
                 Optional<Budget> sourceCurrent = source.get(budget);
@@ -150,7 +150,7 @@ public class BudgetConsistency implements ProblemFactory {
 
         @Override
         public void solve(EditState edit) {
-            edit.update(state -> {
+            edit.updateState(state -> {
                 Optional<Item> system = state.getSystemOfInterest();
                 if (!system.isPresent()) {
                     return state;
@@ -232,7 +232,7 @@ public class BudgetConsistency implements ProblemFactory {
 
     @Override
     public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getUndo().get();
+        UndoState state = edit.getState();
         return Stream.concat(
                 getBudgetKeyMismatch(state),
                 budgetMismatches(state));

@@ -1,11 +1,12 @@
 /*
+ * To change this license header, choose License Headers in Project Properties.
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +14,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,62 +22,30 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
+package au.id.soundadvice.systemdesign.files;
 
-.deleted {
-    -fx-opacity: 0.5;
-    -fx-strikethrough: true;
-}
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.Optional;
 
-.changed {
-    -fx-stroke-width: 1.5px;
-    -fx-font-weight: bold;
-}
+/**
+ * An interface for finding the file associated with a particular class in some
+ * context.
+ *
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ */
+public interface FileOpener {
 
-.schematicItem > .outline {
-    -fx-stroke: black;
-}
-
-.schematicItem.external > .outline {
-    -fx-stroke-width: 2px;
-    -fx-stroke-dash-array: 12 2 4 2;
-}
-
-.schematicItem.deleted > .text > .text {
-    -fx-strikethrough: true;
-}
-
-.schematicItem > .text {
-    -fx-text-alignment: left;
-}
-
-.schematicInterface > .label > .text {
-    -fx-text-alignment: center;
-}
-
-.schematicFunction > .outline {
-    -fx-stroke: black;
-}
-
-.schematicFunction.external > .outline {
-    -fx-stroke-width: 2px;
-    -fx-stroke-dash-array: 12 2 4 2;
-}
-
-.schematicFunction > .text {
-    -fx-text-alignment: center;
-}
-
-.schematicFlow > .path {
-    -fx-fill: none;
-    -fx-stroke: black;
-}
-.schematicFlow > .text {
-    -fx-background-color: lightyellow;
-}
-
-.suggestion {
-    -fx-border-color: black;
+    /**
+     * Open the file for a given class, if it exists.
+     *
+     * @param clazz The class to open a file for
+     * @return The Buffered reader, or Optional.empty() if the file does not
+     * exist
+     * @throws java.io.IOException The file exists, but could not be opened.
+     */
+    public Optional<BufferedReader> open(Class<?> clazz) throws IOException;
 }

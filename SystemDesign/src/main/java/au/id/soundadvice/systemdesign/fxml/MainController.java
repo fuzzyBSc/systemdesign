@@ -34,9 +34,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
-import java.io.IOException;
 import java.net.URL;
-import java.util.EmptyStackException;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.fxml.FXML;
@@ -164,29 +162,20 @@ public class MainController implements Initializable {
             event.consume();
         });
         undoMenuItem.setOnAction(event -> {
-            edit.getUndo().undo();
+            edit.undo();
             event.consume();
         });
         redoMenuItem.setOnAction(event -> {
-            edit.getUndo().redo();
+            edit.redo();
             event.consume();
         });
 
         upMenuItem.setOnAction(event -> {
-            try {
-                edit.loadParent();
-            } catch (IOException ex) {
-            } finally {
-                event.consume();
-            }
+            interactions.navigateUp();
+            event.consume();
         });
         downMenuItem.setOnAction(event -> {
-            try {
-                edit.loadChild(edit.getLastChild());
-            } catch (IOException | EmptyStackException ex) {
-            } finally {
-                event.consume();
-            }
+            interactions.navigateDown(edit.getLastChild());
         });
 
         versionMenuController = new VersionMenuController(
@@ -201,8 +190,8 @@ public class MainController implements Initializable {
 
         @Override
         public void run() {
-            undoMenuItem.setDisable(!edit.getUndo().canUndo());
-            redoMenuItem.setDisable(!edit.getUndo().canRedo());
+            undoMenuItem.setDisable(!edit.canUndo());
+            redoMenuItem.setDisable(!edit.canRedo());
             Optional<Directory> dir = edit.getCurrentDirectory();
             upButton.setDisable(
                     !dir.isPresent()
