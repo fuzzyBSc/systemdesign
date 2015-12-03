@@ -158,8 +158,7 @@ public class FunctionViewAutoFix {
             while (it.hasNext()) {
                 Pair<Function, Optional<Function>> view = it.next();
 
-                allocated = FunctionView.create(
-                        allocated, view.getKey(), view.getValue(), FunctionView.defaultOrigin)
+                allocated = FunctionView.create(allocated, view.getKey(), view.getValue(), FunctionView.DEFAULT_ORIGIN)
                         .getBaseline();
             }
             state = state.setAllocated(allocated);

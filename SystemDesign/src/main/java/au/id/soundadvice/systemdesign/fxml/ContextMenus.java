@@ -30,7 +30,9 @@ import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
+import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
+import java.util.Optional;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 
@@ -99,12 +101,23 @@ public class ContextMenus {
         return contextMenu;
     }
 
-    public static ContextMenu functionContextMenu(Item item, Function function, Interactions interactions, EditState edit) {
+    public static ContextMenu functionContextMenu(
+            Item item,
+            Optional<Function> drawing, Function function, FunctionView view,
+            Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         if (function.isExternal()) {
             MenuItem deleteMenuItem = new MenuItem("Delete External Function");
             deleteMenuItem.setOnAction(event -> {
                 edit.updateAllocated(baseline -> function.removeFrom(baseline));
+                event.consume();
+            });
+            contextMenu.getItems().add(deleteMenuItem);
+        } else if (drawing.isPresent()
+                && !function.isTracedTo(drawing.get())) {
+            MenuItem deleteMenuItem = new MenuItem("Delete View");
+            deleteMenuItem.setOnAction(event -> {
+                edit.updateAllocated(baseline -> view.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);

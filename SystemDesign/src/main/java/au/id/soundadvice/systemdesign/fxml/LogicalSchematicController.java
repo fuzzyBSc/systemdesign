@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.fxml;
@@ -35,6 +35,7 @@ import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
+import au.id.soundadvice.systemdesign.fxml.DropHandlers.LogicalSchematicBackgroundDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
@@ -70,7 +71,7 @@ import javafx.scene.shape.Polygon;
  */
 class LogicalSchematicController {
 
-    private static final double root2 = Math.sqrt(2);
+    private static final double SQRT2 = Math.sqrt(2);
 
     private final EditState edit;
     private final Interactions interactions;
@@ -132,20 +133,29 @@ class LogicalSchematicController {
             // Calculate the relevant radii of the ellipse while maintaining
             // aspect ratio.
             // Thanks: http://stackoverflow.com/questions/433371/ellipse-bounding-a-rectangle
-            ellipse.setRadiusX((halfWidth + insets) * root2);
-            ellipse.setRadiusY((halfHeight + insets) * root2);
+            ellipse.setRadiusX((halfWidth + insets) * SQRT2);
+            ellipse.setRadiusY((halfHeight + insets) * SQRT2);
         });
 
         Group group = new Group(ellipse, label);
         group.getStyleClass().add("schematicFunction");
         if (function.isExternal()) {
             group.getStyleClass().add("external");
+        } else if (parentFunction.isPresent()
+                && !function.isTracedTo(this.parentFunction.get())) {
+            /**
+             * Is this an external view (as opposed to an external function)? An
+             * external view is one that is internal to the system of interest,
+             * but is traced to a parent function other than this drawing's
+             * parent function.
+             */
+            group.getStyleClass().add("viewExternal");
         }
         group.setLayoutX(functionView.getOrigin().getX());
         group.setLayoutY(functionView.getOrigin().getY());
 
         ContextMenu contextMenu = ContextMenus.functionContextMenu(
-                item, function, interactions, edit);
+                item, parentFunction, function, functionView, interactions, edit);
         label.setContextMenu(contextMenu);
 
         if (!function.isExternal()) {
@@ -297,8 +307,20 @@ class LogicalSchematicController {
                         right = tmp;
                     }
                 }
-                Node node = toNode(allocated, left, right, entry.getValue());
-                pane.getChildren().add(node);
+                Function leftFunction = left.getFunction().getTarget(allocated.getContext());
+                Function rightFunction = right.getFunction().getTarget(allocated.getContext());
+                boolean leftExternal = leftFunction.isExternal();
+                boolean rightExternal = rightFunction.isExternal();
+                if (parentFunction.isPresent()) {
+                    leftExternal = leftExternal || !leftFunction.isTracedTo(this.parentFunction.get());
+                    rightExternal = rightExternal || !rightFunction.isTracedTo(this.parentFunction.get());
+                }
+                if (leftExternal && rightExternal) {
+                    // This flow is entirely external to the diagram.
+                } else {
+                    Node node = toNode(allocated, left, right, entry.getValue());
+                    pane.getChildren().add(node);
+                }
             }
         });
         drawingFunctionViews.values().forEach(functionView -> {
@@ -316,6 +338,11 @@ class LogicalSchematicController {
                     new FunctionDropHandler(interactions, edit));
             pane.getChildren().add(node);
         });
+        if (parentFunction.isPresent()) {
+            DragTarget.bind(edit, pane, parentFunction.get(),
+                    new LogicalSchematicBackgroundDropHandler(edit)
+            );
+        }
         ScrollPane scrollPane = new ScrollPane(pane);
         scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
             pane.setMinWidth(bounds.getWidth());

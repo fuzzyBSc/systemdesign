@@ -60,6 +60,12 @@
     -fx-stroke: black;
 }
 
+.schematicFunction.viewExternal > .outline {
+    -fx-stroke: grey;
+    -fx-stroke-width: 3px;
+    -fx-stroke-dash-array: 12 2 4 2;
+}
+
 .schematicFunction.external > .outline {
     -fx-stroke-width: 2px;
     -fx-stroke-dash-array: 12 2 4 2;

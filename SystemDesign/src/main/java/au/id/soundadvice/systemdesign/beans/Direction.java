@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,14 +21,14 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.beans;
 
-import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Set;
+import java.util.stream.Stream;
+import javax.annotation.CheckReturnValue;
 
 /**
  * A set of Normal and Reverse directions, but as an enum for easy serialisation
@@ -56,15 +56,15 @@ public enum Direction {
      */
     Both;
 
-    public Set<Direction> asSet() {
+    public Stream<Direction> stream() {
         switch (this) {
             case None:
-                return Collections.emptySet();
+                return Stream.empty();
             case Normal:
             case Reverse:
-                return EnumSet.of(this);
+                return Stream.of(this);
             case Both:
-                return EnumSet.of(Normal, Reverse);
+                return Stream.of(Normal, Reverse);
             default:
                 throw new AssertionError(this.name());
 
@@ -80,15 +80,14 @@ public enum Direction {
             } else {
                 return Normal;
             }
+        } else if (set.contains(Reverse)) {
+            return Reverse;
         } else {
-            if (set.contains(Reverse)) {
-                return Reverse;
-            } else {
-                return None;
-            }
+            return None;
         }
     }
 
+    @CheckReturnValue
     public Direction reverse() {
         switch (this) {
             case Normal:
@@ -103,6 +102,7 @@ public enum Direction {
         }
     }
 
+    @CheckReturnValue
     public Direction add(Direction other) {
         switch (this) {
             case None:
@@ -121,6 +121,7 @@ public enum Direction {
         }
     }
 
+    @CheckReturnValue
     public Direction remove(Direction other) {
         switch (other) {
             case Both:

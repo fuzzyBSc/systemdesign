@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
@@ -60,7 +60,7 @@ public class FunctionConsistency {
             Baseline baseline, Function forFunction, Interface forInterface) {
         return forFunction.findFlows(baseline)
                 .filter(flow -> forInterface.getUuid().equals(
-                                flow.getInterface().getUuid()));
+                        flow.getInterface().getUuid()));
     }
 
     public static UndoState flowDown(UndoState state, Function parentFunction) {
@@ -98,10 +98,11 @@ public class FunctionConsistency {
                 .flatMap(parentFunction -> {
                     Optional<Function> childFunction = problemAllocated.get(parentFunction);
                     if (childFunction.isPresent()) {
-                        Stream<Problem> consistency;
-                        if (!childFunction.get().isConsistent(parentFunction)) {
+                        if (childFunction.get().isConsistent(parentFunction)) {
+                            return Stream.empty();
+                        } else {
                             String name = parentFunction.getName();
-                            consistency = Stream.of(
+                            return Stream.of(
                                     new Problem(
                                             name + " differs between baselines", Stream.of(
                                                     UpdateSolution.updateAllocated(
@@ -114,34 +115,29 @@ public class FunctionConsistency {
                                                             functional -> parentFunction.makeConsistent(
                                                                     functional, childFunction.get())
                                                             .getBaseline()))));
-                        } else {
-                            consistency = Stream.empty();
                         }
-                        Stream<Problem> flows = FlowConsistency.checkConsistency(
-                                state, iface, parentFunction);
-                        return Stream.concat(consistency, flows);
                     } else {
                         String name = parentFunction.getName();
                         String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in\n" + parentId, Stream.of(
-                                                UpdateSolution.update("Flow down",
-                                                        solutionState -> flowDown(solutionState, parentFunction)),
-                                                UpdateSolution.update("Flow up", solutionState -> {
-                                                    Optional<Item> systemOfInterest = state.getSystemOfInterest();
-                                                    if (!systemOfInterest.isPresent()) {
-                                                        return solutionState;
-                                                    }
-                                                    Baseline solutionFunctional = solutionState.getFunctional();
-                                                    Stream<Flow> toDelete = getFlowsOnInterface(
-                                                            solutionFunctional, parentFunction, iface);
-                                                    Iterator<Flow> it = toDelete.iterator();
-                                                    while (it.hasNext()) {
-                                                        Flow flow = it.next();
-                                                        solutionFunctional = flow.removeFrom(solutionFunctional);
-                                                    }
-                                                    return solutionState.setFunctional(solutionFunctional);
-                                                }))));
+                                name + " is missing in\n" + parentId, Stream.of(
+                                        UpdateSolution.update("Flow down",
+                                                solutionState -> flowDown(solutionState, parentFunction)),
+                                        UpdateSolution.update("Flow up", solutionState -> {
+                                            Optional<Item> systemOfInterest = state.getSystemOfInterest();
+                                            if (!systemOfInterest.isPresent()) {
+                                                return solutionState;
+                                            }
+                                            Baseline solutionFunctional = solutionState.getFunctional();
+                                            Stream<Flow> toDelete = getFlowsOnInterface(
+                                                    solutionFunctional, parentFunction, iface);
+                                            Iterator<Flow> it = toDelete.iterator();
+                                            while (it.hasNext()) {
+                                                Flow flow = it.next();
+                                                solutionFunctional = flow.removeFrom(solutionFunctional);
+                                            }
+                                            return solutionState.setFunctional(solutionFunctional);
+                                        }))));
                     }
                 });
     }
@@ -169,18 +165,16 @@ public class FunctionConsistency {
         return allocatedExternalItem.findOwnedFunctions(problemAllocated)
                 .filter(allocatedExternalFunction -> {
                     return allocatedExternalFunction.isExternal()
-                    && !Function.getSystemFunctionsForExternalFunction(
-                            state, allocatedExternalFunction).findAny().isPresent();
+                            && !Function.getSystemFunctionsForExternalFunction(
+                                    state, allocatedExternalFunction).findAny().isPresent();
                 })
                 .flatMap(allocatedExternalFunction -> {
                     String name = allocatedExternalFunction.getName();
                     if (problemFunctional.get(allocatedExternalFunction).isPresent()) {
                         /*
-                         * The parent instance exists, just no flows. Hand off
-                         * to FlowConsistency.
+                         * The parent instance exists, just no flows.
                          */
-                        return FlowConsistency.checkConsistency(
-                                state, functionalInterface, allocatedExternalFunction);
+                        return Stream.empty();
                     } else {
                         /*
                          * The parent instance of the external function doesn't
@@ -188,11 +182,11 @@ public class FunctionConsistency {
                          */
                         String parentId = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                        name + " is missing in\n" + parentId, Stream.of(
-                                                UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                                        -> allocatedExternalFunction.removeFrom(solutionAllocated)
-                                                ),
-                                                DisabledSolution.FlowUp)));
+                                name + " is missing in\n" + parentId, Stream.of(
+                                        UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                                -> allocatedExternalFunction.removeFrom(solutionAllocated)
+                                        ),
+                                        DisabledSolution.FlowUp)));
                     }
 
                 });

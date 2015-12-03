@@ -403,4 +403,12 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
     public Stream<ItemView> findViews(Baseline baseline) {
         return baseline.getReverse(uuid, ItemView.class);
     }
+
+    public Optional<Item> getTrace(UndoState state) {
+        if (external) {
+            return state.getFunctional().get(this);
+        } else {
+            return state.getSystemOfInterest();
+        }
+    }
 }

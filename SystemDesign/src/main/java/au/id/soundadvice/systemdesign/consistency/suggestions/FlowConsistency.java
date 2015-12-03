@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
@@ -31,17 +31,21 @@ import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
+import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
-import java.util.AbstractMap.SimpleImmutableEntry;
+import au.id.soundadvice.systemdesign.model.Scope;
+import au.id.soundadvice.systemdesign.state.EditState;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
+import java.util.Set;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,161 +53,289 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FlowConsistency {
+public class FlowConsistency implements ProblemFactory {
 
-    private static Map<Function, Map<FlowType, Direction>> getFlowTypes(
-            Baseline baseline, Function fromFunction, Stream<Flow> flows, UnaryOperator<Optional<Function>> functionFixer) {
-        return flows
-                .filter(flow -> flow.hasEnd(fromFunction))
-                .collect(Collectors.groupingBy(
-                                flow -> functionFixer.apply(Optional.of(flow.otherEnd(baseline, fromFunction))),
-                                Collectors.groupingBy(
-                                        flow -> flow.getType().getTarget(baseline.getContext()),
-                                        Collectors.mapping(
-                                                flow -> flow.getDirectionFrom(fromFunction),
-                                                Collectors.collectingAndThen(
-                                                        Collectors.toSet(),
-                                                        Direction::valueOf
-                                                )))))
-                .entrySet().stream()
-                .filter(entry -> entry.getKey().isPresent())
-                .collect(Collectors.toMap(entry -> entry.getKey().get(), Map.Entry::getValue));
-    }
+    private static class FlowDirectionSummary {
 
-    private static Stream<Map.Entry<FlowType, Direction>> getDifferenceByType(
-            Map<FlowType, Direction> subtractFrom,
-            Map<FlowType, Direction> toSubtract) {
-        return subtractFrom.entrySet().stream()
-                .map(entry -> {
-                    Direction toSubtractDirection
-                    = toSubtract.get(entry.getKey());
-                    if (toSubtractDirection == null) {
-                        return entry;
-                    } else {
-                        return new SimpleImmutableEntry<>(entry.getKey(),
-                                entry.getValue().remove(toSubtractDirection));
-                    }
-                })
-                .filter(entry -> entry.getValue() != Direction.None);
-    }
+        @Override
+        public String toString() {
+            return "FlowDirectionSummary{" + "scope=" + scope + ", type=" + type + ", direction=" + direction + '}';
+        }
 
-    private static Stream<Map.Entry<Function, Stream<Map.Entry<FlowType, Direction>>>> getDifferenceByFunction(
-            Map<Function, Map<FlowType, Direction>> subtractFrom,
-            Map<Function, Map<FlowType, Direction>> toSubtract) {
-        return subtractFrom.entrySet().stream()
-                .map(entry -> {
-                    Map<FlowType, Direction> toSubtractByType
-                    = toSubtract.get(entry.getKey());
-                    if (toSubtractByType == null) {
-                        return new SimpleImmutableEntry<>(
-                                entry.getKey(), entry.getValue().entrySet().stream());
-                    } else {
-                        return new SimpleImmutableEntry<>(
-                                entry.getKey(), getDifferenceByType(
-                                        entry.getValue(), toSubtractByType));
-                    }
-                });
+        public FlowType getType() {
+            return type;
+        }
+
+        public Direction getDirection() {
+            return direction;
+        }
+
+        public Scope<Function> getScope() {
+            return scope;
+        }
+
+        public FlowDirectionSummary(Function left, Function right, FlowType type, Direction direction) {
+            this.scope = new Scope<>(left, right);
+            this.type = type;
+            this.direction = (left == scope.getLeft())
+                    ? direction : direction.reverse();
+        }
+
+        public FlowDirectionSummary(Scope<Function> scope, FlowType type, Direction direction) {
+            this.scope = scope;
+            this.type = type;
+            this.direction = direction;
+        }
+
+        public static FlowDirectionSummary reduceDirection(
+                FlowDirectionSummary left, FlowDirectionSummary right) {
+            if (left == null) {
+                return right;
+            } else if (right == null) {
+                return left;
+            } else {
+                assert left.scope.equals(right.scope);
+                assert left.type == right.type;
+                return new FlowDirectionSummary(
+                        left.scope.getLeft(), left.scope.getRight(),
+                        left.type, left.direction.add(right.direction));
+            }
+        }
+
+        public static Collector<FlowDirectionSummary, ?, Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>>> collector() {
+            return Collectors.groupingBy(
+                    FlowDirectionSummary::getScope,
+                    Collectors.groupingBy(
+                            FlowDirectionSummary::getType,
+                            Collectors.reducing(
+                                    null,
+                                    FlowDirectionSummary::reduceDirection)));
+        }
+
+        private final Scope<Function> scope;
+        private final FlowType type;
+        private final Direction direction;
     }
 
     /**
-     * Figure out whether external flows are consistent with the allocated
-     * baseline.
-     *
-     * @param state The undo buffer state to work from
-     * @param functionalInterface The interface in the functional baseline to
-     * scope the analysis to
-     * @param externalAllocatedFunction The external function in the allocated
-     * baseline to scope analysis to
-     * @return The list of problems identified
+     * Find the flow types and directions that exist in the functional baseline,
+     * do not exist in the allocated baseline, and for which all prerequisites
+     * exist in the allocated baseline.
      */
-    public static Stream<Problem> checkConsistency(
-            UndoState state, Interface functionalInterface,
-            Function externalAllocatedFunction) {
-        Optional<Item> system = state.getSystemOfInterest();
-        if (!system.isPresent()) {
-            return Stream.empty();
-        }
-        Baseline problemFunctional = state.getFunctional();
-        Baseline problemAllocated = state.getAllocated();
+    private static Stream<FlowDirectionSummary> canFlowDown(UndoState state) {
+        Baseline functionalBaseline = state.getFunctional();
+        Baseline allocatedBaseline = state.getAllocated();
+        Set<Scope<Item>> functionalInterfaceScopes = Interface.find(allocatedBaseline)
+                .flatMap(iface -> {
+                    Item allocatedLeftItem = iface.getLeft(allocatedBaseline);
+                    Item allocatedRightItem = iface.getRight(allocatedBaseline);
+                    // Translate into a functional baseline interface scope
+                    Optional<Item> functionalLeftItem = allocatedLeftItem.getTrace(state);
+                    Optional<Item> functionalRightItem = allocatedRightItem.getTrace(state);
+                    if (functionalLeftItem.isPresent() && functionalRightItem.isPresent()) {
+                        return Stream.of(new Scope<>(functionalLeftItem.get(), functionalRightItem.get()));
+                    } else {
+                        return Stream.empty();
+                    }
+                })
+                .collect(Collectors.toSet());
+        Set<Function> tracedFunctions = Function.find(allocatedBaseline)
+                .flatMap(allocatedFunction -> {
+                    Optional<Function> result = allocatedFunction.getTrace(functionalBaseline);
+                    return result.map(f -> Stream.of(f)).orElse(Stream.empty());
+                })
+                .collect(Collectors.toSet());
+        return Flow.find(functionalBaseline).flatMap(functionalBaselineFlow -> {
+            Function functionalLeft = functionalBaselineFlow.getLeft(functionalBaseline);
+            Function functionalRight = functionalBaselineFlow.getRight(functionalBaseline);
+            if (tracedFunctions.contains(functionalLeft)
+                    && tracedFunctions.contains(functionalRight)) {
+                /*
+                 * Only report flows whose functions have something tracing to
+                 * them from the allocated baseline. We still need to make sure
+                 * the interface exists
+                 */
+                Item functionalLeftItem = functionalLeft.getItem(functionalBaseline);
+                Item functionalRightItem = functionalRight.getItem(functionalBaseline);
+                Scope<Item> functionalInterfaceScope = new Scope<>(
+                        functionalLeftItem, functionalRightItem);
+                if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
+                    return Stream.of(new FlowDirectionSummary(
+                            functionalLeft, functionalRight,
+                            functionalBaselineFlow.getType(functionalBaseline),
+                            functionalBaselineFlow.getDirection()));
+                } else {
+                    return Stream.empty();
+                }
+            } else {
+                return Stream.empty();
+            }
+        });
+    }
 
-        // system function -> flow type -> flow direction from external function
-        Map<Function, Map<FlowType, Direction>> parentFlows = getFlowTypes(
-                problemFunctional,
-                externalAllocatedFunction,
-                functionalInterface.getFlows(problemFunctional)
-                .filter(flow -> flow.hasEnd(externalAllocatedFunction)),
-                t -> t);
-        Map<Function, Map<FlowType, Direction>> childFlows = getFlowTypes(
-                problemAllocated,
-                externalAllocatedFunction,
-                externalAllocatedFunction.findFlows(problemAllocated),
-                optionalFunction -> optionalFunction
-                .flatMap(function -> problemAllocated.get(function))
-                .flatMap(function -> function.getTrace(problemFunctional))
-        );
+    /**
+     * Find the flow types and directions that exist in the allocated baseline,
+     * do not exist in the functional baseline, and for which all prerequisites
+     * exist in the functional baseline.
+     */
+    private static Stream<FlowDirectionSummary> canFlowUp(UndoState state) {
+        Baseline functionalBaseline = state.getFunctional();
+        Baseline allocatedBaseline = state.getAllocated();
+        Set<Scope<Item>> functionalInterfaceScopes = Interface.find(functionalBaseline)
+                .map(iface -> iface.getScope(functionalBaseline))
+                .collect(Collectors.toSet());
+        return Flow.find(allocatedBaseline).flatMap(allocatedBaselineFlow -> {
+            Function allocatedLeft = allocatedBaselineFlow.getLeft(allocatedBaseline);
+            Function allocatedRight = allocatedBaselineFlow.getRight(allocatedBaseline);
+            Optional<Function> functionalLeft = allocatedLeft.getTrace(functionalBaseline);
+            Optional<Function> functionalRight = allocatedRight.getTrace(functionalBaseline);
 
-        Stream<Problem> missingFromParent = getDifferenceByFunction(childFlows, parentFlows)
-                .flatMap(byFunction -> {
-                    Function systemFunction = byFunction.getKey();
-                    return byFunction.getValue()
-                    .flatMap(byType -> {
-                        FlowType type = byType.getKey();
-                        Direction direction = byType.getValue();
-                        String description = getDescription(
-                                "Extra",
-                                externalAllocatedFunction.getDisplayName(problemAllocated),
-                                systemFunction.getDisplayName(problemFunctional),
-                                type, direction);
-                        return Stream.of(new Problem(description, Stream.of(
-                                                // Remove from all child functions
-                                                UpdateSolution.updateAllocated("Flow down",
-                                                        allocated -> {
-                                                            Iterator<Function> it = Function.find(allocated).iterator();
-                                                            while (it.hasNext()) {
-                                                                Function childFunction = it.next();
-                                                                allocated = removeFlowDirections(
-                                                                        allocated,
-                                                                        externalAllocatedFunction,
-                                                                        childFunction,
-                                                                        type, direction);
-                                                            }
-                                                            return allocated;
-                                                        }),
-                                                UpdateSolution.updateFunctional("Flow up", functional
-                                                        -> addFlowDirections(
-                                                                functional,
-                                                                externalAllocatedFunction,
-                                                                systemFunction,
-                                                                type, direction)))));
-                    });
+            if (functionalLeft.isPresent() && functionalRight.isPresent()
+                    && !functionalLeft.equals(functionalRight)) {
+                /*
+                 * Only report flows whose parent functions exist and are
+                 * distinct. We use the allocated baseline type as the type may
+                 * not be present in the functional baseline and we'll want to
+                 * offer an opportunity to flow it up. If it does exist in the
+                 * parent the parent should have the same UUID so this should
+                 * still work correctly.
+                 *
+                 * We still need to make sure the interface exists
+                 */
+                Item functionalLeftItem = functionalLeft.get().getItem(functionalBaseline);
+                Item functionalRightItem = functionalRight.get().getItem(functionalBaseline);
+                Scope<Item> functionalInterfaceScope = new Scope<>(functionalLeftItem, functionalRightItem);
+                if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
+                    return Stream.of(new FlowDirectionSummary(
+                            functionalLeft.get(), functionalRight.get(),
+                            allocatedBaselineFlow.getType(allocatedBaseline),
+                            allocatedBaselineFlow.getDirection()));
+                } else {
+                    return Stream.empty();
+                }
+            } else {
+                return Stream.empty();
+            }
+        });
+    }
+
+    @Override
+    public Stream<Problem> getProblems(EditState edit) {
+        return checkConsistency(edit.getState());
+    }
+
+    /**
+     * Search for missing flows in the allocated baseline.
+     *
+     * @param state
+     * @return
+     */
+    public static Stream<Problem> checkConsistency(UndoState state) {
+        Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates
+                = canFlowDown(state).collect(FlowDirectionSummary.collector());
+        Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates
+                = canFlowUp(state).collect(FlowDirectionSummary.collector());
+        return Stream.concat(
+                checkConsistencyDown(state, functionalBaselineCandidates, allocatedBaselineCandidates),
+                checkConsistencyUp(state, functionalBaselineCandidates, allocatedBaselineCandidates));
+    }
+
+    private static Stream<Problem> checkConsistencyDown(
+            UndoState state,
+            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
+            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
+        return functionalBaselineCandidates.entrySet().stream()
+                .flatMap(scopeEntry -> {
+                    Scope<Function> scope = scopeEntry.getKey();
+                    Map<FlowType, FlowDirectionSummary> functionalType = scopeEntry.getValue();
+                    Map<FlowType, FlowDirectionSummary> allocatedType
+                            = allocatedBaselineCandidates.getOrDefault(scope, Collections.emptyMap());
+                    return functionalType.entrySet().stream()
+                            .flatMap(typeEntry -> {
+                                FlowType type = typeEntry.getKey();
+                                FlowDirectionSummary functionalSummary = typeEntry.getValue();
+                                Optional<FlowDirectionSummary> allocatedSummary
+                                        = Optional.ofNullable(allocatedType.get(type));
+                                Direction missingDirections = functionalSummary.getDirection().remove(
+                                        allocatedSummary
+                                        .map(FlowDirectionSummary::getDirection)
+                                        .orElse(Direction.None));
+                                if (missingDirections == Direction.None) {
+                                    return Stream.empty();
+                                } else {
+                                    String description = getDescription(
+                                            "Missing",
+                                            functionalSummary.scope.getLeft()
+                                            .getDisplayName(state.getFunctional()),
+                                            functionalSummary.scope.getRight()
+                                            .getDisplayName(state.getFunctional()),
+                                            type, missingDirections);
+                                    return Stream.of(new Problem(description, Stream.of(
+                                            // We don't know which new child flows to add,
+                                            // so can't flow down
+                                            DisabledSolution.FlowDown,
+                                            UpdateSolution.update("Flow up",
+                                                    solutionState -> {
+                                                        FlowDirectionSummary toDelete = new FlowDirectionSummary(
+                                                                functionalSummary.scope, functionalSummary.type,
+                                                                missingDirections);
+                                                        return removeFunctionalFlowDirections(solutionState, toDelete);
+                                                    }))));
+                                }
+
+                            }
+                            );
                 });
+    }
 
-        Stream<Problem> missingFromChild = getDifferenceByFunction(parentFlows, childFlows)
-                .flatMap(byFunction -> {
-                    Function systemFunction = byFunction.getKey();
-                    return byFunction.getValue()
-                    .flatMap(byType -> {
-                        FlowType type = byType.getKey();
-                        Direction direction = byType.getValue();
-                        String description = getDescription(
-                                "Missing",
-                                externalAllocatedFunction.getDisplayName(problemAllocated),
-                                systemFunction.getDisplayName(problemFunctional),
-                                type, direction);
-                        return Stream.of(new Problem(description, Stream.of(
-                                                // We don't know which new child flows to add,
-                                                // so can't flow down
-                                                DisabledSolution.FlowDown,
-                                                UpdateSolution.updateFunctional("Flow up", solutionFunctional
-                                                        -> removeFlowDirections(
-                                                                solutionFunctional,
-                                                                externalAllocatedFunction,
-                                                                systemFunction,
-                                                                type, direction)))));
-                    });
+    private static Stream<Problem> checkConsistencyUp(
+            UndoState state,
+            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
+            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
+        return allocatedBaselineCandidates.entrySet().stream()
+                .flatMap(scopeEntry -> {
+                    Scope<Function> scope = scopeEntry.getKey();
+                    Map<FlowType, FlowDirectionSummary> allocatedType = scopeEntry.getValue();
+                    Map<FlowType, FlowDirectionSummary> functionalType
+                            = functionalBaselineCandidates.getOrDefault(scope, Collections.emptyMap());
+                    return allocatedType.entrySet().stream()
+                            .flatMap(typeEntry -> {
+                                FlowType type = typeEntry.getKey();
+                                FlowDirectionSummary allocatedSummary = typeEntry.getValue();
+                                Optional<FlowDirectionSummary> functionalSummary
+                                        = Optional.ofNullable(functionalType.get(type));
+                                Direction missingDirections = allocatedSummary.getDirection().remove(
+                                        functionalSummary
+                                        .map(FlowDirectionSummary::getDirection)
+                                        .orElse(Direction.None));
+                                if (missingDirections == Direction.None) {
+                                    return Stream.empty();
+                                } else {
+                                    String description = getDescription(
+                                            "Extra",
+                                            allocatedSummary.scope.getLeft()
+                                            .getDisplayName(state.getFunctional()),
+                                            allocatedSummary.scope.getRight()
+                                            .getDisplayName(state.getFunctional()),
+                                            type, missingDirections);
+                                    return Stream.of(new Problem(description, Stream.of(
+                                            UpdateSolution.update("Flow down",
+                                                    solutionState -> {
+                                                        FlowDirectionSummary toDelete = new FlowDirectionSummary(
+                                                                allocatedSummary.scope, allocatedSummary.type,
+                                                                missingDirections);
+                                                        return removeAllocatedFlowDirections(solutionState, toDelete);
+                                                    }),
+                                            UpdateSolution.update("Flow up",
+                                                    solutionState -> {
+                                                        FlowDirectionSummary toAdd = new FlowDirectionSummary(
+                                                                allocatedSummary.scope, allocatedSummary.type,
+                                                                missingDirections);
+                                                        return addFunctionalFlowDirections(solutionState, toAdd);
+                                                    }))));
+                                }
+                            });
                 });
-
-        return Stream.concat(missingFromParent, missingFromChild);
     }
 
     private static String getDescription(
@@ -232,37 +364,55 @@ public class FlowConsistency {
                 + "to " + to;
     }
 
-    private static Baseline addFlowDirections(
-            Baseline allocated,
-            Function leftSample, Function rightSample,
-            FlowType type, Direction directions) {
-        Optional<Function> left = allocated.get(leftSample);
-        Optional<Function> right = allocated.get(rightSample);
+    private static UndoState removeAllocatedFlowDirections(
+            UndoState state, FlowDirectionSummary summary) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        Iterator<Flow> it = Flow.find(allocated).iterator();
+        while (it.hasNext()) {
+            Flow flow = it.next();
+            Function left = flow.getLeft(allocated);
+            Function right = flow.getRight(allocated);
+            Optional<Function> leftTrace = left.getTrace(functional);
+            Optional<Function> rightTrace = right.getTrace(functional);
+            if (leftTrace.isPresent() && rightTrace.isPresent()) {
+                Scope<Function> traceScope = new Scope<>(leftTrace.get(), rightTrace.get());
+                if (traceScope.equals(summary.scope)) {
+                    allocated = Flow.remove(
+                            allocated,
+                            left, right,
+                            summary.type, summary.direction);
+                }
+            }
+        }
+        return state.setAllocated(allocated);
+    }
+
+    private static UndoState addFunctionalFlowDirections(
+            UndoState state, FlowDirectionSummary summary) {
+        Baseline functional = state.getFunctional();
+        Optional<Function> left = functional.get(summary.scope.getLeft());
+        Optional<Function> right = functional.get(summary.scope.getRight());
         if (left.isPresent() && right.isPresent()) {
-            return Flow.add(
-                    allocated,
+            functional = Flow.add(
+                    functional,
                     left.get(), right.get(),
-                    type,
-                    directions).getBaseline();
+                    summary.type,
+                    summary.direction).getBaseline();
+            return state.setFunctional(functional);
         } else {
-            return allocated;
+            return state;
         }
     }
 
-    private static Baseline removeFlowDirections(
-            Baseline allocated,
-            Function leftSample, Function rightSample,
-            FlowType type, Direction directions) {
-        Optional<Function> left = allocated.get(leftSample);
-        Optional<Function> right = allocated.get(rightSample);
-        if (left.isPresent() && right.isPresent()) {
-            return Flow.remove(
-                    allocated,
-                    left.get(), right.get(),
-                    type,
-                    directions);
-        } else {
-            return allocated;
-        }
+    private static UndoState removeFunctionalFlowDirections(
+            UndoState state, FlowDirectionSummary summary) {
+        Baseline functional = state.getFunctional();
+        functional = Flow.remove(
+                functional,
+                summary.scope.getLeft(), summary.scope.getRight(),
+                summary.type, summary.direction);
+        return state.setFunctional(functional);
     }
+
 }

@@ -170,8 +170,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         String name = find(baseline).parallel()
                 .map(Function::getName)
                 .collect(new UniqueName("New Function"));
-        return Function.create(
-                baseline, item, Optional.empty(), name, FunctionView.defaultOrigin);
+        return Function.create(baseline, item, Optional.empty(), name, FunctionView.DEFAULT_ORIGIN);
     }
 
     public static Stream<Function> getSystemFunctionsForExternalFunction(
@@ -222,7 +221,7 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
              */
             allocated = FunctionView.create(
                     allocated, newExternal, Optional.of(systemFunction),
-                    sampleView.map(FunctionView::getOrigin).orElse(FunctionView.defaultOrigin))
+                    sampleView.map(FunctionView::getOrigin).orElse(FunctionView.DEFAULT_ORIGIN))
                     .getBaseline();
         }
         return state.setAllocated(allocated).and(newExternal);
@@ -298,8 +297,26 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         return item;
     }
 
+    public Item getItem(Baseline baseline) {
+        return item.getTarget(baseline.getContext());
+    }
+
     public Optional<Function> getTrace(Baseline functionalBaseline) {
-        return this.trace.flatMap(traceUUID -> functionalBaseline.get(traceUUID, Function.class));
+        if (external) {
+            return functionalBaseline.get(this);
+        } else {
+            return this.trace.flatMap(
+                    traceUUID -> functionalBaseline.get(traceUUID, Function.class));
+        }
+    }
+
+    public Stream<Function> findDrawings(
+            Baseline functional, Baseline allocated) {
+        return findViews(allocated)
+                .flatMap(functionView -> {
+                    return functionView.getDrawing(functional)
+                            .map(Stream::of).orElse(Stream.empty());
+                });
     }
 
     public boolean isExternal() {
@@ -350,12 +367,12 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
         builder.append(')');
         return builder.toString();
     }
-    private static final ReferenceFinder<Function> finder
+    private static final ReferenceFinder<Function> FINDER
             = new ReferenceFinder<>(Function.class);
 
     @Override
     public Stream<Reference> getReferences() {
-        return finder.getReferences(this);
+        return FINDER.getReferences(this);
     }
 
     @CheckReturnValue
@@ -369,45 +386,32 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
     }
 
     @CheckReturnValue
-    public BaselineAnd<Function> setTrace(Baseline baseline, Function traceFunction) {
+    public BaselineAnd<Function> setTrace(Baseline baseline, Function newTraceFunction) {
         if (external) {
             // External functions don't have traces, just views
             return baseline.and(this);
         }
-        {
-            Iterator<Flow> toRemove = findFlows(baseline).iterator();
-            while (toRemove.hasNext()) {
-                Flow flow = toRemove.next();
-                baseline = flow.removeFrom(baseline);
-            }
+        if (trace.isPresent() && trace.get().equals(newTraceFunction.getUuid())) {
+            // No change
+            return baseline.and(this);
         }
-        Optional<FunctionView> sampleView = Optional.empty();
-        {
-            Iterator<FunctionView> toRemove = findViews(baseline).iterator();
-            while (toRemove.hasNext()) {
-                FunctionView view = toRemove.next();
-                // Preserve as sample
-                sampleView = Optional.of(view);
-                baseline = view.removeFrom(baseline);
-            }
-        }
+        // Replace ourselves within the baseline
         Function function = new Function(
                 uuid,
-                item.getUuid(), Optional.of(traceFunction.uuid),
+                item.getUuid(), Optional.of(newTraceFunction.getUuid()),
                 name, external);
         baseline = baseline.add(function);
-        // Also add the coresponding view
-        baseline = FunctionView.create(
-                baseline, function, Optional.of(traceFunction),
-                sampleView.map(FunctionView::getOrigin).orElse(FunctionView.defaultOrigin)
-        ).getBaseline();
+        /*
+         * We leave the old view behind to allow for manual deletion. Now ensure
+         * there is a view in the new drawing
+         */
+        baseline = FunctionView.create(baseline, function,
+                Optional.of(newTraceFunction),
+                FunctionView.DEFAULT_ORIGIN).getBaseline();
         return baseline.and(function);
     }
 
-    public Function asExternal(UUID allocateToParentFunction) {
-        return new Function(
-                uuid, item.getUuid(),
-                Optional.of(allocateToParentFunction),
-                name, true);
+    public boolean isTracedTo(Function parentFunction) {
+        return trace.isPresent() && trace.get().equals(parentFunction.uuid);
     }
 }

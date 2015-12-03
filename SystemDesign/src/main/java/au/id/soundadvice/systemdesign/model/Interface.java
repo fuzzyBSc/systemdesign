@@ -188,8 +188,16 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         return left;
     }
 
+    public Item getLeft(Baseline baseline) {
+        return left.getTarget(baseline.getContext());
+    }
+
     public Reference<Interface, Item> getRight() {
         return right;
+    }
+
+    public Item getRight(Baseline baseline) {
+        return right.getTarget(baseline.getContext());
     }
 
     private final UUID uuid;
