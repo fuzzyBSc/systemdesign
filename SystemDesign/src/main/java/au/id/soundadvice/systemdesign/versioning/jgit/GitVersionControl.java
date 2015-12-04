@@ -70,16 +70,20 @@ public class GitVersionControl implements VersionControl {
     private static final Logger LOG = Logger.getLogger(GitVersionControl.class.getName());
 
     public GitVersionControl(Path path) throws IOException {
-        // Cribbed from Git.open, but with findGitDir rather than setGitDir
-        // and extracting the location.
-        FS fs = FS.DETECTED;
-        RepositoryCache.FileKey key = RepositoryCache.FileKey.lenient(path.toFile(), fs);
-        RepositoryBuilder builder = new RepositoryBuilder()
-                .setFS(fs)
-                .findGitDir(key.getFile())
-                .setMustExist(true);
-        repositoryRoot = Paths.get(builder.getGitDir().getAbsolutePath()).getParent();
-        repo = new Git(builder.build());
+        try {
+            // Cribbed from Git.open, but with findGitDir rather than setGitDir
+            // and extracting the location.
+            FS fs = FS.DETECTED;
+            RepositoryCache.FileKey key = RepositoryCache.FileKey.lenient(path.toFile(), fs);
+            RepositoryBuilder builder = new RepositoryBuilder()
+                    .setFS(fs)
+                    .findGitDir(key.getFile())
+                    .setMustExist(true);
+            repositoryRoot = Paths.get(builder.getGitDir().getAbsolutePath()).getParent();
+            repo = new Git(builder.build());
+        } catch (RuntimeException ex) {
+            throw new IOException(ex);
+        }
     }
 
     private final Git repo;
