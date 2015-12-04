@@ -33,7 +33,13 @@ import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javafx.event.ActionEvent;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 
 /**
@@ -41,6 +47,33 @@ import javafx.scene.control.MenuItem;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class ContextMenus {
+
+    public static <T> void initPerInstanceSubmenu(
+            Menu menu,
+            Supplier<Stream<T>> supplier,
+            java.util.function.Function<T, String> stringifier,
+            BiConsumer<ActionEvent, T> action) {
+        MenuItem dummy = new MenuItem("dummy");
+        dummy.setVisible(false);
+        menu.getItems().add(dummy);
+        menu.setOnShowing(showEvent -> {
+            // Populate the menu
+            menu.getItems().clear();
+            menu.getItems().addAll(
+                    supplier.get()
+                    .map(instance -> {
+                        MenuItem menuItem = new MenuItem(stringifier.apply(instance));
+                        menuItem.setOnAction(actionEvent -> action.accept(actionEvent, instance));
+                        return menuItem;
+                    })
+                    .collect(Collectors.toList()));
+            if (menu.getItems().isEmpty()) {
+                MenuItem noItems = new MenuItem("None Found");
+                noItems.setDisable(true);
+                menu.getItems().add(noItems);
+            }
+        });
+    }
 
     public static ContextMenu itemContextMenu(Item item, Interactions interactions, EditState edit) {
 
@@ -55,7 +88,7 @@ public class ContextMenus {
         } else {
             MenuItem addMenuItem = new MenuItem("Add Function");
             addMenuItem.setOnAction(event -> {
-                interactions.addFunctionToItem(item);
+                interactions.addFunctionToItem(item, Optional.empty());
                 event.consume();
             });
             contextMenu.getItems().add(addMenuItem);

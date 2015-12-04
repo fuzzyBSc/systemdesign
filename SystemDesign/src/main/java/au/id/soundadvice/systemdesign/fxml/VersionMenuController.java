@@ -35,7 +35,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
@@ -65,29 +64,15 @@ public class VersionMenuController {
     private static void startMenu(
             EditState edit, Menu menu,
             Function<VersionControl, Stream<VersionInfo>> getter) {
-        // Insert dummy items into menus, otherwise showing event won't fire :(
-        MenuItem dummy = new MenuItem("dummy");
-        dummy.setVisible(false);
-        menu.getItems().add(dummy);
-
-        menu.addEventHandler(Menu.ON_SHOWING, e -> {
-            menu.getItems().clear();
-            menu.getItems().addAll(
-                    getter.apply(edit.getVersionControl())
-                    .map(versionInfo -> {
-                        MenuItem item = new MenuItem(versionInfo.getDescription());
-                        item.setOnAction(e2 -> {
-                            edit.setDiffVersion(Optional.of(versionInfo));
-                        });
-                        return item;
-                    })
-                    .collect(Collectors.toList()));
-            if (menu.getItems().isEmpty()) {
-                MenuItem notFound = new MenuItem("None Found");
-                notFound.setDisable(true);
-                menu.getItems().add(notFound);
-            }
-        });
+        ContextMenus.initPerInstanceSubmenu(
+                menu,
+                () -> getter.apply(edit.getVersionControl())
+                .sorted((a, b) -> -a.getTimestamp().compareTo(b.getTimestamp())),
+                VersionInfo::getDescription,
+                (e, versionInfo) -> {
+                    edit.setDiffVersion(Optional.of(versionInfo));
+                    e.consume();
+                });
     }
 
     public void start() {

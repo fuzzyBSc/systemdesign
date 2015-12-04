@@ -46,6 +46,7 @@ import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.EmptyStackException;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
@@ -133,7 +134,7 @@ public class Interactions {
         });
     }
 
-    void addFunctionToItem(Item item) {
+    void addFunctionToItem(Item item, Optional<Function> trace) {
         Optional<String> result;
         {
             // User interaction - read only
@@ -154,7 +155,7 @@ public class Interactions {
         }
         if (result.isPresent()) {
             edit.updateAllocated(baseline -> {
-                return Function.create(baseline, item, Optional.empty(), result.get(), FunctionView.DEFAULT_ORIGIN)
+                return Function.create(baseline, item, trace, result.get(), FunctionView.DEFAULT_ORIGIN)
                         .getBaseline();
             });
         }
@@ -560,6 +561,14 @@ public class Interactions {
             }
         } catch (IOException ex) {
             LOG.log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public void navigateDown() {
+        try {
+            navigateDown(edit.getLastChild());
+        } catch (EmptyStackException ex) {
+            // Nowhere to navigate down to
         }
     }
 

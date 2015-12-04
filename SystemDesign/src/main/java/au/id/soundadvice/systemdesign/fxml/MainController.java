@@ -141,7 +141,7 @@ public class MainController implements Initializable {
             event.consume();
         });
         downButton.setOnAction(event -> {
-            interactions.navigateDown(edit.getLastChild());
+            interactions.navigateDown();
             event.consume();
         });
 
@@ -175,7 +175,8 @@ public class MainController implements Initializable {
             event.consume();
         });
         downMenuItem.setOnAction(event -> {
-            interactions.navigateDown(edit.getLastChild());
+            interactions.navigateDown();
+            event.consume();
         });
 
         versionMenuController = new VersionMenuController(

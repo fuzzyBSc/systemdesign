@@ -38,7 +38,7 @@ import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.model.Scope;
+import au.id.soundadvice.systemdesign.model.RelationPair;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Collections;
 import java.util.Iterator;
@@ -70,18 +70,18 @@ public class FlowConsistency implements ProblemFactory {
             return direction;
         }
 
-        public Scope<Function> getScope() {
+        public RelationPair<Function> getScope() {
             return scope;
         }
 
         public FlowDirectionSummary(Function left, Function right, FlowType type, Direction direction) {
-            this.scope = new Scope<>(left, right);
+            this.scope = new RelationPair<>(left, right);
             this.type = type;
             this.direction = (left == scope.getLeft())
                     ? direction : direction.reverse();
         }
 
-        public FlowDirectionSummary(Scope<Function> scope, FlowType type, Direction direction) {
+        public FlowDirectionSummary(RelationPair<Function> scope, FlowType type, Direction direction) {
             this.scope = scope;
             this.type = type;
             this.direction = direction;
@@ -102,7 +102,7 @@ public class FlowConsistency implements ProblemFactory {
             }
         }
 
-        public static Collector<FlowDirectionSummary, ?, Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>>> collector() {
+        public static Collector<FlowDirectionSummary, ?, Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>>> collector() {
             return Collectors.groupingBy(
                     FlowDirectionSummary::getScope,
                     Collectors.groupingBy(
@@ -112,7 +112,7 @@ public class FlowConsistency implements ProblemFactory {
                                     FlowDirectionSummary::reduceDirection)));
         }
 
-        private final Scope<Function> scope;
+        private final RelationPair<Function> scope;
         private final FlowType type;
         private final Direction direction;
     }
@@ -125,7 +125,7 @@ public class FlowConsistency implements ProblemFactory {
     private static Stream<FlowDirectionSummary> canFlowDown(UndoState state) {
         Baseline functionalBaseline = state.getFunctional();
         Baseline allocatedBaseline = state.getAllocated();
-        Set<Scope<Item>> functionalInterfaceScopes = Interface.find(allocatedBaseline)
+        Set<RelationPair<Item>> functionalInterfaceScopes = Interface.find(allocatedBaseline)
                 .flatMap(iface -> {
                     Item allocatedLeftItem = iface.getLeft(allocatedBaseline);
                     Item allocatedRightItem = iface.getRight(allocatedBaseline);
@@ -133,7 +133,7 @@ public class FlowConsistency implements ProblemFactory {
                     Optional<Item> functionalLeftItem = allocatedLeftItem.getTrace(state);
                     Optional<Item> functionalRightItem = allocatedRightItem.getTrace(state);
                     if (functionalLeftItem.isPresent() && functionalRightItem.isPresent()) {
-                        return Stream.of(new Scope<>(functionalLeftItem.get(), functionalRightItem.get()));
+                        return Stream.of(new RelationPair<>(functionalLeftItem.get(), functionalRightItem.get()));
                     } else {
                         return Stream.empty();
                     }
@@ -157,7 +157,7 @@ public class FlowConsistency implements ProblemFactory {
                  */
                 Item functionalLeftItem = functionalLeft.getItem(functionalBaseline);
                 Item functionalRightItem = functionalRight.getItem(functionalBaseline);
-                Scope<Item> functionalInterfaceScope = new Scope<>(
+                RelationPair<Item> functionalInterfaceScope = new RelationPair<>(
                         functionalLeftItem, functionalRightItem);
                 if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
                     return Stream.of(new FlowDirectionSummary(
@@ -181,8 +181,8 @@ public class FlowConsistency implements ProblemFactory {
     private static Stream<FlowDirectionSummary> canFlowUp(UndoState state) {
         Baseline functionalBaseline = state.getFunctional();
         Baseline allocatedBaseline = state.getAllocated();
-        Set<Scope<Item>> functionalInterfaceScopes = Interface.find(functionalBaseline)
-                .map(iface -> iface.getScope(functionalBaseline))
+        Set<RelationPair<Item>> functionalInterfaceScopes = Interface.find(functionalBaseline)
+                .map(iface -> iface.getEndpoints(functionalBaseline))
                 .collect(Collectors.toSet());
         return Flow.find(allocatedBaseline).flatMap(allocatedBaselineFlow -> {
             Function allocatedLeft = allocatedBaselineFlow.getLeft(allocatedBaseline);
@@ -204,7 +204,7 @@ public class FlowConsistency implements ProblemFactory {
                  */
                 Item functionalLeftItem = functionalLeft.get().getItem(functionalBaseline);
                 Item functionalRightItem = functionalRight.get().getItem(functionalBaseline);
-                Scope<Item> functionalInterfaceScope = new Scope<>(functionalLeftItem, functionalRightItem);
+                RelationPair<Item> functionalInterfaceScope = new RelationPair<>(functionalLeftItem, functionalRightItem);
                 if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
                     return Stream.of(new FlowDirectionSummary(
                             functionalLeft.get(), functionalRight.get(),
@@ -231,9 +231,9 @@ public class FlowConsistency implements ProblemFactory {
      * @return
      */
     public static Stream<Problem> checkConsistency(UndoState state) {
-        Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates
+        Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates
                 = canFlowDown(state).collect(FlowDirectionSummary.collector());
-        Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates
+        Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates
                 = canFlowUp(state).collect(FlowDirectionSummary.collector());
         return Stream.concat(
                 checkConsistencyDown(state, functionalBaselineCandidates, allocatedBaselineCandidates),
@@ -242,11 +242,11 @@ public class FlowConsistency implements ProblemFactory {
 
     private static Stream<Problem> checkConsistencyDown(
             UndoState state,
-            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
-            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
+            Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
+            Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
         return functionalBaselineCandidates.entrySet().stream()
                 .flatMap(scopeEntry -> {
-                    Scope<Function> scope = scopeEntry.getKey();
+                    RelationPair<Function> scope = scopeEntry.getKey();
                     Map<FlowType, FlowDirectionSummary> functionalType = scopeEntry.getValue();
                     Map<FlowType, FlowDirectionSummary> allocatedType
                             = allocatedBaselineCandidates.getOrDefault(scope, Collections.emptyMap());
@@ -290,11 +290,11 @@ public class FlowConsistency implements ProblemFactory {
 
     private static Stream<Problem> checkConsistencyUp(
             UndoState state,
-            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
-            Map<Scope<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
+            Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates,
+            Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates) {
         return allocatedBaselineCandidates.entrySet().stream()
                 .flatMap(scopeEntry -> {
-                    Scope<Function> scope = scopeEntry.getKey();
+                    RelationPair<Function> scope = scopeEntry.getKey();
                     Map<FlowType, FlowDirectionSummary> allocatedType = scopeEntry.getValue();
                     Map<FlowType, FlowDirectionSummary> functionalType
                             = functionalBaselineCandidates.getOrDefault(scope, Collections.emptyMap());
@@ -376,7 +376,7 @@ public class FlowConsistency implements ProblemFactory {
             Optional<Function> leftTrace = left.getTrace(functional);
             Optional<Function> rightTrace = right.getTrace(functional);
             if (leftTrace.isPresent() && rightTrace.isPresent()) {
-                Scope<Function> traceScope = new Scope<>(leftTrace.get(), rightTrace.get());
+                RelationPair<Function> traceScope = new RelationPair<>(leftTrace.get(), rightTrace.get());
                 if (traceScope.equals(summary.scope)) {
                     allocated = Flow.remove(
                             allocated,

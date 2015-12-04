@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
@@ -33,12 +34,10 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.model.Flow;
-import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
-import au.id.soundadvice.systemdesign.model.Scope;
-import au.id.soundadvice.systemdesign.model.UndirectedPair;
+import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -49,7 +48,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.scene.control.TabPane;
-import javafx.util.Pair;
 
 /**
  *
@@ -76,6 +74,31 @@ public class LogicalTabs {
     private final Interactions interactions;
     private final EditState edit;
     private final TabPane tabs;
+
+    private static final class FlowInfo {
+
+        public Optional<Function> getDrawing() {
+            return drawing;
+        }
+
+        public RelationPair<FunctionView> getViews() {
+            return views;
+        }
+
+        public Flow getFlow() {
+            return flow;
+        }
+
+        public FlowInfo(Optional<Function> drawing, RelationPair<FunctionView> views, Flow flow) {
+            this.drawing = drawing;
+            this.views = views;
+            this.flow = flow;
+        }
+
+        Optional<Function> drawing;
+        RelationPair<FunctionView> views;
+        Flow flow;
+    }
 
     private class OnChange implements Runnable {
 
@@ -125,36 +148,40 @@ public class LogicalTabs {
                 }
             }
 
-            // Obtain the flows for each connection scope, ignoring direction
-            Map<Scope<Function>, List<Flow>> flows = Flow.find(allocated).parallel()
-                    .sorted((left, right) -> {
-                        FlowType leftType = left.getType().getTarget(allocated.getContext());
-                        FlowType rightType = right.getType().getTarget(allocated.getContext());
-                        return leftType.getName().compareTo(rightType.getName());
-                    })
-                    .collect(Collectors.groupingBy(flow -> flow.getScope(allocated)));
-            Map<UndirectedPair, List<Flow>> flowsForViews = flows.entrySet().parallelStream()
-                    .flatMap(entry -> {
-                        List<FunctionView> leftViews
-                                = entry.getKey().getLeft().findViews(allocated)
+            Map<Optional<Function>, Map<RelationPair<FunctionView>, List<Flow>>> flowsPerDiagram
+                    = Flow.find(allocated)
+                    .flatMap(flow -> {
+                        RelationPair<Function> functions = flow.getEndpoints(allocated)
+                                .setDirection(Direction.None);
+                        // Build up cross-product of left and right views
+                        List<FunctionView> leftViews = functions.getLeft().findViews(allocated)
                                 .collect(Collectors.toList());
-                        List<FunctionView> rightViews
-                                = entry.getKey().getRight().findViews(allocated)
+                        List<FunctionView> rightViews = functions.getRight().findViews(allocated)
                                 .collect(Collectors.toList());
-                        // Build up the cross-product of leftViews and right views
-                        return leftViews.parallelStream()
+                        return leftViews.stream()
                                 .flatMap(leftView -> {
-                                    return rightViews.parallelStream()
+                                    return rightViews.stream()
                                             .flatMap(rightView -> {
-                                                return Stream.of(new Pair<>(
-                                                        new UndirectedPair(
-                                                                leftView.getUuid(),
-                                                                rightView.getUuid()),
-                                                        entry.getValue()));
+                                                /*
+                                                 * Only include flow if
+                                                 * rightView and leftView appear
+                                                 * on the same drawing.
+                                                 */
+                                                Optional<Function> leftDrawing = leftView.getDrawing(functional);
+                                                if (rightView.getDrawing(functional).equals(leftDrawing)) {
+                                                    return Stream.of(new FlowInfo(
+                                                            leftDrawing, new RelationPair<>(leftView, rightView), flow));
+                                                } else {
+                                                    return Stream.empty();
+                                                }
                                             });
                                 });
                     })
-                    .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+                    .collect(Collectors.groupingBy(
+                            FlowInfo::getDrawing,
+                            Collectors.groupingBy(FlowInfo::getViews,
+                                    Collectors.mapping(FlowInfo::getFlow,
+                                            Collectors.toList()))));
 
             // Divide up all function views between the various controllers
             Map<Optional<Function>, List<FunctionView>> perDrawingFunctionViews
@@ -165,10 +192,12 @@ public class LogicalTabs {
                         Optional<LogicalSchematicController> controller
                                 = Optional.ofNullable(controllers.get(entry.getKey()));
                         if (controller.isPresent()) {
-                            Map<UUID, FunctionView> childFunctions = entry.getValue().parallelStream()
+                            Map<UUID, FunctionView> functionViews = entry.getValue().parallelStream()
                                     .collect(Identifiable.toMap());
+                            Map<RelationPair<FunctionView>, List<Flow>> flows
+                                    = flowsPerDiagram.getOrDefault(entry.getKey(), Collections.emptyMap());
                             controller.get().populate(
-                                    allocated, childFunctions, flowsForViews);
+                                    allocated, functionViews, flows);
                         } else {
                             /*
                              * This is an unallocated function in an allocated
@@ -184,7 +213,7 @@ public class LogicalTabs {
                     .forEach(entry -> {
                         // Clear any controllers whose function list is now empty
                         entry.getValue().populate(
-                                allocated, Collections.emptyMap(), flowsForViews);
+                                allocated, Collections.emptyMap(), Collections.emptyMap());
                     });
         }
     }

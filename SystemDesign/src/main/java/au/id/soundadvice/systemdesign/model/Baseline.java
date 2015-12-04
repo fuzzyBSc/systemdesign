@@ -331,7 +331,7 @@ public class Baseline {
     /**
      * Expose interface finding based on UUIDs for package-private use.
      */
-    Optional<Interface> getInterface(UndirectedPair scope) {
+    Optional<Interface> getInterface(UUIDPair scope) {
         return store.getReverse(scope.getLeft(), Interface.class).parallel()
                 .filter(iface
                         -> scope.getLeft().equals(iface.getLeft().getUuid())
@@ -343,7 +343,7 @@ public class Baseline {
     /**
      * Expose flow finding based on UUIDs for package-private use.
      */
-    Optional<Flow> getFlow(UndirectedPair functions, UUID type) {
+    Optional<Flow> getFlow(UUIDPair functions, UUID type) {
         return store.getReverse(functions.getLeft(), Flow.class).parallel()
                 .filter(candidate -> {
                     return functions.getRight().equals(candidate.getRight().getUuid())

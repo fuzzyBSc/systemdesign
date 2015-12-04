@@ -334,12 +334,12 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         return this.toString();
     }
 
-    private static final ReferenceFinder<Item> finder
+    private static final ReferenceFinder<Item> FINDER
             = new ReferenceFinder<>(Item.class);
 
     @Override
     public Stream<Reference> getReferences() {
-        return finder.getReferences(this);
+        return FINDER.getReferences(this);
     }
 
     private Item(

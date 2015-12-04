@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,36 +21,36 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
 
 import au.id.soundadvice.systemdesign.beans.Direction;
+import au.id.soundadvice.systemdesign.relation.Relation;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.Optional;
 import javax.annotation.CheckReturnValue;
 
 /**
- * An ordered pair of UUID, useful for describing the scope of a connection
- * between other relations. There should be at most one Interface matching any
- * given ConnectionScope.
+ * A pair class identifying the scope of a given connection.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ * @param <T> The contained type
  */
-public class DirectedPair {
+public class RelationPair<T extends Relation> {
 
     @Override
     public String toString() {
         switch (direction) {
             case None:
-                return "(none)";
+                return left + " -- " + right;
             case Normal:
                 return left + " -> " + right;
             case Reverse:
                 return right + " -> " + left;
             case Both:
-                return left + " -- " + right;
+                return left + " <-> " + right;
             default:
                 throw new AssertionError(direction.name());
         }
@@ -73,24 +73,24 @@ public class DirectedPair {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final DirectedPair other = (DirectedPair) obj;
+        final RelationPair<?> other = (RelationPair<?>) obj;
         if (!Objects.equals(this.left, other.left)) {
             return false;
         }
         if (!Objects.equals(this.right, other.right)) {
             return false;
         }
-        if (this.direction != other.direction) {
+        if (!Objects.equals(this.direction, other.direction)) {
             return false;
         }
         return true;
     }
 
-    public UUID getLeft() {
+    public T getLeft() {
         return left;
     }
 
-    public UUID getRight() {
+    public T getRight() {
         return right;
     }
 
@@ -98,7 +98,7 @@ public class DirectedPair {
         return direction;
     }
 
-    public Direction getDirectionFrom(UUID from) {
+    public Direction getDirectionFrom(T from) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return direction;
@@ -110,8 +110,24 @@ public class DirectedPair {
         }
     }
 
-    public DirectedPair(UUID left, UUID right, Direction direction) {
-        if (left.compareTo(right) < 0) {
+    public static <T extends Relation> Optional<RelationPair<T>> resolve(
+            Baseline baseline, UUIDPair scope, Class<T> type) {
+        Optional<T> left = baseline.get(scope.getLeft(), type);
+        Optional<T> right = baseline.get(scope.getRight(), type);
+        if (left.isPresent() && right.isPresent()) {
+            return Optional.of(new RelationPair<>(left.get(), right.get(), scope.getDirection()));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    public RelationPair(T left, T right) {
+        this(left, right, Direction.None);
+    }
+
+    public RelationPair(T left, T right, Direction direction) {
+        // Normalise ordering
+        if (left.getUuid().compareTo(right.getUuid()) < 0) {
             this.left = left;
             this.right = right;
             this.direction = direction;
@@ -123,21 +139,21 @@ public class DirectedPair {
         }
     }
 
-    private final UUID left;
-    private final UUID right;
+    private final T left;
+    private final T right;
     private final Direction direction;
 
     @CheckReturnValue
-    public DirectedPair setDirection(Direction value) {
+    public RelationPair<T> setDirection(Direction value) {
         if (direction == value) {
             return this;
         } else {
-            return new DirectedPair(left, right, value);
+            return new RelationPair<>(left, right, value);
         }
     }
 
     @CheckReturnValue
-    public DirectedPair setDirectionFrom(UUID from, Direction value) {
+    public RelationPair<T> setDirectionFrom(T from, Direction value) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return setDirection(value);
@@ -149,17 +165,17 @@ public class DirectedPair {
         }
     }
 
-    public UUID otherEnd(UUID uuid) throws IllegalArgumentException {
-        if (uuid.equals(left)) {
+    public T otherEnd(T t) throws IllegalArgumentException {
+        if (t.equals(left)) {
             return right;
-        } else if (uuid.equals(right)) {
+        } else if (t.equals(right)) {
             return left;
         } else {
-            throw new IllegalArgumentException(uuid + " is not in this scope");
+            throw new IllegalArgumentException(t + " is not in this scope");
         }
     }
 
-    public boolean hasEnd(UUID uuid) {
-        return uuid.equals(left) || uuid.equals(right);
+    public boolean hasEnd(T t) {
+        return t.equals(left) || t.equals(right);
     }
 }

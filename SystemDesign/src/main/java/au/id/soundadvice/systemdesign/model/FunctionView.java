@@ -130,6 +130,17 @@ public class FunctionView implements BeanFactory<Baseline, FunctionViewBean>, Re
         return function;
     }
 
+    public Function getFunction(Baseline baseline) {
+        return function.getTarget(baseline.getContext());
+    }
+
+    public boolean isDrawingDeleted(Baseline functionalBaseline) {
+        return this.drawing.map(
+                functionUUID -> functionalBaseline.get(functionUUID, Function.class).isPresent())
+                // The unallocated functions drawing can't be "deleted" per se
+                .orElse(false);
+    }
+
     public Optional<Function> getDrawing(Baseline functionalBaseline) {
         return this.drawing.flatMap(
                 functionUUID -> functionalBaseline.get(functionUUID, Function.class));

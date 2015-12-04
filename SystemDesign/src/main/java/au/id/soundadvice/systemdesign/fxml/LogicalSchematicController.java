@@ -44,21 +44,25 @@ import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
-import au.id.soundadvice.systemdesign.model.UndirectedPair;
+import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Arc;
@@ -286,41 +290,39 @@ class LogicalSchematicController {
     public void populate(
             Baseline allocated,
             Map<UUID, FunctionView> drawingFunctionViews,
-            Map<UndirectedPair, List<Flow>> flows) {
+            Map<RelationPair<FunctionView>, List<Flow>> flows) {
         Pane pane = new AnchorPane();
         flows.entrySet().forEach(entry -> {
-            FunctionView left = drawingFunctionViews.get(entry.getKey().getLeft());
-            FunctionView right = drawingFunctionViews.get(entry.getKey().getRight());
-            if (left != null && right != null) {
-                /*
-                 * The ordering of function view UUIDs and the ordering of the
-                 * function UUIDs may differ. This will affect the direction
-                 * drawn for the flows. We need to correct that here.
-                 */
-                {
-                    UUID leftFunctionUUID = left.getFunction().getUuid();
-                    UUID rightFunctionUUID = right.getFunction().getUuid();
-                    if (leftFunctionUUID.compareTo(rightFunctionUUID)
-                            != left.getUuid().compareTo(right.getUuid())) {
-                        FunctionView tmp = left;
-                        left = right;
-                        right = tmp;
-                    }
+            FunctionView left = entry.getKey().getLeft();
+            FunctionView right = entry.getKey().getRight();
+            /*
+             * The ordering of function view UUIDs and the ordering of the
+             * function UUIDs may differ. This will affect the direction drawn
+             * for the flows. We need to correct that here.
+             */
+            {
+                UUID leftFunctionUUID = left.getFunction().getUuid();
+                UUID rightFunctionUUID = right.getFunction().getUuid();
+                if (leftFunctionUUID.compareTo(rightFunctionUUID)
+                        != left.getUuid().compareTo(right.getUuid())) {
+                    FunctionView tmp = left;
+                    left = right;
+                    right = tmp;
                 }
-                Function leftFunction = left.getFunction().getTarget(allocated.getContext());
-                Function rightFunction = right.getFunction().getTarget(allocated.getContext());
-                boolean leftExternal = leftFunction.isExternal();
-                boolean rightExternal = rightFunction.isExternal();
-                if (parentFunction.isPresent()) {
-                    leftExternal = leftExternal || !leftFunction.isTracedTo(this.parentFunction.get());
-                    rightExternal = rightExternal || !rightFunction.isTracedTo(this.parentFunction.get());
-                }
-                if (leftExternal && rightExternal) {
-                    // This flow is entirely external to the diagram.
-                } else {
-                    Node node = toNode(allocated, left, right, entry.getValue());
-                    pane.getChildren().add(node);
-                }
+            }
+            Function leftFunction = left.getFunction().getTarget(allocated.getContext());
+            Function rightFunction = right.getFunction().getTarget(allocated.getContext());
+            boolean leftExternal = leftFunction.isExternal();
+            boolean rightExternal = rightFunction.isExternal();
+            if (parentFunction.isPresent()) {
+                leftExternal = leftExternal || !leftFunction.isTracedTo(this.parentFunction.get());
+                rightExternal = rightExternal || !rightFunction.isTracedTo(this.parentFunction.get());
+            }
+            if (leftExternal && rightExternal) {
+                // This flow is entirely external to the diagram.
+            } else {
+                Node node = toNode(allocated, left, right, entry.getValue());
+                pane.getChildren().add(node);
             }
         });
         drawingFunctionViews.values().forEach(functionView -> {
@@ -343,6 +345,33 @@ class LogicalSchematicController {
                     new LogicalSchematicBackgroundDropHandler(edit)
             );
         }
+
+        ContextMenu contextMenu = new ContextMenu();
+        AtomicReference<Optional<ContextMenuEvent>> lastContextMenuClick
+                = new AtomicReference<>(Optional.empty());
+        Menu addMenuItem = new Menu("Add Function to...");
+        ContextMenus.initPerInstanceSubmenu(
+                addMenuItem,
+                () -> Item.find(edit.getAllocated())
+                .filter(item -> !item.isExternal())
+                .sorted((a, b) -> a.getShortId().compareTo(b.getShortId())),
+                Item::getDisplayName,
+                (e, item) -> {
+                    Point2D origin = lastContextMenuClick.get()
+                    .map(evt -> new Point2D(evt.getX(), evt.getY()))
+                    .orElse(ItemView.defaultOrigin);
+                    interactions.addFunctionToItem(item, parentFunction);
+                });
+        contextMenu.getItems().add(addMenuItem);
+        pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
+            lastContextMenuClick.set(Optional.of(event));
+            contextMenu.show(pane, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+        pane.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            contextMenu.hide();
+        });
+
         ScrollPane scrollPane = new ScrollPane(pane);
         scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
             pane.setMinWidth(bounds.getWidth());

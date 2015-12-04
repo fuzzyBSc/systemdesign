@@ -122,7 +122,7 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
         }
 
         Optional<Flow> existing = baseline.getFlow(
-                new UndirectedPair(left.getUuid(), right.getUuid()),
+                new UUIDPair(left.getUuid(), right.getUuid()),
                 flowType.getUuid());
         if (existing.isPresent()) {
             Flow flow = existing.get();
@@ -139,7 +139,7 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
             Flow flow = new Flow(
                     UUID.randomUUID(),
                     iface.getUuid(),
-                    new DirectedPair(left.getUuid(), right.getUuid(), direction),
+                    new UUIDPair(left.getUuid(), right.getUuid(), direction),
                     flowType.getUuid());
             return baseline.add(flow).and(flow);
         }
@@ -154,7 +154,7 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
     public static Baseline remove(
             Baseline baseline, Function left, Function right, FlowType type, Direction direction) {
         Optional<Flow> existing = baseline.getFlow(
-                new UndirectedPair(left.getUuid(), right.getUuid()), type.getUuid());
+                new UUIDPair(left.getUuid(), right.getUuid()), type.getUuid());
         if (existing.isPresent()) {
             Flow existingFlow = existing.get();
             Direction current = existingFlow.getDirectionFrom(left);
@@ -223,11 +223,11 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
     public Flow(FlowBean bean) {
         this(bean.getUuid(),
                 bean.getInterface(),
-                new DirectedPair(bean.getLeft(), bean.getRight(), bean.getDirection()),
+                new UUIDPair(bean.getLeft(), bean.getRight(), bean.getDirection()),
                 bean.getTypeUUID());
     }
 
-    private Flow(UUID uuid, UUID iface, DirectedPair flowScope, UUID type) {
+    private Flow(UUID uuid, UUID iface, UUIDPair flowScope, UUID type) {
         this.uuid = uuid;
         this.iface = new Reference<>(this, iface, Interface.class);
         this.flowScope = flowScope;
@@ -238,7 +238,7 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
 
     private final UUID uuid;
     private final Reference<Flow, Interface> iface;
-    private final DirectedPair flowScope;
+    private final UUIDPair flowScope;
     private final Reference<Flow, Function> left;
     private final Reference<Flow, Function> right;
     private final Reference<Flow, FlowType> type;
@@ -317,10 +317,8 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
                 flowScope.setDirectionFrom(from.getUuid(), value), type.getUuid());
     }
 
-    public Scope<Function> getScope(Baseline baseline) {
-        Optional<Function> leftFunction = baseline.get(flowScope.getLeft(), Function.class);
-        Optional<Function> rightFunction = baseline.get(flowScope.getRight(), Function.class);
-        return new Scope<>(leftFunction.get(), rightFunction.get());
+    public RelationPair<Function> getEndpoints(Baseline baseline) {
+        return RelationPair.resolve(baseline, flowScope, Function.class).get();
     }
 
     public Function otherEnd(Baseline baseline, Function function) {

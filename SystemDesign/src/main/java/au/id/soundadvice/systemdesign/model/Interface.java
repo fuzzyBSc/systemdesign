@@ -97,7 +97,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     @CheckReturnValue
     public static BaselineAnd<Interface> create(
             Baseline baseline, Item left, Item right) {
-        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        UUIDPair scope = new UUIDPair(left.getUuid(), right.getUuid());
         Optional<Interface> existing = baseline.getInterface(scope);
         if (existing.isPresent()) {
             return baseline.and(existing.get());
@@ -108,7 +108,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     }
 
     static BaselineAnd<Interface> restore(Baseline was, Baseline allocated, Interface iface) {
-        UndirectedPair scope = new UndirectedPair(
+        UUIDPair scope = new UUIDPair(
                 iface.getLeft().getUuid(), iface.getRight().getUuid());
         Optional<Interface> existing = allocated.getInterface(scope);
         if (existing.isPresent()) {
@@ -129,7 +129,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     @CheckReturnValue
     public static Baseline remove(
             Baseline baseline, Item left, Item right) {
-        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        UUIDPair scope = new UUIDPair(left.getUuid(), right.getUuid());
         Optional<Interface> existing = baseline.getInterface(scope);
         if (existing.isPresent()) {
             return baseline.remove(existing.get().getUuid());
@@ -152,7 +152,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
      */
     public static Optional<Interface> get(
             Baseline baseline, Item left, Item right) {
-        UndirectedPair scope = new UndirectedPair(left.getUuid(), right.getUuid());
+        UUIDPair scope = new UUIDPair(left.getUuid(), right.getUuid());
         return baseline.getInterface(scope);
     }
 
@@ -160,19 +160,17 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         return baseline.getReverse(uuid, Flow.class);
     }
 
-    public Scope<Item> getScope(Baseline baseline) {
-        Optional<Item> leftFunction = baseline.get(scope.getLeft(), Item.class);
-        Optional<Item> rightFunction = baseline.get(scope.getRight(), Item.class);
-        return new Scope<>(leftFunction.get(), rightFunction.get());
+    public RelationPair<Item> getEndpoints(Baseline baseline) {
+        return RelationPair.resolve(baseline, scope, Item.class).get();
     }
 
     public Interface(InterfaceBean bean) {
-        this(bean.getUuid(), new UndirectedPair(
+        this(bean.getUuid(), new UUIDPair(
                 bean.getLeftItem(),
                 bean.getRightItem()));
     }
 
-    private Interface(UUID uuid, UndirectedPair scope) {
+    private Interface(UUID uuid, UUIDPair scope) {
         this.uuid = uuid;
         this.scope = scope;
         this.left = new Reference<>(this, scope.getLeft(), Item.class);
@@ -203,7 +201,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     private final UUID uuid;
     private final Reference<Interface, Item> left;
     private final Reference<Interface, Item> right;
-    private final UndirectedPair scope;
+    private final UUIDPair scope;
 
     @Override
     public InterfaceBean toBean(Baseline baseline) {

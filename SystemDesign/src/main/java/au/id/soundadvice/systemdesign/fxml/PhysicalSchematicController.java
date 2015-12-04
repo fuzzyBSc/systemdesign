@@ -98,18 +98,17 @@ public class PhysicalSchematicController {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem addMenuItem = new MenuItem("Add Item");
         contextMenu.getItems().add(addMenuItem);
-        AtomicReference<ContextMenuEvent> lastContextMenuClick = new AtomicReference<>();
+        AtomicReference<Optional<ContextMenuEvent>> lastContextMenuClick
+                = new AtomicReference<>(Optional.empty());
         addMenuItem.setOnAction(event -> {
-            Optional<ContextMenuEvent> click = Optional.ofNullable(
-                    lastContextMenuClick.get());
-            Point2D origin = click
+            Point2D origin = lastContextMenuClick.get()
                     .map(evt -> new Point2D(evt.getX(), evt.getY()))
                     .orElse(ItemView.defaultOrigin);
             interactions.createItem(origin);
             event.consume();
         });
         pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
-            lastContextMenuClick.set(event);
+            lastContextMenuClick.set(Optional.of(event));
             contextMenu.show(pane, event.getScreenX(), event.getScreenY());
             event.consume();
         });

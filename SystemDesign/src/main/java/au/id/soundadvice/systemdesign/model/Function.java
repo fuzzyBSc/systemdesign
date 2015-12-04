@@ -189,6 +189,41 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
     }
 
     /**
+     * Return a Stream of functional baseline functions in whose drawings this
+     * allocated baseline function should appear
+     *
+     * @param state The state to search within
+     * @return The functional baseline function associated with each drawing, or
+     * Optional.empty() for the unallocated functions drawing.
+     */
+    public Stream<Optional<Function>> getExpectedDrawings(UndoState state) {
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        /*
+         * If we belong to the system of interest we should appear on the
+         * diagram for our trace.
+         */
+        Stream<Optional<Function>> result = external
+                ? Stream.empty()
+                : Stream.of(getTrace(functional));
+        /*
+         * We should appear on any diagram for which we have a flow to a
+         * function that traces to that diagram.
+         */
+        result = Stream.concat(result, findFlows(allocated)
+                .flatMap(flow -> {
+                    // Find the other end of the flow
+                    Function otherEnd = flow.otherEnd(allocated, this);
+                    // Find its trace
+                    return otherEnd.external
+                            ? Stream.empty()
+                            : Stream.of(otherEnd.getTrace(functional));
+                })
+        );
+        return result.distinct();
+    }
+
+    /**
      * Flow an external item down from the functional baseline to the allocated
      * baseline.
      *
