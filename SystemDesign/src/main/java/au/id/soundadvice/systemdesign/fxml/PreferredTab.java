@@ -1,11 +1,12 @@
 /*
+ * To change this license header, choose License Headers in Project Properties.
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +14,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,75 +22,29 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
+package au.id.soundadvice.systemdesign.fxml;
 
-.deleted {
-    -fx-opacity: 0.5;
-    -fx-strikethrough: true;
-    -fx-stroke-width: 5px;
-    -fx-font-weight: bold;
-}
+import au.id.soundadvice.systemdesign.model.Function;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
-.changed {
-    -fx-stroke-width: 5px;
-    -fx-font-weight: bold;
-}
+/**
+ *
+ * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ */
+public class PreferredTab {
 
-.schematicItem > .outline {
-    -fx-stroke: black;
-}
+    private static final AtomicReference<Optional<Optional<Function>>> preferred
+            = new AtomicReference<>(Optional.empty());
 
-.schematicItem.external > .outline {
-    -fx-stroke-width: 2px;
-    -fx-stroke-dash-array: 12 2 4 2;
-}
+    public static void set(Optional<Function> drawing) {
+        preferred.set(Optional.of(drawing));
+    }
 
-.schematicItem.deleted > .label > .text {
-    -fx-strikethrough: true;
-    -fx-font-weight: bold;
-}
-
-.schematicItem > .label {
-    -fx-text-alignment: left;
-}
-
-.schematicInterface > .label {
-    -fx-alignment: center;
-    -fx-background-color: lightyellow;
-    -fx-row-valignment: center;
-}
-
-.schematicFunction > .outline {
-    -fx-stroke: black;
-}
-
-.schematicFunction.viewExternal > .outline {
-    -fx-stroke: grey;
-    -fx-stroke-width: 3px;
-    -fx-stroke-dash-array: 12 2 4 2;
-}
-
-.schematicFunction.external > .outline {
-    -fx-stroke-width: 2px;
-    -fx-stroke-dash-array: 12 2 4 2;
-}
-
-.schematicFunction > .label {
-    -fx-text-alignment: center;
-}
-
-.schematicFlow > .path {
-    -fx-fill: none;
-    -fx-stroke: black;
-}
-.schematicFlow > .label {
-    -fx-alignment: center;
-    -fx-background-color: lightyellow;
-    -fx-row-valignment: center;
-}
-
-.suggestion {
-    -fx-border-color: black;
+    public static Optional<Optional<Function>> getAndClear() {
+        return preferred.getAndSet(Optional.empty());
+    }
 }

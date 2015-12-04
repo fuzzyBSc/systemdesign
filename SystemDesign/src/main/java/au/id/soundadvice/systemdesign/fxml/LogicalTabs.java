@@ -177,6 +177,11 @@ public class LogicalTabs {
                                             });
                                 });
                     })
+                    .sorted((a, b) -> {
+                        // Sort by type name for drawing stability
+                        return a.getFlow().getType(allocated).getName()
+                                .compareTo(b.getFlow().getType(allocated).getName());
+                    })
                     .collect(Collectors.groupingBy(
                             FlowInfo::getDrawing,
                             Collectors.groupingBy(FlowInfo::getViews,
@@ -215,6 +220,12 @@ public class LogicalTabs {
                         entry.getValue().populate(
                                 allocated, Collections.emptyMap(), Collections.emptyMap());
                     });
+            Optional<Optional<Function>> toSelect = PreferredTab.getAndClear();
+            Optional<LogicalSchematicController> tab
+                    = toSelect.flatMap(drawing -> Optional.ofNullable(controllers.get(drawing)));
+            if (tab.isPresent()) {
+                tab.get().select();
+            }
         }
     }
 }

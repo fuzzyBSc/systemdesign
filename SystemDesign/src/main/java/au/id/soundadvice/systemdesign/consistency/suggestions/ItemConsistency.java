@@ -131,7 +131,7 @@ public class ItemConsistency implements ProblemFactory {
                                         UpdateSolution.update("Flow down", solutionState
                                                 -> flowItemDown(solutionState, iface)),
                                         UpdateSolution.updateFunctional("Flow up", solutionFunctional
-                                                -> iface.remove(solutionFunctional)
+                                                -> iface.removeFrom(solutionFunctional)
                                         ))));
                     }
                 });

@@ -86,6 +86,11 @@ public class RelationPair<T extends Relation> {
         return true;
     }
 
+    public boolean contains(RelationPair<T> other) {
+        return left.equals(other.left) && right.equals(other.right)
+                && direction.contains(other.direction);
+    }
+
     public T getLeft() {
         return left;
     }

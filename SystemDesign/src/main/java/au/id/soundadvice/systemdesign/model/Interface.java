@@ -107,7 +107,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         }
     }
 
-    static BaselineAnd<Interface> restore(Baseline was, Baseline allocated, Interface iface) {
+    public static BaselineAnd<Interface> restore(Baseline was, Baseline allocated, Interface iface) {
         UUIDPair scope = new UUIDPair(
                 iface.getLeft().getUuid(), iface.getRight().getUuid());
         Optional<Interface> existing = allocated.getInterface(scope);
@@ -138,7 +138,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         }
     }
 
-    public Baseline remove(Baseline baseline) {
+    public Baseline removeFrom(Baseline baseline) {
         return baseline.remove(uuid);
     }
 
@@ -203,8 +203,25 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
     private final Reference<Interface, Item> right;
     private final UUIDPair scope;
 
-    @Override
-    public InterfaceBean toBean(Baseline baseline) {
+    public String getLongID(Baseline baseline) {
+        RelationStore store = baseline.getStore();
+        Item leftItem = this.left.getTarget(store);
+        Item rightItem = this.right.getTarget(store);
+        IDPath leftPath = leftItem.getIdPath(baseline);
+        IDPath rightPath = rightItem.getIdPath(baseline);
+        if (leftPath.compareTo(rightPath) > 0) {
+            // Invert
+            {
+                IDPath tmp = leftPath;
+                leftPath = rightPath;
+                rightPath = tmp;
+            }
+        }
+
+        return leftPath + ":" + rightPath;
+    }
+
+    public String getLongDescription(Baseline baseline) {
         RelationStore store = baseline.getStore();
         Item leftItem = this.left.getTarget(store);
         Item rightItem = this.right.getTarget(store);
@@ -232,9 +249,14 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         builder.append(leftItem.getName());
         builder.append(':');
         builder.append(rightItem.getName());
+        return builder.toString();
+    }
 
+    @Override
+    public InterfaceBean toBean(Baseline baseline) {
         return new InterfaceBean(
-                uuid, left.getUuid(), right.getUuid(), builder.toString());
+                uuid, left.getUuid(), right.getUuid(),
+                getLongDescription(baseline));
     }
 
     private static final ReferenceFinder<Interface> finder

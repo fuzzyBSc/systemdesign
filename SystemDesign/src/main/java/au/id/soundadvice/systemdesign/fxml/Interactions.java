@@ -42,6 +42,7 @@ import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.ItemView;
+import au.id.soundadvice.systemdesign.model.RelationPair;
 import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +56,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -81,23 +81,29 @@ public class Interactions {
     private final Window window;
     private final EditState edit;
 
-    public Item createItem(Point2D origin) {
+    public void createItem(Point2D origin) {
         AtomicReference<Item> result = new AtomicReference<>();
-        edit.updateState(state -> {
-            Color color = state.getSystemOfInterest()
-                    .map(item -> item.getView(state.getFunctional()))
-                    .map(ItemView::getColor)
-                    .orElse(Color.LIGHTYELLOW);
-            Baseline allocated = state.getAllocated();
-            allocated = Item.create(allocated, origin, color).getBaseline();
-            return state.setAllocated(allocated);
-        });
-        return result.get();
+        String defaultName = Item.find(edit.getAllocated()).parallel()
+                .filter(item -> !item.isExternal())
+                .map(Item::getName)
+                .collect(new UniqueName("New Item"));
+        Optional<String> name = textInput("New Item", "Enter name for item", defaultName);
+        if (name.isPresent()) {
+            edit.updateState(state -> {
+                Baseline allocated = state.getAllocated();
+                Color color = state.getSystemOfInterest()
+                        .map(item -> item.getView(state.getFunctional()))
+                        .map(ItemView::getColor)
+                        .orElse(Color.LIGHTYELLOW);
+                allocated = Item.create(allocated, name.get(), origin, color).getBaseline();
+                return state.setAllocated(allocated);
+            });
+        }
     }
 
-    public Optional<String> textInput(String question, String _default) {
+    public Optional<String> textInput(String action, String question, String _default) {
         TextInputDialog dialog = new TextInputDialog(_default);
-        dialog.setTitle(question);
+        dialog.setTitle(action);
         dialog.setHeaderText(question);
         return dialog.showAndWait();
     }
@@ -110,6 +116,7 @@ public class Interactions {
             Baseline allocated = edit.getAllocated();
 
             Optional<String> optionalName = textInput(
+                    "Create Budget",
                     "Enter name for budget",
                     Budget.find(allocated).parallel()
                     .map(budget -> budget.getKey().getName())
@@ -122,6 +129,7 @@ public class Interactions {
         {
             // User interaction - read only
             Optional<String> optionalUnit = textInput(
+                    "Create Budget",
                     "Enter unit for " + name, "units");
             if (!optionalUnit.isPresent()) {
                 return;
@@ -261,7 +269,9 @@ public class Interactions {
                 return;
             }
 
-            result = textInput("Rename " + key.getName(), key.getName());
+            result = textInput(
+                    "Rename Budget",
+                    "Enter Name for Budget", key.getName());
         }
         if (result.isPresent()) {
             edit.updateState(state -> {
@@ -299,7 +309,10 @@ public class Interactions {
                 return;
             }
 
-            result = textInput("Set " + key.getName() + " unit", key.getUnit());
+            result = textInput(
+                    "Set Budget Unit",
+                    "Enter Unit for Budget " + key.getName(),
+                    key.getUnit());
         }
         if (result.isPresent()) {
             edit.updateState(state -> {
@@ -379,96 +392,66 @@ public class Interactions {
     }
 
     private StateAnd<FlowType> getTypeForNewFlow(
-            UndoState state, Function left, Function right) {
+            UndoState state, RelationPair<Function> endpoints) {
         final Baseline functional = state.getFunctional();
         final Baseline allocated = state.getAllocated();
-        Optional<Item> systemOfInterest = state.getSystemOfInterest();
         /*
          * A stream of functional baseline types that have flows in the required
          * direction
          */
-        Stream<FlowType> candidates;
-        if (systemOfInterest.isPresent()) {
-            // See if we can pick out a likely type
-            Optional<Function> leftTrace = left.getTrace(functional);
-            Optional<Function> rightTrace = right.getTrace(functional);
-            if (leftTrace.isPresent() && rightTrace.isPresent()) {
-                if (leftTrace == rightTrace) {
-                    // These are the same function, so we can't suggest anything
-                    candidates = Stream.empty();
-                } else {
-                    candidates = leftTrace.get().findFlows(functional)
-                            // Flows to the right function in the right direction
-                            .filter(flow -> {
-                                if (flow.otherEnd(functional, leftTrace.get()) != rightTrace.get()) {
-                                    return false;
-                                }
-                                return flow.getDirectionFrom(leftTrace.get())
-                                        .contains(Direction.Normal);
-                            })
-                            .map(flow -> flow.getType(functional));
-                }
-            } else if (!leftTrace.isPresent() && !rightTrace.isPresent()) {
-                /*
-                 * Both are external or are at the top level of the model. No
-                 * suggstions available.
-                 */
-                candidates = Stream.empty();
-            } else {
-                // An internal and an external function
-                Function internal;
-                Optional<Function> systemFunction;
-                Function external;
-                Direction directionFromExternal;
-                if (left.isExternal()) {
-                    internal = right;
-                    external = left;
-                    systemFunction = internal.getTrace(functional);
-                    directionFromExternal = Direction.Normal;
-                } else if (right.isExternal()) {
-                    internal = left;
-                    external = right;
-                    systemFunction = internal.getTrace(functional);
-                    directionFromExternal = Direction.Reverse;
-                } else {
-                    internal = null;
-                    external = null;
-                    systemFunction = Optional.empty();
-                    directionFromExternal = Direction.None;
-                }
-                if (internal == null || external == null) {
-                    candidates = Stream.empty();
-                } else {
-                    candidates = external.findFlows(functional)
-                            .filter(flow -> {
-                                return flow.hasEnd(systemFunction.get())
-                                        && flow.getDirectionFrom(external).contains(directionFromExternal);
-                            })
-                            .map(flow -> flow.getType().getTarget(functional.getContext()));
-                }
-            }
-            Set<UUID> alreadyUsed = left.findFlows(allocated).parallel()
+        // See if we can pick out a likely type
+        Optional<Function> leftTrace = endpoints.getLeft().getTrace(functional);
+        Optional<Function> rightTrace = endpoints.getRight().getTrace(functional);
+        Optional<FlowType> suggestion;
+        if (leftTrace.isPresent() && rightTrace.isPresent()
+                && !leftTrace.equals(rightTrace)) {
+            RelationPair<Function> endpointTraces = new RelationPair<>(
+                    leftTrace.get(), rightTrace.get(), endpoints.getDirection());
+
+            Set<UUID> alreadyUsed = Flow.find(allocated).parallel()
                     .filter(flow -> {
-                        return flow.otherEnd(allocated, left) == right
-                                && flow.getDirectionFrom(left).contains(Direction.Normal);
+                        Optional<Function> existingLeftTrace = flow.getLeft(allocated).getTrace(functional);
+                        Optional<Function> existingRightTrace = flow.getRight(allocated).getTrace(functional);
+                        if (existingLeftTrace.isPresent() && existingRightTrace.isPresent()
+                                && !existingLeftTrace.equals(existingRightTrace)) {
+                            RelationPair<Function> existingEndpointTraces = new RelationPair<>(
+                                    existingLeftTrace.get(), existingRightTrace.get(), flow.getDirection());
+                            return existingEndpointTraces.contains(endpointTraces);
+                        } else {
+                            return false;
+                        }
                     })
                     .map(flow -> flow.getType().getUuid())
                     .collect(Collectors.toSet());
-            candidates = candidates.filter(type -> !alreadyUsed.contains(type.getUuid()));
 
-            Optional<FlowType> suggestion = candidates.findAny();
-            if (suggestion.isPresent()) {
-                // Flow down to the allocated baseline if needed
-                Optional<FlowType> allocatedType = FlowType.find(
-                        allocated, suggestion.get().getName());
-                if (allocatedType.isPresent()) {
-                    return state.and(allocatedType.get());
-                } else {
-                    BaselineAnd<FlowType> addedType
-                            = suggestion.get().addTo(allocated);
-                    return state.setAllocated(addedType.getBaseline())
-                            .and(addedType.getRelation());
-                }
+            suggestion = endpointTraces.getLeft().findFlows(functional)
+                    // Flows to the right function in the right direction
+                    .filter(flow -> {
+                        if (flow.otherEnd(functional, endpointTraces.getLeft())
+                                != endpointTraces.getRight()) {
+                            return false;
+                        }
+                        return flow.getDirectionFrom(endpointTraces.getLeft())
+                                .contains(endpointTraces.getDirection());
+                    })
+                    .map(flow -> flow.getType(functional))
+                    .filter(type -> !alreadyUsed.contains(type.getUuid()))
+                    .findAny();
+        } else {
+            suggestion = Optional.empty();
+        }
+
+        if (suggestion.isPresent()) {
+            // Flow down to the allocated baseline if needed
+            Optional<FlowType> allocatedType = FlowType.find(
+                    allocated, suggestion.get().getName());
+            if (allocatedType.isPresent()) {
+                return state.and(allocatedType.get());
+            } else {
+                BaselineAnd<FlowType> addedType
+                        = suggestion.get().addTo(allocated);
+                return state.setAllocated(addedType.getBaseline())
+                        .and(addedType.getRelation());
             }
         }
         String name = FlowType.find(allocated).parallel()
@@ -486,14 +469,13 @@ public class Interactions {
             if (left.isPresent() && right.isPresent()
                     // One end has to be internal
                     && (!left.get().isExternal() || !right.get().isExternal())) {
-                StateAnd<FlowType> result = getTypeForNewFlow(state, left.get(), right.get());
+                RelationPair<Function> endpoints = new RelationPair<>(
+                        source, target, Direction.Normal);
+                StateAnd<FlowType> result = getTypeForNewFlow(state, endpoints);
                 state = result.getState();
                 allocated = state.getAllocated();
                 FlowType flowType = result.getRelation();
-                allocated = Flow.add(
-                        allocated,
-                        left.get(), right.get(),
-                        flowType, Direction.Normal).getBaseline();
+                allocated = Flow.add(allocated, endpoints, flowType).getBaseline();
                 return state.setAllocated(allocated);
             } else {
                 return state;

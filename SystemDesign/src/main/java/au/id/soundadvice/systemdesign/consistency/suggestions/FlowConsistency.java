@@ -396,9 +396,8 @@ public class FlowConsistency implements ProblemFactory {
         if (left.isPresent() && right.isPresent()) {
             functional = Flow.add(
                     functional,
-                    left.get(), right.get(),
-                    summary.type,
-                    summary.direction).getBaseline();
+                    summary.scope.setDirection(summary.direction),
+                    summary.type).getBaseline();
             return state.setFunctional(functional);
         } else {
             return state;

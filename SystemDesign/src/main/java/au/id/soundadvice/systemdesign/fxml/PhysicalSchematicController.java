@@ -186,20 +186,37 @@ public class PhysicalSchematicController {
                     rightView.getOrigin().getX(),
                     rightView.getOrigin().getY());
 
-            Label label = new Label();
+            TextFlow flow = new TextFlow();
             if (diff.isAdded()) {
-                label.setText("added");
-                line.getStyleClass().add("changed");
+                flow.getChildren().add(new Text("added\n"));
+                flow.getStyleClass().add("changed");
             } else if (diff.isDeleted()) {
-                label.setText("deleted");
-                line.getStyleClass().add("deleted");
+                flow.getChildren().add(new Text("deleted\n"));
+                flow.getStyleClass().add("deleted");
             }
+            String id = diff.getIsInstance()
+                    .map(sample -> sample.getLongID(diff.getIsBaseline()))
+                    .orElseGet(() -> diff.getWasInstance().get().getLongID(diff.getWasBaseline().get()));
+            flow.getChildren().add(new Text(id));
+            Label label = new Label(null, flow);
             Point2D midpoint = leftView.getOrigin().midpoint(rightView.getOrigin());
             label.setLayoutX(midpoint.getX());
             label.setLayoutY(midpoint.getY());
 
+            if (diff.isDeleted()) {
+                ContextMenu contextMenu = ContextMenus.deletedInterfaceContextMenu(
+                        diff.getWasBaseline().get(), iface,
+                        interactions, edit);
+                label.setContextMenu(contextMenu);
+            } else {
+                ContextMenu contextMenu = ContextMenus.interfaceContextMenu(
+                        iface, interactions, edit);
+                label.setContextMenu(contextMenu);
+            }
+
             Group result = new Group();
             result.getStyleClass().add("schematicInterface");
+
             result.getChildren().addAll(line, label);
             parent.getChildren().add(result);
         }
@@ -247,7 +264,7 @@ public class PhysicalSchematicController {
                             Text wasText = new Text("\n+ " + wasName.get());
                             wasText.getStyleClass().add("deleted");
                             Text isText = new Text("\n+ " + isName);
-                            wasText.getStyleClass().add("changed");
+                            isText.getStyleClass().add("changed");
                             return Stream.of(wasText, isText);
                         } else {
                             Text isText = new Text(
@@ -262,7 +279,6 @@ public class PhysicalSchematicController {
                     })
                     .collect(Collectors.toList()));
             Label label = new Label(null, flow);
-            label.getStyleClass().add("text");
 
             Rectangle rectangle = new Rectangle();
             rectangle.getStyleClass().add("outline");

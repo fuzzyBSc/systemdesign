@@ -52,7 +52,7 @@ public class ItemViewAutoFixTest {
         AtomicReference<Item> missingViewItem = new AtomicReference<>();
         state = state.updateAllocated(allocated -> {
             BaselineAnd<Item> pair = Item.create(
-                    allocated, Point2D.ZERO, Color.LIGHTYELLOW);
+                    allocated, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
             allocated = pair.getBaseline();
             Item item = pair.getRelation();
             missingViewItem.set(item);
@@ -63,7 +63,7 @@ public class ItemViewAutoFixTest {
         AtomicReference<Item> extraViewItem = new AtomicReference<>();
         state = state.updateAllocated(allocated -> {
             BaselineAnd<Item> pair = Item.create(
-                    allocated, Point2D.ZERO, Color.LIGHTYELLOW);
+                    allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
             allocated = pair.getBaseline();
             Item item = pair.getRelation();
             extraViewItem.set(item);

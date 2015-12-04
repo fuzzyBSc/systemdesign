@@ -121,14 +121,13 @@ public class EditState {
 
         Optional<Directory> parentDir = currentDirectory.get()
                 .map(Directory::getParent);
-        if (parentDir.isPresent()) {
+        if (parentDir.isPresent()
+                && Files.exists(parentDir.get().getIdentityFile())) {
             try (Transaction xact = this.changed.start()) {
                 UndoState state = undo.get();
                 loadImpl(parentDir.get());
                 lastChild.push(Identity.find(state.getAllocated()));
             }
-        } else {
-            throw new IOException("Cannot load from null directory");
         }
     }
 

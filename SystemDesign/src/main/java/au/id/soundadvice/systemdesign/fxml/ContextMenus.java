@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
+import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -76,7 +77,6 @@ public class ContextMenus {
     }
 
     public static ContextMenu itemContextMenu(Item item, Interactions interactions, EditState edit) {
-
         ContextMenu contextMenu = new ContextMenu();
         if (item.isExternal()) {
             MenuItem deleteMenuItem = new MenuItem("Delete External Item");
@@ -127,6 +127,42 @@ public class ContextMenus {
         restoreMenuItem.setOnAction(event -> {
             edit.updateAllocated(baseline -> {
                 return Item.restore(was, baseline, item).getBaseline();
+            });
+            event.consume();
+        });
+        contextMenu.getItems().add(restoreMenuItem);
+        return contextMenu;
+    }
+
+    static ContextMenu interfaceContextMenu(
+            Interface iface, Interactions interactions, EditState edit) {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem deleteMenuItem = new MenuItem("Delete Interface");
+        deleteMenuItem.setOnAction(event -> {
+            edit.updateAllocated(baseline -> iface.removeFrom(baseline));
+            event.consume();
+        });
+        contextMenu.getItems().add(deleteMenuItem);
+        return contextMenu;
+    }
+
+    static ContextMenu deletedInterfaceContextMenu(
+            Baseline was, Interface iface, Interactions interactions, EditState edit) {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem restoreMenuItem = new MenuItem("Restore Item");
+        restoreMenuItem.setOnAction(event -> {
+            edit.updateAllocated(baseline -> {
+                Item wasLeftItem = iface.getLeft(was);
+                Item wasRightItem = iface.getRight(was);
+                Optional<Item> isLeftItem = baseline.get(wasLeftItem);
+                Optional<Item> isRightItem = baseline.get(wasRightItem);
+                if (!isLeftItem.isPresent()) {
+                    baseline = Item.restore(was, baseline, wasLeftItem).getBaseline();
+                }
+                if (!isRightItem.isPresent()) {
+                    baseline = Item.restore(was, baseline, wasLeftItem).getBaseline();
+                }
+                return Interface.restore(was, baseline, iface).getBaseline();
             });
             event.consume();
         });

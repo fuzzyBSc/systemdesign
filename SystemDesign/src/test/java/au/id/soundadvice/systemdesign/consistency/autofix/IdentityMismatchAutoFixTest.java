@@ -56,7 +56,7 @@ public class IdentityMismatchAutoFixTest {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
             Baseline.BaselineAnd<Item> pair = Item.create(
-                    functional, Point2D.ZERO, Color.LIGHTYELLOW);
+                    functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
             functional = pair.getBaseline();
             Item item = pair.getRelation();
             systemOfInterest.set(item);

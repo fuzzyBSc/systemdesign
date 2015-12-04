@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
@@ -56,12 +56,12 @@ public class UntracedFunctionsTest {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
             BaselineAnd<Item> itemTuple = Item.create(
-                    functional, Point2D.ZERO, Color.LIGHTYELLOW);
+                    functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
             functional = itemTuple.getBaseline();
             allocated = allocated.setIdentity(itemTuple.getRelation().asIdentity(functional));
 
             System.out.println("Create an item with unallocated function");
-            itemTuple = Item.create(allocated, Point2D.ZERO, Color.LIGHTYELLOW);
+            itemTuple = Item.create(allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
             allocated = itemTuple.getBaseline();
             BaselineAnd<Function> functionTuple = Function.create(allocated, itemTuple.getRelation(), Optional.empty(), "Function", Point2D.ZERO);
             allocated = functionTuple.getBaseline();

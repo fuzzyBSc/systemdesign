@@ -99,6 +99,16 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
     @CheckReturnValue
     public static BaselineAnd<Flow> add(
             Baseline baseline,
+            RelationPair<Function> endpoints,
+            FlowType flowType) {
+        return add(baseline,
+                endpoints.getLeft(), endpoints.getRight(),
+                flowType, endpoints.getDirection());
+    }
+
+    @CheckReturnValue
+    public static BaselineAnd<Flow> add(
+            Baseline baseline,
             Function left, Function right,
             FlowType flowType, Direction direction) {
         Interface iface;

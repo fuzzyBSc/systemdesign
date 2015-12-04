@@ -29,7 +29,6 @@ package au.id.soundadvice.systemdesign.model;
 import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
 import au.id.soundadvice.systemdesign.beans.BeanFactory;
 import au.id.soundadvice.systemdesign.beans.ItemBean;
-import au.id.soundadvice.systemdesign.fxml.UniqueName;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
@@ -162,22 +161,6 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         // Also add the coresponding view
         baseline = ItemView.create(baseline, item, origin, color).getBaseline();
         return baseline.and(item);
-    }
-
-    /**
-     * Create a new item with a default name.
-     *
-     * @param baseline The baseline to update
-     * @param origin The location for the item on the screen
-     * @return The updated baseline
-     */
-    @CheckReturnValue
-    public static BaselineAnd<Item> create(Baseline baseline, Point2D origin, Color color) {
-        String name = find(baseline).parallel()
-                .filter(item -> !item.isExternal())
-                .map(Item::getName)
-                .collect(new UniqueName("New Item"));
-        return create(baseline, name, origin, color);
     }
 
     /**

@@ -112,13 +112,16 @@ class LogicalSchematicController {
         }
     }
 
+    public void select() {
+        tabs.getSelectionModel().select(tab);
+    }
+
     private Node toNode(
             FunctionView functionView, Function function,
             ItemView itemView, Item item) {
         Label label = new Label(
                 function.getName() + '\n'
                 + '(' + item.getDisplayName() + ')');
-        label.getStyleClass().add("text");
 
         Ellipse ellipse = new Ellipse();
         ellipse.getStyleClass().add("outline");
@@ -165,6 +168,7 @@ class LogicalSchematicController {
         if (!function.isExternal()) {
             group.setOnMouseClicked(event -> {
                 if (event.getClickCount() > 1) {
+                    PreferredTab.set(Optional.of(function));
                     interactions.navigateDown(item);
                     event.consume();
                 }
@@ -225,7 +229,6 @@ class LogicalSchematicController {
             normalArrow.setLayoutY(layoutY);
             reverseArrow.setLayoutY(layoutY);
         });
-        label.getStyleClass().add("text");
 
         ContextMenu contextMenu = ContextMenus.flowContextMenu(flow, interactions, edit);
         label.setContextMenu(contextMenu);
