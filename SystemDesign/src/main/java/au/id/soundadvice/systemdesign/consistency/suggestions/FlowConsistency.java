@@ -31,7 +31,7 @@ import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import au.id.soundadvice.systemdesign.consistency.SolutionFlow;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
@@ -39,7 +39,6 @@ import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.RelationPair;
-import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -53,7 +52,7 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FlowConsistency implements ProblemFactory {
+public class FlowConsistency {
 
     private static class FlowDirectionSummary {
 
@@ -125,52 +124,35 @@ public class FlowConsistency implements ProblemFactory {
     private static Stream<FlowDirectionSummary> canFlowDown(UndoState state) {
         Baseline functionalBaseline = state.getFunctional();
         Baseline allocatedBaseline = state.getAllocated();
-        Set<RelationPair<Item>> functionalInterfaceScopes = Interface.find(allocatedBaseline)
-                .flatMap(iface -> {
-                    Item allocatedLeftItem = iface.getLeft(allocatedBaseline);
-                    Item allocatedRightItem = iface.getRight(allocatedBaseline);
-                    // Translate into a functional baseline interface scope
-                    Optional<Item> functionalLeftItem = allocatedLeftItem.getTrace(state);
-                    Optional<Item> functionalRightItem = allocatedRightItem.getTrace(state);
-                    if (functionalLeftItem.isPresent() && functionalRightItem.isPresent()) {
-                        return Stream.of(new RelationPair<>(functionalLeftItem.get(), functionalRightItem.get()));
-                    } else {
-                        return Stream.empty();
-                    }
-                })
-                .collect(Collectors.toSet());
+        Optional<Item> system = state.getSystemOfInterest();
+        if (!system.isPresent()) {
+            return Stream.empty();
+        }
         Set<Function> tracedFunctions = Function.find(allocatedBaseline)
                 .flatMap(allocatedFunction -> {
                     Optional<Function> result = allocatedFunction.getTrace(functionalBaseline);
                     return result.map(f -> Stream.of(f)).orElse(Stream.empty());
                 })
                 .collect(Collectors.toSet());
-        return Flow.find(functionalBaseline).flatMap(functionalBaselineFlow -> {
-            Function functionalLeft = functionalBaselineFlow.getLeft(functionalBaseline);
-            Function functionalRight = functionalBaselineFlow.getRight(functionalBaseline);
-            if (tracedFunctions.contains(functionalLeft)
-                    && tracedFunctions.contains(functionalRight)) {
-                /*
-                 * Only report flows whose functions have something tracing to
-                 * them from the allocated baseline. We still need to make sure
-                 * the interface exists
-                 */
-                Item functionalLeftItem = functionalLeft.getItem(functionalBaseline);
-                Item functionalRightItem = functionalRight.getItem(functionalBaseline);
-                RelationPair<Item> functionalInterfaceScope = new RelationPair<>(
-                        functionalLeftItem, functionalRightItem);
-                if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
-                    return Stream.of(new FlowDirectionSummary(
-                            functionalLeft, functionalRight,
-                            functionalBaselineFlow.getType(functionalBaseline),
-                            functionalBaselineFlow.getDirection()));
-                } else {
-                    return Stream.empty();
-                }
-            } else {
-                return Stream.empty();
-            }
-        });
+        return system.get().findInterfaces(functionalBaseline)
+                .flatMap(iface -> iface.findFlows(functionalBaseline))
+                .flatMap(functionalBaselineFlow -> {
+                    Function functionalLeft = functionalBaselineFlow.getLeft(functionalBaseline);
+                    Function functionalRight = functionalBaselineFlow.getRight(functionalBaseline);
+                    if (tracedFunctions.contains(functionalLeft)
+                            && tracedFunctions.contains(functionalRight)) {
+                        /*
+                         * Only report flows whose functions have something
+                         * tracing to them from the allocated baseline.
+                         */
+                        return Stream.of(new FlowDirectionSummary(
+                                functionalLeft, functionalRight,
+                                functionalBaselineFlow.getType(functionalBaseline),
+                                functionalBaselineFlow.getDirection()));
+                    } else {
+                        return Stream.empty();
+                    }
+                });
     }
 
     /**
@@ -219,18 +201,13 @@ public class FlowConsistency implements ProblemFactory {
         });
     }
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        return checkConsistency(edit.getState());
-    }
-
     /**
      * Search for missing flows in the allocated baseline.
      *
      * @param state
      * @return
      */
-    public static Stream<Problem> checkConsistency(UndoState state) {
+    public static Stream<Problem> getProblems(UndoState state) {
         Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> functionalBaselineCandidates
                 = canFlowDown(state).collect(FlowDirectionSummary.collector());
         Map<RelationPair<Function>, Map<FlowType, FlowDirectionSummary>> allocatedBaselineCandidates
@@ -274,7 +251,8 @@ public class FlowConsistency implements ProblemFactory {
                                             // We don't know which new child flows to add,
                                             // so can't flow down
                                             DisabledSolution.FlowDown,
-                                            UpdateSolution.update("Flow up",
+                                            UpdateSolution.update(
+                                                    SolutionFlow.Up,
                                                     solutionState -> {
                                                         FlowDirectionSummary toDelete = new FlowDirectionSummary(
                                                                 functionalSummary.scope, functionalSummary.type,
@@ -304,11 +282,11 @@ public class FlowConsistency implements ProblemFactory {
                                 FlowDirectionSummary allocatedSummary = typeEntry.getValue();
                                 Optional<FlowDirectionSummary> functionalSummary
                                         = Optional.ofNullable(functionalType.get(type));
-                                Direction missingDirections = allocatedSummary.getDirection().remove(
+                                Direction extraDirections = allocatedSummary.getDirection().remove(
                                         functionalSummary
                                         .map(FlowDirectionSummary::getDirection)
                                         .orElse(Direction.None));
-                                if (missingDirections == Direction.None) {
+                                if (extraDirections == Direction.None) {
                                     return Stream.empty();
                                 } else {
                                     String description = getDescription(
@@ -317,20 +295,22 @@ public class FlowConsistency implements ProblemFactory {
                                             .getDisplayName(state.getFunctional()),
                                             allocatedSummary.scope.getRight()
                                             .getDisplayName(state.getFunctional()),
-                                            type, missingDirections);
+                                            type, extraDirections);
                                     return Stream.of(new Problem(description, Stream.of(
-                                            UpdateSolution.update("Flow down",
+                                            UpdateSolution.update(
+                                                    SolutionFlow.Down,
                                                     solutionState -> {
                                                         FlowDirectionSummary toDelete = new FlowDirectionSummary(
                                                                 allocatedSummary.scope, allocatedSummary.type,
-                                                                missingDirections);
+                                                                extraDirections);
                                                         return removeAllocatedFlowDirections(solutionState, toDelete);
                                                     }),
-                                            UpdateSolution.update("Flow up",
+                                            UpdateSolution.update(
+                                                    SolutionFlow.Up,
                                                     solutionState -> {
                                                         FlowDirectionSummary toAdd = new FlowDirectionSummary(
                                                                 allocatedSummary.scope, allocatedSummary.type,
-                                                                missingDirections);
+                                                                extraDirections);
                                                         return addFunctionalFlowDirections(solutionState, toAdd);
                                                     }))));
                                 }
@@ -374,8 +354,9 @@ public class FlowConsistency implements ProblemFactory {
          * inconsistency.
          */
         FlowType type = FlowType.find(allocated)
-                .filter(allocatedType -> allocatedType.getTrace(functional).equals(summary.type))
-                .findAny().get();
+                .filter(allocatedType -> allocatedType.getTrace(functional)
+                        .map(traceType -> traceType.equals(summary.type)).orElse(false))
+                .findAny().orElse(summary.type);
         Iterator<Flow> it = Flow.find(allocated).iterator();
         while (it.hasNext()) {
             Flow flow = it.next();
@@ -384,12 +365,16 @@ public class FlowConsistency implements ProblemFactory {
             Optional<Function> leftTrace = left.getTrace(functional);
             Optional<Function> rightTrace = right.getTrace(functional);
             if (leftTrace.isPresent() && rightTrace.isPresent()) {
-                RelationPair<Function> traceScope = new RelationPair<>(leftTrace.get(), rightTrace.get());
+                RelationPair<Function> traceScope = new RelationPair<>(
+                        leftTrace.get(), rightTrace.get());
                 if (traceScope.equals(summary.scope)) {
+                    Direction allocatedDirection
+                            = summary.scope.setDirection(summary.getDirection())
+                            .getDirectionFrom(leftTrace.get());
                     allocated = Flow.remove(
                             allocated,
                             left, right,
-                            type, summary.direction);
+                            type, allocatedDirection);
                 }
             }
         }

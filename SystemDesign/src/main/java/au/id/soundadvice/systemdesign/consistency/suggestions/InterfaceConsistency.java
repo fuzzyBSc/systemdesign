@@ -26,11 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.DisabledSolution;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import au.id.soundadvice.systemdesign.consistency.SolutionFlow;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.Function;
@@ -44,9 +43,9 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ItemConsistency implements ProblemFactory {
+public class InterfaceConsistency {
 
-    private static UndoState flowItemDown(UndoState state, Interface iface) {
+    private static UndoState flowExternalItemDown(UndoState state, Interface iface) {
         Optional<Item> system = state.getSystemOfInterest();
         if (!system.isPresent()) {
             return state;
@@ -64,19 +63,17 @@ public class ItemConsistency implements ProblemFactory {
 
         Iterator<Function> functionsWithFlowsOnThisInterface
                 = parentItem.findOwnedFunctions(functional)
-                .filter(FunctionConsistency.hasFlowsOnInterface(functional, iface))
+                .filter(ExternalFunctionConsistency.hasFlowsOnInterface(functional, iface))
                 .iterator();
         while (functionsWithFlowsOnThisInterface.hasNext()) {
             Function function = functionsWithFlowsOnThisInterface.next();
-            state = FunctionConsistency.flowDown(state, function);
+            state = ExternalFunctionConsistency.flowDownExternalFunction(state, function);
         }
 
         return state;
     }
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getState();
+    public static Stream<Problem> getProblems(UndoState state) {
         return Stream.concat(
                 checkConsistencyDown(state),
                 checkConsistencyUp(state));
@@ -98,39 +95,44 @@ public class ItemConsistency implements ProblemFactory {
 
         return system.get().findInterfaces(problemFunctional)
                 .flatMap(iface -> {
-                    Item parentItem = iface.otherEnd(problemFunctional, system.get());
-                    if (parentItem.equals(system.get())) {
+                    Item functionalExternalItem = iface.otherEnd(problemFunctional, system.get());
+                    if (functionalExternalItem.equals(system.get())) {
                         // Ignore interfaces to self
                         return Stream.empty();
                     }
-                    Optional<Item> childItem = problemAllocated.get(parentItem);
-                    if (childItem.isPresent()) {
-                        Stream<Problem> consistency;
-                        Item parentItemAsExternal = parentItem.asExternal(problemFunctional);
-                        if (!childItem.get().isConsistent(parentItemAsExternal)) {
+                    Optional<Item> allocatedExternalItem = problemAllocated.get(functionalExternalItem);
+                    if (allocatedExternalItem.isPresent()) {
+                        /**
+                         * The external item exists in both baselines
+                         */
+                        Item parentItemAsExternal = functionalExternalItem.asExternal(problemFunctional);
+                        if (!allocatedExternalItem.get().isConsistent(parentItemAsExternal)) {
                             String name = parentItemAsExternal.getDisplayName();
-                            consistency = Stream.of(
+                            return Stream.of(
                                     new Problem(
                                             name + " differs between baselines", Stream.of(
                                                     UpdateSolution.updateAllocated(
-                                                            "Flow down",
-                                                            baseline -> childItem.get().makeConsistent(baseline, parentItemAsExternal).getBaseline()),
-                                                    UpdateSolution.updateAllocated(
-                                                            "Flow up",
-                                                            baseline -> parentItem.makeConsistent(baseline, childItem.get()).getBaseline()))));
+                                                            baseline -> allocatedExternalItem.get().makeConsistent(baseline, parentItemAsExternal).getBaseline()),
+                                                    UpdateSolution.updateFunctional(
+                                                            baseline -> functionalExternalItem.makeConsistent(baseline, allocatedExternalItem.get()).getBaseline()))));
                         } else {
-                            consistency = Stream.empty();
+                            return Stream.empty();
                         }
-                        Stream<Problem> flows = FunctionConsistency.checkConsistencyDown(state, iface);
-                        return Stream.concat(consistency, flows);
                     } else {
-                        String name = parentItem.getDisplayName();
-                        String parentId = system.get().getDisplayName();
+                        /*
+                         * An interface exists in the functional baseline that
+                         * does not exist in the allocated baseline
+                         */
+                        String externalName = functionalExternalItem.getDisplayName();
+                        String systemName = system.get().getDisplayName();
                         return Stream.of(new Problem(
-                                name + " is missing in\n" + parentId, Stream.of(
-                                        UpdateSolution.update("Flow down", solutionState
-                                                -> flowItemDown(solutionState, iface)),
-                                        UpdateSolution.updateFunctional("Flow up", solutionFunctional
+                                externalName + " is missing in\n" + systemName, Stream.of(
+                                        UpdateSolution.update(
+                                                SolutionFlow.Down,
+                                                solutionState
+                                                -> flowExternalItemDown(solutionState, iface)),
+                                        UpdateSolution.updateFunctional(
+                                                solutionFunctional
                                                 -> iface.removeFrom(solutionFunctional)
                                         ))));
                     }
@@ -138,8 +140,8 @@ public class ItemConsistency implements ProblemFactory {
     }
 
     /**
-     * Figure out whether external items in the allocated baseline exist in the
-     * functional baseline.
+     * Figure out whether external items in the allocated baseline exist as
+     * interfaces in the functional baseline.
      *
      * @param state The undo buffer state to work from
      * @return The list of identified problems and solutions
@@ -162,35 +164,46 @@ public class ItemConsistency implements ProblemFactory {
                             .findAny();
 
                     if (functionalInterface.isPresent()) {
-                        // This item is fine. Check its functions.
-                        return FunctionConsistency.checkConsistencyUp(
-                                state, functionalInterface.get(), externalAllocatedItem);
+                        /*
+                         * An interface corresponding to this external item
+                         * exists in the functional baseline. All good.
+                         */
+                        return Stream.empty();
                     }
 
+                    /*
+                     * No interface exists in the functional baseline
+                     * corresponding to the external item. So is it just the
+                     * interface missing, or the item as well?
+                     */
                     String name = externalAllocatedItem.getDisplayName();
                     String parentId = system.get().getDisplayName();
                     if (problemFunctional.get(externalAllocatedItem).isPresent()) {
                         /*
-                         * The parent instance exists, just not the relevant
-                         * interface.
+                         * The external item exists in the functional baseline,
+                         * just not the relevant interface.
                          */
                         return Stream.of(new Problem(
-                                name + " is missing in\n" + parentId, Stream.of(UpdateSolution.updateAllocated("Flow down", solutionAllocated
-                                        -> externalAllocatedItem.removeFrom(solutionAllocated)
-                                ),
-                                        UpdateSolution.updateFunctional("Flow up", solutionFunctional -> {
-                                            return Interface.create(
-                                                    solutionFunctional, externalAllocatedItem, system.get())
+                                name + " is missing in\n" + parentId, Stream.of(
+                                        UpdateSolution.updateAllocated(
+                                                solutionAllocated
+                                                -> externalAllocatedItem.removeFrom(solutionAllocated)
+                                        ),
+                                        UpdateSolution.updateFunctional(
+                                                solutionFunctional -> {
+                                                    return Interface.create(
+                                                            solutionFunctional, externalAllocatedItem, system.get())
                                                     .getBaseline();
-                                        }))));
+                                                }))));
                     } else {
                         /*
-                         * The parent instance of the external item doesn't
-                         * exist at all
+                         * The external item doesn't exist at all in the
+                         * functional baseline.
                          */
                         return Stream.of(new Problem(
                                 name + " is missing in " + parentId, Stream.of(
-                                        UpdateSolution.updateAllocated("Flow down", solutionAllocated
+                                        UpdateSolution.updateAllocated(
+                                                solutionAllocated
                                                 -> externalAllocatedItem.removeFrom(solutionAllocated)
                                         ),
                                         DisabledSolution.FlowUp)));

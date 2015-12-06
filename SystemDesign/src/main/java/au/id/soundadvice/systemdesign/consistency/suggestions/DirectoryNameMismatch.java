@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.consistency.Solution;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.Identity;
@@ -44,11 +43,11 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class DirectoryNameMismatch implements ProblemFactory {
+public class DirectoryNameMismatch {
 
     private static final Logger LOG = Logger.getLogger(DirectoryNameMismatch.class.getName());
 
-    private class RenameDir implements Solution {
+    private static class RenameDir implements Solution {
 
         private final Path from;
         private final Path to;
@@ -79,8 +78,7 @@ public class DirectoryNameMismatch implements ProblemFactory {
 
     }
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
+    public static Stream<Problem> getProblems(EditState edit) {
         Optional<Directory> dir = edit.getCurrentDirectory();
         if (dir.isPresent()) {
             Path path = dir.get().getPath();

@@ -71,16 +71,21 @@ public class Changed implements ChangeSubscribable {
     }
 
     private void changed() {
-        /*
-         * Hrmm.. possible to remove executor completely in favour of
-         * parallelStream one day?
-         */
-        subscribers.parallelStream().forEach((subscriber) -> {
-            executor.execute(subscriber);
-        });
+        if (notifyNeeded.getAndIncrement() == 0) {
+            executor.execute(() -> {
+                for (;;) {
+                    notifyNeeded.set(1);
+                    subscribers.parallelStream().forEach(f -> f.run());
+                    if (notifyNeeded.decrementAndGet() == 0) {
+                        return;
+                    }
+                }
+            });
+        }
     }
 
     private final AtomicInteger inhibit = new AtomicInteger(0);
+    private final AtomicInteger notifyNeeded = new AtomicInteger(0);
     private final Executor executor;
     private final List<Runnable> subscribers = new CopyOnWriteArrayList<>();
 

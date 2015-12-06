@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.fxml;
@@ -30,10 +30,11 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -47,7 +48,9 @@ import javafx.scene.layout.VBox;
  */
 public class SuggestionsController {
 
-    public SuggestionsController(EditState edit, Pane parent, ProblemFactory factory) {
+    public SuggestionsController(
+            EditState edit, Pane parent,
+            Function<EditState, Stream<Problem>> factory) {
         this.parent = parent;
         this.edit = edit;
         this.onChange = new SingleRunnable(edit.getExecutor(), new OnChange());
@@ -61,7 +64,7 @@ public class SuggestionsController {
 
     private final Pane parent;
     private final EditState edit;
-    private final ProblemFactory factory;
+    private final Function<EditState, Stream<Problem>> factory;
     private final SingleRunnable<OnChange> onChange;
     private final AtomicReference<Collection<Problem>> problems = new AtomicReference<>();
     private final SingleRunnable<UpdateDisplay> updateDisplay
@@ -71,7 +74,7 @@ public class SuggestionsController {
 
         @Override
         public void run() {
-            problems.set(factory.getProblems(edit).collect(Collectors.toList()));
+            problems.set(factory.apply(edit).collect(Collectors.toList()));
             updateDisplay.run();
         }
 

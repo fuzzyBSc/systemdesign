@@ -361,7 +361,7 @@ class LogicalSchematicController {
                 Point2D origin = lastContextMenuClick.get()
                         .map(evt -> new Point2D(evt.getX(), evt.getY()))
                         .orElse(ItemView.defaultOrigin);
-                interactions.addFunctionToItem(item.get(), parentFunction);
+                interactions.addFunctionToItem(item.get(), parentFunction, origin);
             }
         });
         ContextMenus.initPerInstanceSubmenu(
@@ -374,7 +374,7 @@ class LogicalSchematicController {
                     Point2D origin = lastContextMenuClick.get()
                     .map(evt -> new Point2D(evt.getX(), evt.getY()))
                     .orElse(ItemView.defaultOrigin);
-                    interactions.addFunctionToItem(item, parentFunction);
+                    interactions.addFunctionToItem(item, parentFunction, origin);
                 },
                 Optional.of(newItemMenuItem));
         contextMenu.getItems().add(addMenuItem);

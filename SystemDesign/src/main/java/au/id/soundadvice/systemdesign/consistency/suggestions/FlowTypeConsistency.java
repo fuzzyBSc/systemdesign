@@ -29,10 +29,9 @@ package au.id.soundadvice.systemdesign.consistency.suggestions;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
+import au.id.soundadvice.systemdesign.consistency.SolutionFlow;
 import au.id.soundadvice.systemdesign.consistency.UpdateSolution;
 import au.id.soundadvice.systemdesign.model.FlowType;
-import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.util.Pair;
@@ -41,12 +40,7 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FlowTypeConsistency implements ProblemFactory {
-
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        return checkConsistency(edit.getState());
-    }
+public class FlowTypeConsistency {
 
     /**
      * Search for missing flows in the allocated baseline.
@@ -54,7 +48,7 @@ public class FlowTypeConsistency implements ProblemFactory {
      * @param state
      * @return
      */
-    public static Stream<Problem> checkConsistency(UndoState state) {
+    public static Stream<Problem> getProblems(UndoState state) {
         Baseline functional = state.getFunctional();
         Baseline allocated = state.getAllocated();
         return FlowType.find(allocated)
@@ -79,7 +73,8 @@ public class FlowTypeConsistency implements ProblemFactory {
                             + "Allocated = " + pair.getValue(),
                             Stream.of(
                                     UpdateSolution.update(
-                                            "Flow Down", solutionState -> {
+                                            SolutionFlow.Down,
+                                            solutionState -> {
                                                 Baseline solutionAllocated = solutionState.getAllocated();
                                                 Optional<FlowType> sample = solutionAllocated.get(pair.getValue());
                                                 String name = pair.getKey().getName();
@@ -93,7 +88,8 @@ public class FlowTypeConsistency implements ProblemFactory {
                                                 }
                                             }),
                                     UpdateSolution.update(
-                                            "Flow Up", solutionState -> {
+                                            SolutionFlow.Up,
+                                            solutionState -> {
                                                 Baseline solutionFunctional = solutionState.getFunctional();
                                                 Optional<FlowType> sample = solutionFunctional.get(pair.getKey());
                                                 String name = pair.getValue().getName();

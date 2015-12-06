@@ -37,7 +37,6 @@ import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.Budget;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
-import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Identity;
 import au.id.soundadvice.systemdesign.model.Interface;
@@ -146,7 +145,7 @@ public class Interactions {
         });
     }
 
-    void addFunctionToItem(Item item, Optional<Function> trace) {
+    void addFunctionToItem(Item item, Optional<Function> trace, Point2D origin) {
         Optional<String> result;
         {
             // User interaction - read only
@@ -167,7 +166,7 @@ public class Interactions {
         }
         if (result.isPresent()) {
             edit.updateAllocated(baseline -> {
-                return Function.create(baseline, item, trace, result.get(), FunctionView.DEFAULT_ORIGIN)
+                return Function.create(baseline, item, trace, result.get(), origin)
                         .getBaseline();
             });
         }

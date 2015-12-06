@@ -26,10 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.Function;
 import java.util.stream.Stream;
@@ -38,11 +36,9 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class UntracedFunctions implements ProblemFactory {
+public class UntracedFunctions {
 
-    @Override
-    public Stream<Problem> getProblems(EditState edit) {
-        UndoState state = edit.getState();
+    public static Stream<Problem> getProblems(UndoState state) {
         if (state.getSystemOfInterest().isPresent()) {
             Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
@@ -62,5 +58,4 @@ public class UntracedFunctions implements ProblemFactory {
             return Stream.empty();
         }
     }
-
 }

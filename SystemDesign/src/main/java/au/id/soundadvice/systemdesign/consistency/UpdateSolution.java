@@ -37,32 +37,36 @@ import java.util.function.UnaryOperator;
  */
 public class UpdateSolution implements Solution {
 
+    public UnaryOperator<UndoState> getSolver() {
+        return solver;
+    }
+
     public static UpdateSolution update(
-            String description, UnaryOperator<UndoState> update) {
-        return new UpdateSolution(description, update);
+            SolutionFlow flow, UnaryOperator<UndoState> update) {
+        return new UpdateSolution(flow.getDescription(), update);
     }
 
     public static UpdateSolution updateFunctional(
-            String description, UnaryOperator<Baseline> update) {
-        return new UpdateSolution(description, state -> {
+            UnaryOperator<Baseline> update) {
+        return update(SolutionFlow.Up, state -> {
             return state.setFunctional(update.apply(state.getFunctional()));
         });
     }
 
     public static UpdateSolution updateAllocated(
-            String description, UnaryOperator<Baseline> update) {
-        return new UpdateSolution(description, state -> {
+            UnaryOperator<Baseline> update) {
+        return update(SolutionFlow.Down, state -> {
             return state.setAllocated(update.apply(state.getAllocated()));
         });
     }
 
     private UpdateSolution(String description, UnaryOperator<UndoState> update) {
         this.description = description;
-        this.update = update;
+        this.solver = update;
     }
 
     private final String description;
-    private final UnaryOperator<UndoState> update;
+    private final UnaryOperator<UndoState> solver;
 
     @Override
     public String getDescription() {
@@ -76,6 +80,6 @@ public class UpdateSolution implements Solution {
 
     @Override
     public void solve(EditState edit) {
-        edit.updateState(update);
+        edit.updateState(solver);
     }
 }

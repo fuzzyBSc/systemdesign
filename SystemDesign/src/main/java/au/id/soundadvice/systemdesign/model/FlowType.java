@@ -106,9 +106,15 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
         if (existing.isPresent()) {
             return baseline.and(existing.get());
         } else {
-            FlowType flowType = create(trace, name);
-            return baseline.add(flowType).and(flowType);
+            return addUnchecked(baseline, trace, name);
         }
+    }
+
+    @CheckReturnValue
+    public static BaselineAnd<FlowType> addUnchecked(
+            Baseline baseline, Optional<FlowType> trace, String name) {
+        FlowType flowType = create(trace, name);
+        return baseline.add(flowType).and(flowType);
     }
 
     @CheckReturnValue

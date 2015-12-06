@@ -28,28 +28,33 @@ package au.id.soundadvice.systemdesign.consistency.suggestions;
 
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.consistency.Problem;
-import au.id.soundadvice.systemdesign.consistency.ProblemFactory;
-import java.util.Arrays;
-import java.util.List;
+import au.id.soundadvice.systemdesign.model.UndoState;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class AllSuggestions implements ProblemFactory {
+public class AllSuggestions {
 
-    private final List<ProblemFactory> factories = Arrays.asList(
-            new DirectoryNameMismatch(),
-            new ItemConsistency(),
-            new FlowConsistency(),
-            new FlowTypeConsistency(),
-            new UntracedFunctions(),
-            new BudgetConsistency());
+    public static Stream<Problem> getEditProblems(EditState edit) {
+        Stream<Problem> result = Stream.<Function<EditState, Stream<Problem>>>of(
+                DirectoryNameMismatch::getProblems)
+                .parallel()
+                .flatMap(f -> f.apply(edit));
+        return Stream.concat(result, getUndoProblems(edit.getState()));
+    }
 
-    @Override
-    public Stream<Problem> getProblems(EditState state) {
-        return factories.parallelStream()
-                .flatMap(factory -> factory.getProblems(state).parallel());
+    public static Stream<Problem> getUndoProblems(UndoState state) {
+        return Stream.<Function<UndoState, Stream<Problem>>>of(
+                BudgetConsistency::getProblems,
+                FlowConsistency::getProblems,
+                FlowTypeConsistency::getProblems,
+                ExternalFunctionConsistency::getProblems,
+                InterfaceConsistency::getProblems,
+                UntracedFunctions::getProblems)
+                .parallel()
+                .flatMap(f -> f.apply(state));
     }
 }

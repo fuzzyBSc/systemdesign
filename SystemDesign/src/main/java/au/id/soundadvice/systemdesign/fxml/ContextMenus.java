@@ -92,7 +92,7 @@ public class ContextMenus {
         } else {
             MenuItem addMenuItem = new MenuItem("Add Function");
             addMenuItem.setOnAction(event -> {
-                interactions.addFunctionToItem(item, Optional.empty());
+                interactions.addFunctionToItem(item, Optional.empty(), FunctionView.DEFAULT_ORIGIN);
                 event.consume();
             });
             contextMenu.getItems().add(addMenuItem);

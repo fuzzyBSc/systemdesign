@@ -26,7 +26,6 @@
  */
 package au.id.soundadvice.systemdesign.beans;
 
-import java.util.Set;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
@@ -42,19 +41,25 @@ public enum Direction {
      * No direction. A flow with no direction should be deleted. An interface
      * should never have a direction.
      */
-    None,
+    None(0),
     /**
      * Left to right across the interface.
      */
-    Normal,
+    Normal(1),
     /**
      * Right to left across the interface.
      */
-    Reverse,
+    Reverse(2),
     /**
      * The flow is in both directions.
      */
-    Both;
+    Both(3);
+
+    private Direction(int mask) {
+        this.mask = mask;
+    }
+
+    private final int mask;
 
     public Stream<Direction> stream() {
         switch (this) {
@@ -71,19 +76,18 @@ public enum Direction {
         }
     }
 
-    public static Direction valueOf(Set<Direction> set) {
-        if (set.contains(Both)) {
-            return Both;
-        } else if (set.contains(Normal)) {
-            if (set.contains(Reverse)) {
-                return Both;
-            } else {
+    private static Direction fromMask(int value) {
+        switch (value) {
+            case 0:
+                return None;
+            case 1:
                 return Normal;
-            }
-        } else if (set.contains(Reverse)) {
-            return Reverse;
-        } else {
-            return None;
+            case 2:
+                return Reverse;
+            case 3:
+                return Both;
+            default:
+                throw new AssertionError(Integer.toString(value));
         }
     }
 
@@ -104,52 +108,15 @@ public enum Direction {
 
     @CheckReturnValue
     public Direction add(Direction other) {
-        switch (this) {
-            case None:
-                return other;
-            case Both:
-                return this;
-            case Normal:
-            case Reverse:
-                if (other == this) {
-                    return this;
-                } else {
-                    return Both;
-                }
-            default:
-                throw new AssertionError(this.name());
-        }
+        return fromMask(this.mask | other.mask);
     }
 
     @CheckReturnValue
     public Direction remove(Direction other) {
-        switch (other) {
-            case Both:
-                return None;
-            case None:
-                return this;
-            case Normal:
-            case Reverse:
-                if (other == this) {
-                    return None;
-                } else {
-                    return this;
-                }
-            default:
-                throw new AssertionError(this.name());
-        }
+        return fromMask(this.mask & ~other.mask);
     }
 
     public boolean contains(Direction direction) {
-        switch (this) {
-            case Both:
-                return true;
-            case None:
-            case Normal:
-            case Reverse:
-                return direction == this;
-            default:
-                throw new AssertionError(this.name());
-        }
+        return (direction.mask & ~this.mask) == 0;
     }
 }

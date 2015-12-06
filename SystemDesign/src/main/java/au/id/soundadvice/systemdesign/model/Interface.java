@@ -156,7 +156,7 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         return baseline.getInterface(scope);
     }
 
-    public Stream<Flow> getFlows(Baseline baseline) {
+    public Stream<Flow> findFlows(Baseline baseline) {
         return baseline.getReverse(uuid, Flow.class);
     }
 

@@ -133,7 +133,7 @@ public class MainController implements Initializable {
         logicalController = new LogicalTabs(interactions, edit, tabs);
         logicalController.start();
         suggestionsController = new SuggestionsController(
-                edit, suggestions, new AllSuggestions());
+                edit, suggestions, AllSuggestions::getEditProblems);
         suggestionsController.start();
 
         upButton.setOnAction(event -> {

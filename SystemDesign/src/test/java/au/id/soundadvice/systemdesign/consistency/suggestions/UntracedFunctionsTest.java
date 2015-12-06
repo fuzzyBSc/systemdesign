@@ -26,14 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.consistency.suggestions;
 
-import au.id.soundadvice.systemdesign.state.EditState;
+import au.id.soundadvice.systemdesign.consistency.Problem;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import java.util.Optional;
-import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
 import org.junit.Test;
@@ -51,25 +51,24 @@ public class UntracedFunctionsTest {
     @Test
     public void testGetProblems() {
         System.out.println("getProblems");
-        EditState edit = EditState.init(Executors.newCachedThreadPool());
-        edit.updateState(state -> {
-            Baseline functional = state.getFunctional();
-            Baseline allocated = state.getAllocated();
-            BaselineAnd<Item> itemTuple = Item.create(
-                    functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
-            functional = itemTuple.getBaseline();
-            allocated = allocated.setIdentity(itemTuple.getRelation().asIdentity(functional));
+        UndoState state = UndoState.createNew();
 
-            System.out.println("Create an item with unallocated function");
-            itemTuple = Item.create(allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
-            allocated = itemTuple.getBaseline();
-            BaselineAnd<Function> functionTuple = Function.create(allocated, itemTuple.getRelation(), Optional.empty(), "Function", Point2D.ZERO);
-            allocated = functionTuple.getBaseline();
+        Baseline functional = state.getFunctional();
+        Baseline allocated = state.getAllocated();
+        BaselineAnd<Item> itemTuple = Item.create(
+                functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
+        functional = itemTuple.getBaseline();
+        allocated = allocated.setIdentity(itemTuple.getRelation().asIdentity(functional));
 
-            return new UndoState(functional, allocated);
-        });
-        UntracedFunctions instance = new UntracedFunctions();
-        assertEquals(1, instance.getProblems(edit).count());
+        System.out.println("Create an item with unallocated function");
+        itemTuple = Item.create(allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
+        allocated = itemTuple.getBaseline();
+        BaselineAnd<Function> functionTuple = Function.create(allocated, itemTuple.getRelation(), Optional.empty(), "Function", Point2D.ZERO);
+        allocated = functionTuple.getBaseline();
+
+        state = state.setFunctional(functional).setAllocated(allocated);
+        Stream<Problem> problems = UntracedFunctions.getProblems(state);
+        assertEquals(1, problems.count());
     }
 
 }
