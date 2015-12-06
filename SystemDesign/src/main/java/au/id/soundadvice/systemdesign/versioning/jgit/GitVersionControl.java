@@ -119,7 +119,7 @@ public class GitVersionControl implements VersionControl {
                         .map(commit -> {
                             RevCommit[] parents = commit.getParents();
                             Calendar timestamp = Calendar.getInstance();
-                            timestamp.setTimeInMillis(commit.getCommitTime() * 1000);
+                            timestamp.setTimeInMillis(commit.getCommitTime() * 1000L);
                             String name = ref.getName();
                             if (name.startsWith("refs/tags/")) {
                                 name = name.substring(10);
