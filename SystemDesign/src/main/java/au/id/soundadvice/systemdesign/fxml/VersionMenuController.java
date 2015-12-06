@@ -72,7 +72,8 @@ public class VersionMenuController {
                 (e, versionInfo) -> {
                     edit.setDiffVersion(Optional.of(versionInfo));
                     e.consume();
-                });
+                },
+                Optional.empty());
     }
 
     public void start() {

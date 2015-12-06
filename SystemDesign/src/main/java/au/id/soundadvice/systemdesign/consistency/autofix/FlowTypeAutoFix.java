@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class TypeUUIDMismatchAutoFix {
+public class FlowTypeAutoFix {
 
     private static Baseline removeUnusedTypes(Baseline baseline) {
         final Baseline preRemoveBaseline = baseline;
@@ -68,8 +68,8 @@ public class TypeUUIDMismatchAutoFix {
 
         Map<String, FlowType> canonicalTypes = byName.entrySet().stream()
                 .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                entry -> entry.getValue().get(0)));
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().get(0)));
         {
             Iterator<Flow> it = Flow.find(baseline).iterator();
             while (it.hasNext()) {
@@ -106,24 +106,32 @@ public class TypeUUIDMismatchAutoFix {
             functional = result.getBaseline();
             functionalTypes = result.getRelation();
         }
-        Map<String, FlowType> allocatedTypes;
-        {
-            BaselineAnd<Map<String, FlowType>> result = compressDuplicates(allocated);
-            allocated = result.getBaseline();
-            allocatedTypes = result.getRelation();
+        allocated = compressDuplicates(allocated).getBaseline();
+
+        /*
+         * look for traces that are no longer valid.
+         */
+        Iterator<FlowType> tracedIt = FlowType.find(allocated).iterator();
+        while (tracedIt.hasNext()) {
+            FlowType type = tracedIt.next();
+            // Find the trace if it exists
+            Optional<FlowType> newTrace = type.getTrace(functional);
+            // Assign it back - noop if unchanged
+            allocated = type.setTrace(allocated, newTrace).getBaseline();
         }
 
         /*
-         * Now look for UUID mismatches between the functional and allocated
-         * baselines. The functional baseline is the master
+         * Find any allocated types whose name exists in the functional baseline
+         * but are untraced. That may be because we just deleted the trace.
          */
-        for (FlowType functionalType : functionalTypes.values()) {
-            FlowType allocatedType = allocatedTypes.get(functionalType.getName());
-            if (allocatedType != null) {
-                allocated = allocatedType.setUuid(
-                        allocated,
-                        functionalType.getUuid()).getBaseline();
-            }
+        Iterator<FlowType> untracedIt = FlowType.find(allocated)
+                .filter(type -> !type.isTraced())
+                .iterator();
+        while (untracedIt.hasNext()) {
+            FlowType type = untracedIt.next();
+            Optional<FlowType> newTrace = Optional.ofNullable(
+                    functionalTypes.get(type.getName()));
+            allocated = type.setTrace(allocated, newTrace).getBaseline();
         }
 
         return new UndoState(functional, allocated);

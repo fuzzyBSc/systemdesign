@@ -43,6 +43,7 @@ public class AllSuggestions implements ProblemFactory {
             new DirectoryNameMismatch(),
             new ItemConsistency(),
             new FlowConsistency(),
+            new FlowTypeConsistency(),
             new UntracedFunctions(),
             new BudgetConsistency());
 

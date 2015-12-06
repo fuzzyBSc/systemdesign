@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Interface;
@@ -53,7 +54,8 @@ public class ContextMenus {
             Menu menu,
             Supplier<Stream<T>> supplier,
             java.util.function.Function<T, String> stringifier,
-            BiConsumer<ActionEvent, T> action) {
+            BiConsumer<ActionEvent, T> action,
+            Optional<MenuItem> extra) {
         MenuItem dummy = new MenuItem("dummy");
         dummy.setVisible(false);
         menu.getItems().add(dummy);
@@ -68,7 +70,9 @@ public class ContextMenus {
                         return menuItem;
                     })
                     .collect(Collectors.toList()));
-            if (menu.getItems().isEmpty()) {
+            if (extra.isPresent()) {
+                menu.getItems().add(extra.get());
+            } else if (menu.getItems().isEmpty()) {
                 MenuItem noItems = new MenuItem("None Found");
                 noItems.setDisable(true);
                 menu.getItems().add(noItems);
@@ -215,12 +219,27 @@ public class ContextMenus {
 
     public static ContextMenu flowContextMenu(Flow flow, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem typeMenuItem = new MenuItem("Set Type");
+        Menu typeMenu = new Menu("Set Type");
+        MenuItem typeMenuItem = new MenuItem("New Type");
         typeMenuItem.setOnAction((event) -> {
             interactions.setFlowType(flow);
             event.consume();
         });
-        contextMenu.getItems().add(typeMenuItem);
+        initPerInstanceSubmenu(
+                typeMenu,
+                () -> FlowType.find(edit.getAllocated())
+                .sorted((a, b) -> a.getName().compareTo(b.getName())),
+                type -> type.getName(),
+                (e, type) -> edit.updateAllocated(allocated -> {
+                    Optional<Flow> flowSample = allocated.get(flow);
+                    Optional<FlowType> typeSample = allocated.get(type);
+                    if (flowSample.isPresent() && typeSample.isPresent()) {
+                        allocated = flowSample.get().setType(allocated, typeSample.get()).getBaseline();
+                    }
+                    return allocated;
+                }),
+                Optional.of(typeMenuItem));
+        contextMenu.getItems().add(typeMenu);
         MenuItem deleteMenuItem = new MenuItem("Delete");
         deleteMenuItem.setOnAction((event) -> {
             edit.updateAllocated(baseline -> flow.removeFrom(baseline));

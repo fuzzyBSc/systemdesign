@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- * 
+ *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- * 
+ *
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * For more information, please refer to <http://unlicense.org/>
  */
 package au.id.soundadvice.systemdesign.model;
@@ -32,7 +32,6 @@ import au.id.soundadvice.systemdesign.model.Baseline.BaselineAnd;
 import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
-import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,6 +70,9 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
         if (!Objects.equals(this.uuid, other.uuid)) {
             return false;
         }
+        if (!Objects.equals(this.trace, other.trace)) {
+            return false;
+        }
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
@@ -93,17 +95,18 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
                 .findAny();
     }
 
-    public static FlowType create(String name) {
-        return new FlowType(UUID.randomUUID(), name);
+    public static FlowType create(Optional<FlowType> trace, String name) {
+        return new FlowType(UUID.randomUUID(), trace.map(FlowType::getUuid), name);
     }
 
     @CheckReturnValue
-    public static BaselineAnd<FlowType> add(Baseline baseline, String name) {
+    public static BaselineAnd<FlowType> add(
+            Baseline baseline, Optional<FlowType> trace, String name) {
         Optional<FlowType> existing = find(baseline, name);
         if (existing.isPresent()) {
             return baseline.and(existing.get());
         } else {
-            FlowType flowType = create(name);
+            FlowType flowType = create(trace, name);
             return baseline.add(flowType).and(flowType);
         }
     }
@@ -127,9 +130,21 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
     public BaselineAnd<FlowType> addTo(Baseline baseline) {
         Optional<FlowType> existing = find(baseline, name);
         if (existing.isPresent()) {
-            return existing.get().setUuid(baseline, uuid);
+            return baseline.and(existing.get());
         } else {
             return baseline.add(this).and(this);
+        }
+    }
+
+    @CheckReturnValue
+    public BaselineAnd<FlowType> setTrace(
+            Baseline baseline, Optional<FlowType> traceobj) {
+        Optional<UUID> traceUUID = traceobj.map(FlowType::getUuid);
+        if (traceUUID.equals(this.trace)) {
+            return baseline.and(this);
+        } else {
+            FlowType replacement = new FlowType(uuid, traceUUID, name);
+            return baseline.add(replacement).and(replacement);
         }
     }
 
@@ -138,31 +153,17 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
         if (name.equals(this.name)) {
             return baseline.and(this);
         } else {
-            FlowType replacement = new FlowType(uuid, name);
+            FlowType replacement = new FlowType(uuid, trace, name);
             return baseline.add(replacement).and(replacement);
         }
     }
 
-    public BaselineAnd<FlowType> setUuid(Baseline baseline, UUID uuid) {
-        if (uuid.equals(this.uuid)) {
-            return baseline.and(this);
-        }
-        /*
-         * We need to ensure referential integrity at each step
-         */
-        // Add replacement
-        FlowType replacement = new FlowType(uuid, name);
-        baseline = baseline.add(replacement);
+    public boolean isTraced() {
+        return trace.isPresent();
+    }
 
-        // Update flows to point to replacement
-        Iterator<Flow> it = baseline.getStore().getReverse(this.uuid, Flow.class).iterator();
-        while (it.hasNext()) {
-            Flow flow = it.next();
-            baseline = flow.setType(baseline, replacement).getBaseline();
-        }
-
-        // Remove ourselves
-        return baseline.remove(this.uuid).and(replacement);
+    public Optional<FlowType> getTrace(Baseline functional) {
+        return trace.flatMap(traceUUID -> functional.get(traceUUID, FlowType.class));
     }
 
     @Override
@@ -175,27 +176,29 @@ public class FlowType implements BeanFactory<Baseline, FlowTypeBean>, Relation {
     }
 
     public FlowType(FlowTypeBean bean) {
-        this(bean.getUuid(), bean.getName());
+        this(bean.getUuid(), Optional.ofNullable(bean.getTrace()), bean.getName());
     }
 
-    private FlowType(UUID uuid, String name) {
+    private FlowType(UUID uuid, Optional<UUID> trace, String name) {
         this.uuid = uuid;
+        this.trace = trace;
         this.name = name;
     }
 
     private final UUID uuid;
+    private final Optional<UUID> trace;
     private final String name;
 
     @Override
     public FlowTypeBean toBean(Baseline baseline) {
-        return new FlowTypeBean(uuid, name);
+        return new FlowTypeBean(uuid, trace, name);
     }
-    private static final ReferenceFinder<FlowType> finder
+    private static final ReferenceFinder<FlowType> FINDER
             = new ReferenceFinder<>(FlowType.class);
 
     @Override
     public Stream<Reference> getReferences() {
-        return finder.getReferences(this);
+        return FINDER.getReferences(this);
     }
 
     public Stream<Flow> getFlows(Baseline baseline) {

@@ -81,7 +81,7 @@ public class Interactions {
     private final Window window;
     private final EditState edit;
 
-    public void createItem(Point2D origin) {
+    public Optional<Item> createItem(Point2D origin) {
         AtomicReference<Item> result = new AtomicReference<>();
         String defaultName = Item.find(edit.getAllocated()).parallel()
                 .filter(item -> !item.isExternal())
@@ -95,10 +95,14 @@ public class Interactions {
                         .map(item -> item.getView(state.getFunctional()))
                         .map(ItemView::getColor)
                         .orElse(Color.LIGHTYELLOW);
-                allocated = Item.create(allocated, name.get(), origin, color).getBaseline();
+                BaselineAnd<Item> createResult = Item.create(
+                        allocated, name.get(), origin, color);
+                allocated = createResult.getBaseline();
+                result.set(createResult.getRelation());
                 return state.setAllocated(allocated);
             });
         }
+        return Optional.ofNullable(result.get());
     }
 
     public Optional<String> textInput(String action, String question, String _default) {
@@ -457,7 +461,8 @@ public class Interactions {
         String name = FlowType.find(allocated).parallel()
                 .map(FlowType::getName)
                 .collect(new UniqueName("New Flow"));
-        BaselineAnd<FlowType> result = FlowType.add(allocated, name);
+        Optional<FlowType> trace = FlowType.find(functional, name);
+        BaselineAnd<FlowType> result = FlowType.add(allocated, trace, name);
         return state.setAllocated(result.getBaseline()).and(result.getRelation());
     }
 
@@ -495,7 +500,7 @@ public class Interactions {
             FlowType type = current.get().getType().getTarget(allocated.getContext());
 
             TextInputDialog dialog = new TextInputDialog(type.getName());
-            dialog.setTitle("Enter Flow Type");
+            dialog.setTitle("New Flow Type");
             dialog.setHeaderText("Enter Flow Type");
 
             interactionResult = dialog.showAndWait();
@@ -516,19 +521,10 @@ public class Interactions {
                 if (!newType.isPresent()) {
                     // See if we can flow the type down
                     Baseline functional = state.getFunctional();
-                    newType = FlowType.find(functional, typeName);
-                    if (newType.isPresent()) {
-                        // Flow type down
-                        BaselineAnd<FlowType> result = newType.get().addTo(allocated);
-                        allocated = result.getBaseline();
-                        newType = Optional.of(result.getRelation());
-                    }
-                    if (!newType.isPresent()) {
-                        // No such type in parent: Add new type
-                        BaselineAnd<FlowType> result = FlowType.add(allocated, typeName);
-                        allocated = result.getBaseline();
-                        newType = Optional.of(result.getRelation());
-                    }
+                    Optional<FlowType> trace = FlowType.find(functional, typeName);
+                    BaselineAnd<FlowType> result = FlowType.add(allocated, trace, typeName);
+                    allocated = result.getBaseline();
+                    newType = Optional.of(result.getRelation());
                 }
                 allocated = current.get().setType(allocated, newType.get()).getBaseline();
                 return state.setAllocated(allocated);

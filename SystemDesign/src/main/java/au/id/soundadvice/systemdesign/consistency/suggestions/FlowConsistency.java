@@ -97,7 +97,7 @@ public class FlowConsistency implements ProblemFactory {
                 assert left.scope.equals(right.scope);
                 assert left.type == right.type;
                 return new FlowDirectionSummary(
-                        left.scope.getLeft(), left.scope.getRight(),
+                        left.scope,
                         left.type, left.direction.add(right.direction));
             }
         }
@@ -194,21 +194,21 @@ public class FlowConsistency implements ProblemFactory {
                     && !functionalLeft.equals(functionalRight)) {
                 /*
                  * Only report flows whose parent functions exist and are
-                 * distinct. We use the allocated baseline type as the type may
-                 * not be present in the functional baseline and we'll want to
-                 * offer an opportunity to flow it up. If it does exist in the
-                 * parent the parent should have the same UUID so this should
-                 * still work correctly.
+                 * distinct.
                  *
                  * We still need to make sure the interface exists
                  */
+                // Find or fake the parent type
+                FlowType allocatedType = allocatedBaselineFlow.getType(allocatedBaseline);
+                FlowType functionalType = allocatedType.getTrace(functionalBaseline)
+                        .orElse(allocatedType);
                 Item functionalLeftItem = functionalLeft.get().getItem(functionalBaseline);
                 Item functionalRightItem = functionalRight.get().getItem(functionalBaseline);
                 RelationPair<Item> functionalInterfaceScope = new RelationPair<>(functionalLeftItem, functionalRightItem);
                 if (functionalInterfaceScopes.contains(functionalInterfaceScope)) {
                     return Stream.of(new FlowDirectionSummary(
                             functionalLeft.get(), functionalRight.get(),
-                            allocatedBaselineFlow.getType(allocatedBaseline),
+                            functionalType,
                             allocatedBaselineFlow.getDirection()));
                 } else {
                     return Stream.empty();
@@ -368,6 +368,14 @@ public class FlowConsistency implements ProblemFactory {
             UndoState state, FlowDirectionSummary summary) {
         Baseline functional = state.getFunctional();
         Baseline allocated = state.getAllocated();
+        /*
+         * Find the allocated version of the type by tracing rather than name
+         * matching, as type name mistmatch is a separate class of
+         * inconsistency.
+         */
+        FlowType type = FlowType.find(allocated)
+                .filter(allocatedType -> allocatedType.getTrace(functional).equals(summary.type))
+                .findAny().get();
         Iterator<Flow> it = Flow.find(allocated).iterator();
         while (it.hasNext()) {
             Flow flow = it.next();
@@ -381,7 +389,7 @@ public class FlowConsistency implements ProblemFactory {
                     allocated = Flow.remove(
                             allocated,
                             left, right,
-                            summary.type, summary.direction);
+                            type, summary.direction);
                 }
             }
         }
@@ -394,10 +402,15 @@ public class FlowConsistency implements ProblemFactory {
         Optional<Function> left = functional.get(summary.scope.getLeft());
         Optional<Function> right = functional.get(summary.scope.getRight());
         if (left.isPresent() && right.isPresent()) {
+            // Type addition is a noop if the type already exists
+            Baseline.BaselineAnd<FlowType> typeAddResult
+                    = FlowType.add(functional, Optional.empty(), summary.type.getName());
+            functional = typeAddResult.getBaseline();
+            FlowType type = typeAddResult.getRelation();
             functional = Flow.add(
                     functional,
                     summary.scope.setDirection(summary.direction),
-                    summary.type).getBaseline();
+                    type).getBaseline();
             return state.setFunctional(functional);
         } else {
             return state;

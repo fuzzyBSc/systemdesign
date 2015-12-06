@@ -37,7 +37,7 @@ public class AutoFix {
 
     public static UnaryOperator<UndoState> all() {
         return state -> {
-            state = TypeUUIDMismatchAutoFix.fix(state);
+            state = FlowTypeAutoFix.fix(state);
             state = IdentityMismatchAutoFix.fix(state);
             state = FunctionViewAutoFix.fix(state);
             state = ItemViewAutoFix.fix(state);

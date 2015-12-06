@@ -121,16 +121,6 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
             iface = tmp.getRelation();
         }
 
-        // Make sure the flow type really exists in this baseline
-        Optional<FlowType> optionalType = FlowType.find(baseline, flowType.getName());
-        if (optionalType.isPresent()) {
-            flowType = optionalType.get();
-        } else {
-            BaselineAnd<FlowType> result = flowType.addTo(baseline);
-            baseline = result.getBaseline();
-            flowType = result.getRelation();
-        }
-
         Optional<Flow> existing = baseline.getFlow(
                 new UUIDPair(left.getUuid(), right.getUuid()),
                 flowType.getUuid());

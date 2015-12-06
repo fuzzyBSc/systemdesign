@@ -211,7 +211,7 @@ public class Baseline {
                         // Legacy bean: v0.2 support
                         uuid = flowTypes.get(typeName);
                         if (uuid == null) {
-                            FlowType flowType = FlowType.create(typeName);
+                            FlowType flowType = FlowType.create(Optional.empty(), typeName);
                             uuid = flowType.getUuid();
                             relations.add(flowType);
                             flowTypes.put(typeName, uuid);

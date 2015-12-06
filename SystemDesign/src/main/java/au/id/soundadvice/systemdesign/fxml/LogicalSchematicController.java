@@ -57,6 +57,7 @@ import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -353,6 +354,16 @@ class LogicalSchematicController {
         AtomicReference<Optional<ContextMenuEvent>> lastContextMenuClick
                 = new AtomicReference<>(Optional.empty());
         Menu addMenuItem = new Menu("Add Function to...");
+        MenuItem newItemMenuItem = new MenuItem("New Item");
+        newItemMenuItem.setOnAction(e -> {
+            Optional<Item> item = interactions.createItem(ItemView.defaultOrigin);
+            if (item.isPresent()) {
+                Point2D origin = lastContextMenuClick.get()
+                        .map(evt -> new Point2D(evt.getX(), evt.getY()))
+                        .orElse(ItemView.defaultOrigin);
+                interactions.addFunctionToItem(item.get(), parentFunction);
+            }
+        });
         ContextMenus.initPerInstanceSubmenu(
                 addMenuItem,
                 () -> Item.find(edit.getAllocated())
@@ -364,7 +375,8 @@ class LogicalSchematicController {
                     .map(evt -> new Point2D(evt.getX(), evt.getY()))
                     .orElse(ItemView.defaultOrigin);
                     interactions.addFunctionToItem(item, parentFunction);
-                });
+                },
+                Optional.of(newItemMenuItem));
         contextMenu.getItems().add(addMenuItem);
         pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
             lastContextMenuClick.set(Optional.of(event));
