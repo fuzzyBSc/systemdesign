@@ -42,10 +42,12 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
+import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FunctionInfo;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
+import au.id.soundadvice.systemdesign.model.RelationDiff;
 import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +73,8 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Polygon;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 
 /**
  *
@@ -119,16 +123,36 @@ class LogicalSchematicController {
         tabs.getSelectionModel().select(tab);
     }
 
-    private Node toNode(
-            FunctionView functionView, Function function,
-            ItemView itemView, Item item) {
-        Label label = new Label(
-                function.getName() + '\n'
-                + '(' + item.getDisplayName() + ')');
+    private Node toNode(FunctionInfo info) {
+        Function function = info.getFunction().getSample();
+        RelationDiff<Function> diff = info.getFunction();
+        TextFlow flow = new TextFlow();
+        if (diff.isAdded()) {
+            flow.getChildren().add(new Text("added\n"));
+        } else if (diff.isDeleted()) {
+            flow.getChildren().add(new Text("deleted\n"));
+        }
+        Optional<String> oldName = diff.getWasInstance()
+                .map(sample -> sample.getName());
+        Optional<String> newName = diff.getIsInstance()
+                .map(sample -> sample.getName());
+        if (oldName.isPresent() && newName.isPresent()
+                && !oldName.equals(newName)) {
+            Text oldText = new Text(oldName.get() + '\n');
+            oldText.getStyleClass().add("deleted");
+            Text newText = new Text(newName.get() + '\n');
+            newText.getStyleClass().add("changed");
+            flow.getChildren().addAll(oldText, newText);
+        } else {
+            flow.getChildren().add(new Text(
+                    newName.orElseGet(() -> oldName.get()) + '\n'));
+        }
+        flow.getChildren().add(new Text('(' + info.getItem().getDisplayName() + ')'));
+        Label label = new Label(null, flow);
 
         Ellipse ellipse = new Ellipse();
         ellipse.getStyleClass().add("outline");
-        ellipse.setFill(itemView.getColor());
+        ellipse.setFill(info.getItemView().getColor());
 
         ellipse.setCenterX(0);
         ellipse.setCenterY(0);
@@ -161,18 +185,25 @@ class LogicalSchematicController {
              */
             group.getStyleClass().add("viewExternal");
         }
-        group.setLayoutX(functionView.getOrigin().getX());
-        group.setLayoutY(functionView.getOrigin().getY());
+        if (diff.isDeleted()) {
+            group.getStyleClass().add("deleted");
+        } else if (diff.isAdded() || diff.isChanged()) {
+            group.getStyleClass().add("changed");
+        }
+        group.setLayoutX(info.getView().getOrigin().getX());
+        group.setLayoutY(info.getView().getOrigin().getY());
 
-        ContextMenu contextMenu = ContextMenus.functionContextMenu(
-                item, parentFunction, function, functionView, interactions, edit);
-        label.setContextMenu(contextMenu);
+        if (!info.getFunction().isDeleted()) {
+            ContextMenu contextMenu = ContextMenus.functionContextMenu(
+                    info.getItem(), parentFunction, function, info.getView(), interactions, edit);
+            label.setContextMenu(contextMenu);
+        }
 
         if (!function.isExternal()) {
             group.setOnMouseClicked(event -> {
                 if (event.getClickCount() > 1) {
                     PreferredTab.set(Optional.of(function));
-                    interactions.navigateDown(item);
+                    interactions.navigateDown(info.getItem());
                     event.consume();
                 }
             });
@@ -295,9 +326,11 @@ class LogicalSchematicController {
 
     public void populate(
             Baseline allocated,
-            Map<UUID, FunctionView> drawingFunctionViews,
+            List<FunctionInfo> drawingFunctions,
             Map<RelationPair<FunctionView>, List<Flow>> flows) {
         Pane pane = new AnchorPane();
+        Group deleted = new Group();
+        Group other = new Group();
         flows.entrySet().forEach(entry -> {
             FunctionView left = entry.getKey().getLeft();
             FunctionView right = entry.getKey().getRight();
@@ -328,24 +361,30 @@ class LogicalSchematicController {
                 // This flow is entirely external to the diagram.
             } else {
                 Node node = toNode(allocated, left, right, entry.getValue());
-                pane.getChildren().add(node);
+                other.getChildren().add(node);
             }
         });
-        drawingFunctionViews.values().forEach(functionView -> {
-            Function function = functionView.getFunction().getTarget(allocated.getContext());
-            Item item = function.getItem().getTarget(allocated.getContext());
-            ItemView itemView = item.getView(allocated);
-            Node node = toNode(functionView, function, itemView, item);
+        drawingFunctions.forEach(info -> {
+            Node node = toNode(info);
 
-            new MoveHandler(pane, node, new Move(functionView),
-                    new GridSnap(10),
-                    event -> MouseButton.PRIMARY.equals(event.getButton())
-                    && !event.isControlDown()).start();
-            DragSource.bind(node, functionView, true);
-            DragTarget.bind(edit, node, functionView,
+            if (!info.getFunction().isDeleted()) {
+                new MoveHandler(pane, node, new Move(info.getView()),
+                        new GridSnap(10),
+                        event -> MouseButton.PRIMARY.equals(event.getButton())
+                        && !event.isControlDown()).start();
+            }
+            DragSource.bind(node, info.getView(), true);
+            DragTarget.bind(edit, node, info.getView(),
                     new FunctionDropHandler(interactions, edit));
-            pane.getChildren().add(node);
+            if (info.getFunction().isDeleted()) {
+                deleted.getChildren().add(node);
+            } else {
+                other.getChildren().add(node);
+            }
         });
+        pane.getChildren().add(deleted);
+        pane.getChildren().add(other);
+
         if (parentFunction.isPresent()) {
             DragTarget.bind(edit, pane, parentFunction.get(),
                     new LogicalSchematicBackgroundDropHandler(edit)

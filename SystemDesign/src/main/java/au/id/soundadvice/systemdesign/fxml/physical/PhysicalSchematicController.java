@@ -132,6 +132,10 @@ public class PhysicalSchematicController {
             } else {
                 tab.setText(identity.toString());
             }
+            // Put deleted items behind other items
+            Group deleted = new Group();
+            Group other = new Group();
+
             if (optionalWasBaseline.isPresent()) {
                 // Show deleted items and interfaces.
                 // Make sure these are added first, and thus are underneath.
@@ -141,30 +145,33 @@ public class PhysicalSchematicController {
                         .map(sample -> RelationDiff.get(optionalWasBaseline, isBaseline, sample))
                         .filter(RelationDiff::isDeleted)
                         .forEach(diff -> {
-                            addInterfaceNode(pane, diff);
+                            addInterfaceNode(deleted, diff);
                         });
                 Item.find(wasBaseline)
                         .map(sample -> RelationDiff.get(optionalWasBaseline, isBaseline, sample))
                         .filter(RelationDiff::isDeleted)
                         .forEach(diff -> {
-                            addItemNode(pane, diff);
+                            addItemNode(deleted, diff);
                         });
             }
             // Now add the reguilar instances
             Interface.find(isBaseline)
                     .map(sample -> RelationDiff.get(optionalWasBaseline, isBaseline, sample))
                     .forEach(diff -> {
-                        addInterfaceNode(pane, diff);
+                        addInterfaceNode(other, diff);
                     });
             Item.find(isBaseline)
                     .map(sample -> RelationDiff.get(optionalWasBaseline, isBaseline, sample))
                     .forEach(diff -> {
-                        addItemNode(pane, diff);
+                        addItemNode(other, diff);
                     });
+
+            pane.getChildren().add(deleted);
+            pane.getChildren().add(other);
         }
 
         private void addInterfaceNode(
-                Pane parent, RelationDiff<Interface> diff) {
+                Group parent, RelationDiff<Interface> diff) {
             /*
              * Note we have to be careful about which baseline we mean. We want
              * to draw the interface to the "is" baseline ItemView if it still
@@ -223,7 +230,7 @@ public class PhysicalSchematicController {
             parent.getChildren().add(result);
         }
 
-        private void addItemNode(Pane parent, RelationDiff<Item> diff) {
+        private void addItemNode(Group parent, RelationDiff<Item> diff) {
             Optional<Baseline> was = diff.getWasBaseline();
             Baseline is = diff.getIsBaseline();
             Item item = diff.getSample();
@@ -234,10 +241,21 @@ public class PhysicalSchematicController {
                 flow.getChildren().add(new Text("added\n"));
             } else if (diff.isDeleted()) {
                 flow.getChildren().add(new Text("deleted\n"));
-            } else if (diff.isChanged()) {
-                flow.getChildren().add(new Text("changed\n"));
             }
-            flow.getChildren().add(new Text(item.toString()));
+            Optional<String> oldName = diff.getWasInstance()
+                    .map(sample -> sample.getDisplayName());
+            Optional<String> newName = diff.getIsInstance()
+                    .map(sample -> sample.getDisplayName());
+            if (oldName.isPresent() && newName.isPresent()
+                    && !oldName.equals(newName)) {
+                Text oldText = new Text(oldName.get() + '\n');
+                oldText.getStyleClass().add("deleted");
+                Text newText = new Text(newName.get());
+                newText.getStyleClass().add("changed");
+                flow.getChildren().addAll(oldText, newText);
+            } else {
+                flow.getChildren().add(new Text(newName.orElseGet(() -> oldName.get())));
+            }
             if (was.isPresent()) {
                 // Add deleted functions
                 flow.getChildren().addAll(
@@ -304,7 +322,7 @@ public class PhysicalSchematicController {
             group.getStyleClass().add("schematicItem");
             if (diff.isDeleted()) {
                 group.getStyleClass().add("deleted");
-            } else if (diff.isChanged()) {
+            } else if (diff.isAdded() || diff.isChanged()) {
                 group.getStyleClass().add("changed");
             }
             if (item.isExternal()) {

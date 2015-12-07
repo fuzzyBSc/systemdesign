@@ -32,12 +32,13 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.files.Identifiable;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.model.ItemView;
+import au.id.soundadvice.systemdesign.model.RelationDiff;
 import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.Collections;
 import java.util.Iterator;
@@ -70,7 +71,7 @@ public class LogicalTabs {
         onChange.run();
     }
 
-    private final Map<Optional<Function>, LogicalSchematicController> controllers
+    private final Map<Optional<UUID>, LogicalSchematicController> controllers
             = new ConcurrentHashMap<>();
     private final Interactions interactions;
     private final EditState edit;
@@ -101,24 +102,68 @@ public class LogicalTabs {
         Flow flow;
     }
 
-    private class OnChange implements Runnable {
+    public static final class FunctionInfo {
 
         @Override
-        public void run() {
-            UndoState state = edit.getState();
-            Baseline functional = state.getFunctional();
-            Baseline allocated = state.getAllocated();
-            Optional<Item> systemOfInterest = state.getSystemOfInterest();
-            Map<Optional<Function>, Function> parentFunctions;
+        public String toString() {
+            return function.toString();
+        }
+
+        public Item getItem() {
+            return item;
+        }
+
+        public ItemView getItemView() {
+            return itemView;
+        }
+
+        public RelationDiff<Function> getFunction() {
+            return function;
+        }
+
+        public Optional<Function> getDrawing() {
+            return drawing;
+        }
+
+        public FunctionView getView() {
+            return view;
+        }
+
+        public FunctionInfo(
+                Baseline functional,
+                RelationDiff<Function> function,
+                FunctionView view) {
+            this.function = function;
+            this.drawing = view.getDrawing(functional);
+            this.view = view;
+            this.item = function.getIsInstance().map(
+                    f -> f.getItem(function.getIsBaseline()))
+                    .orElseGet(() -> function.getWasInstance().map(
+                            f -> f.getItem(function.getWasBaseline().get())).get());
+            this.itemView = item.findViews(function.getIsBaseline()).findAny()
+                    .orElseGet(() -> item.findViews(function.getWasBaseline().get()).findAny().get());
+        }
+
+        private final RelationDiff<Function> function;
+        private final Optional<Function> drawing;
+        private final FunctionView view;
+        private final Item item;
+        private final ItemView itemView;
+    }
+
+    private class OnChange implements Runnable {
+
+        private void createTabs(
+                Baseline functional,
+                Optional<Item> systemOfInterest) {
+            List<Optional<UUID>> drawings;
             if (systemOfInterest.isPresent()) {
-                parentFunctions = systemOfInterest.get().findOwnedFunctions(functional).collect(
-                        Collectors.toMap(
-                                function -> Optional.of(function),
-                                java.util.function.Function.identity()));
-            } else if (Function.find(allocated).findAny().isPresent()) {
-                parentFunctions = Collections.singletonMap(Optional.empty(), null);
+                drawings = systemOfInterest.get().findOwnedFunctions(functional)
+                        .sorted((a, b) -> a.getName().compareTo(b.getName()))
+                        .map(function -> Optional.of(function.getUuid()))
+                        .collect(Collectors.toList());
             } else {
-                parentFunctions = Collections.emptyMap();
+                drawings = Collections.singletonList(Optional.empty());
             }
             /*
              * Each function on the system of interest gets its own diagram
@@ -126,28 +171,82 @@ public class LogicalTabs {
              * baseline. It doesn't exist as an object in the alloated baseline,
              * just as an identifier.
              */
-            parentFunctions.entrySet().stream()
-                    .filter(entry -> !controllers.containsKey(entry.getKey()))
-                    .forEachOrdered(entry -> {
+            drawings.stream()
+                    .filter(optUuid -> !controllers.containsKey(optUuid))
+                    .forEachOrdered(optUuid -> {
                         // Add new tabs
                         LogicalSchematicController newTab
                                 = new LogicalSchematicController(
                                         interactions, edit, tabs,
-                                        entry.getKey().map(uuid -> entry.getValue()));
-                        controllers.put(entry.getKey(), newTab);
+                                        optUuid.flatMap(uuid -> functional.get(uuid, Function.class)));
+                        controllers.put(optUuid, newTab);
                         newTab.start();
                     });
             {
-                Iterator<Map.Entry<Optional<Function>, LogicalSchematicController>> it
+                Iterator<Map.Entry<Optional<UUID>, LogicalSchematicController>> it
                         = controllers.entrySet().iterator();
                 while (it.hasNext()) {
-                    Map.Entry<Optional<Function>, LogicalSchematicController> entry = it.next();
-                    if (!parentFunctions.containsKey(entry.getKey())) {
+                    Map.Entry<Optional<UUID>, LogicalSchematicController> entry = it.next();
+                    if (!drawings.contains(entry.getKey())) {
                         entry.getValue().stop();
                         it.remove();
                     }
                 }
             }
+        }
+
+        private Stream<RelationDiff<Function>> functionDiffs(
+                Optional<Baseline> diffBaseline, Baseline allocated) {
+            return Stream.concat(
+                    Function.find(allocated).parallel()
+                    .map(isView -> RelationDiff.get(diffBaseline, allocated, isView)),
+                    diffBaseline.map(baseline -> Function.find(baseline).parallel())
+                    .orElse(Stream.empty())
+                    .map(wasView -> RelationDiff.get(diffBaseline, allocated, wasView)))
+                    .distinct();
+        }
+
+        private Stream<FunctionInfo> findInfo(
+                Baseline functional,
+                Stream<RelationDiff<Function>> functions) {
+            return functions.flatMap(function -> {
+                // Diagram -> FunctionInfo
+                Map<Optional<Function>, FunctionInfo> isViews = function.getIsInstance()
+                        .map(f -> f.findViews(function.getIsBaseline()))
+                        .orElse(Stream.empty())
+                        .map(view -> new FunctionInfo(functional, function, view))
+                        .collect(Collectors.toMap(
+                                FunctionInfo::getDrawing,
+                                f -> f));
+
+                /*
+                 * It's possible the was baseline will have duplicate views per
+                 * drawing because the original drawing may have been destroyed.
+                 * Collect and deduplicate
+                 */
+                Map<Optional<Function>, List<FunctionInfo>> wasViews = function.getWasInstance()
+                        .map(f -> f.findViews(function.getWasBaseline().get()))
+                        .orElse(Stream.empty())
+                        // Only include "was" views if there is no "is" view for the diagram
+                        .map(view -> new FunctionInfo(functional, function, view))
+                        .filter(info -> isViews.get(info.getDrawing()) == null)
+                        .collect(Collectors.groupingBy(
+                                info -> info.getView().getDrawing(functional)));
+
+                return Stream.concat(
+                        isViews.values().parallelStream(),
+                        wasViews.values().parallelStream()
+                        .map(list -> list.get(0)));
+            });
+        }
+
+        private void fillTabs(
+                Baseline functional,
+                Optional<Baseline> diffBaseline, Baseline allocated) {
+            // Divide up all function views between the various controllers
+            Map<Optional<Function>, List<FunctionInfo>> functionsPerDiagram
+                    = findInfo(functional, functionDiffs(diffBaseline, allocated))
+                    .collect(Collectors.groupingBy(FunctionInfo::getDrawing));
 
             Map<Optional<Function>, Map<RelationPair<FunctionView>, List<Flow>>> flowsPerDiagram
                     = Flow.find(allocated)
@@ -189,21 +288,16 @@ public class LogicalTabs {
                                     Collectors.mapping(FlowInfo::getFlow,
                                             Collectors.toList()))));
 
-            // Divide up all function views between the various controllers
-            Map<Optional<Function>, List<FunctionView>> perDrawingFunctionViews
-                    = FunctionView.find(allocated).parallel()
-                    .collect(Collectors.groupingBy(view -> view.getDrawing(functional)));
-            perDrawingFunctionViews.entrySet().stream()
+            functionsPerDiagram.entrySet().stream()
                     .forEach(entry -> {
                         Optional<LogicalSchematicController> controller
-                                = Optional.ofNullable(controllers.get(entry.getKey()));
+                                = Optional.ofNullable(controllers.get(entry.getKey().map(Function::getUuid)));
                         if (controller.isPresent()) {
-                            Map<UUID, FunctionView> functionViews = entry.getValue().parallelStream()
-                                    .collect(Identifiable.toMap());
+                            List<FunctionInfo> functionInfo = entry.getValue();
                             Map<RelationPair<FunctionView>, List<Flow>> flows
                                     = flowsPerDiagram.getOrDefault(entry.getKey(), Collections.emptyMap());
                             controller.get().populate(
-                                    allocated, functionViews, flows);
+                                    allocated, functionInfo, flows);
                         } else {
                             /*
                              * This is an unallocated function in an allocated
@@ -215,18 +309,31 @@ public class LogicalTabs {
                         }
                     });
             controllers.entrySet().stream()
-                    .filter(entry -> !perDrawingFunctionViews.containsKey(entry.getKey()))
+                    .filter(entry -> !functionsPerDiagram.containsKey(
+                            entry.getKey().flatMap(uuid -> functional.get(uuid, Function.class))))
                     .forEach(entry -> {
                         // Clear any controllers whose function list is now empty
                         entry.getValue().populate(
-                                allocated, Collections.emptyMap(), Collections.emptyMap());
+                                allocated, Collections.emptyList(), Collections.emptyMap());
                     });
             Optional<Optional<Function>> toSelect = PreferredTab.getAndClear();
             Optional<LogicalSchematicController> tab
-                    = toSelect.flatMap(drawing -> Optional.ofNullable(controllers.get(drawing)));
+                    = toSelect.flatMap(drawing -> Optional.ofNullable(
+                            controllers.get(drawing.map(Function::getUuid))));
             if (tab.isPresent()) {
                 tab.get().select();
             }
+        }
+
+        @Override
+        public void run() {
+            UndoState state = edit.getState();
+            Baseline functional = state.getFunctional();
+            Baseline allocated = state.getAllocated();
+            Optional<Item> systemOfInterest = state.getSystemOfInterest();
+            Optional<Baseline> diffBaseline = edit.getDiffBaseline();
+            createTabs(functional, systemOfInterest);
+            fillTabs(functional, diffBaseline, allocated);
         }
     }
 }

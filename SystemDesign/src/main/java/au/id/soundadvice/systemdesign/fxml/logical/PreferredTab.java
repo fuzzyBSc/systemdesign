@@ -37,14 +37,14 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class PreferredTab {
 
-    private static final AtomicReference<Optional<Optional<Function>>> preferred
+    private static final AtomicReference<Optional<Optional<Function>>> PREFERRED
             = new AtomicReference<>(Optional.empty());
 
     public static void set(Optional<Function> drawing) {
-        preferred.set(Optional.of(drawing));
+        PREFERRED.set(Optional.of(drawing));
     }
 
     public static Optional<Optional<Function>> getAndClear() {
-        return preferred.getAndSet(Optional.empty());
+        return PREFERRED.getAndSet(Optional.empty());
     }
 }

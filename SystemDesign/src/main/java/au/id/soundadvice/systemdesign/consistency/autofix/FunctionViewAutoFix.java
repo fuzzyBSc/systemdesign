@@ -31,7 +31,10 @@ import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 
@@ -51,10 +54,38 @@ import javafx.util.Pair;
 public class FunctionViewAutoFix {
 
     static UndoState fix(UndoState state) {
-        /*
-         * TODO reconsider how to remove views that no longer appear on a
-         * drawing
-         */
+        if (state.getSystemOfInterest().isPresent()) {
+            final UndoState preTraceState = state;
+            Iterator<FunctionView> it = FunctionView.find(preTraceState.getAllocated()).iterator();
+            while (it.hasNext()) {
+                FunctionView view = it.next();
+                Optional<Function> drawing = view.getDrawing(preTraceState.getFunctional());
+                if (!drawing.isPresent()) {
+                    // Remove stale view
+                    state = state.setAllocated(
+                            view.removeFrom(state.getAllocated()));
+                }
+            }
+        }
+
+        final UndoState preDeduplicateState = state;
+        Map<Function, Map<Optional<Function>, List<FunctionView>>> viewsByFunctionAndDrawing
+                = FunctionView.find(preDeduplicateState.getAllocated())
+                .collect(Collectors.groupingBy(
+                        view -> view.getFunction(preDeduplicateState.getAllocated()),
+                        Collectors.groupingBy(
+                                view -> view.getDrawing(preDeduplicateState.getFunctional()))));
+        // Only allow one view per function and drawing
+        for (Map<Optional<Function>, List<FunctionView>> viewsByDrawing : viewsByFunctionAndDrawing.values()) {
+            for (List<FunctionView> views : viewsByDrawing.values()) {
+                // Remove views after the first one we found
+                for (int ii = 1; ii < views.size(); ++ii) {
+                    // Remove duplicate view
+                    state = state.setAllocated(
+                            views.get(ii).removeFrom(state.getAllocated()));
+                }
+            }
+        }
 
         final UndoState preAddState = state;
         Stream<Pair<Function, Optional<Function>>> additions
