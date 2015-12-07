@@ -31,7 +31,9 @@ Building from sources:
 
 Debian package:
 - Install the package using your preferred tool
-- java -jar /usr/share/java/SystemDesign.jar
+- Either
+-- Run from startup menu, or
+-- java -jar /usr/share/java/SystemDesign.jar
 
 Generic binary distribution:
 - Unzip to your preferred location
