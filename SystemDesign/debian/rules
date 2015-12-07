@@ -7,3 +7,13 @@ JAVA_HOME := $(wildcard /usr/lib/jvm/java-8-openjdk-*/)
 
 get-orig-source:
 	uscan --download-current-version --force-download --no-symlink
+
+binary-install/systemdesign::
+	mkdir -p debian/systemdesign/usr/share/applications
+	cp src/main/resources/*.desktop debian/systemdesign/usr/share/applications/
+	mkdir -p debian/systemdesign/usr/share/app-install/icons
+	cp src/main/resources/*.svg debian/systemdesign/usr/share/app-install/icons/
+	mkdir -p debian/systemdesign/usr/bin
+	cp src/main/resources/systemdesign.sh debian/systemdesign/usr/bin/systemdesign
+	chmod a+x debian/systemdesign/usr/bin/systemdesign
+

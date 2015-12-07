@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=System Design
+Comment=Systems Engineering Modelling Tool
+Keywords=systemdesign;systems;engineering;design;drawing
+Exec=/usr/bin/systemdesign
+Terminal=false
+Type=Application
+Icon=/usr/share/app-install/icons/systemdesign.svg
+Categories=Development;Graphics;Engineering;Java
