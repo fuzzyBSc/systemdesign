@@ -138,7 +138,7 @@ public class ContextMenus {
         return contextMenu;
     }
 
-    static ContextMenu interfaceContextMenu(
+    public static ContextMenu interfaceContextMenu(
             Interface iface, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem deleteMenuItem = new MenuItem("Delete Interface");
@@ -150,7 +150,7 @@ public class ContextMenus {
         return contextMenu;
     }
 
-    static ContextMenu deletedInterfaceContextMenu(
+    public static ContextMenu deletedInterfaceContextMenu(
             Baseline was, Interface iface, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem restoreMenuItem = new MenuItem("Restore Item");
@@ -249,7 +249,7 @@ public class ContextMenus {
         return contextMenu;
     }
 
-    static ContextMenu logicalTreeBackgroundMenu(FunctionCreator functionCreator) {
+    public static ContextMenu logicalTreeBackgroundMenu(FunctionCreator functionCreator) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem addMenuItem = new MenuItem("Add Function");
         contextMenu.getItems().add(addMenuItem);

@@ -24,12 +24,13 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.physical;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
@@ -37,6 +38,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Identity;
@@ -76,7 +78,7 @@ public class PhysicalSchematicController {
             JFXExecutor.instance(), new OnChange());
     private final Interactions interactions;
 
-    PhysicalSchematicController(
+    public PhysicalSchematicController(
             Interactions interactions, EditState edit,
             Tab tab) {
         this.edit = edit;
@@ -91,7 +93,7 @@ public class PhysicalSchematicController {
         });
     }
 
-    void start() {
+    public void start() {
         edit.subscribe(onChange);
         onChange.run();
 

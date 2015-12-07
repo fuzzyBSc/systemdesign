@@ -26,6 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.fxml.physical.PhysicalSchematicController;
+import au.id.soundadvice.systemdesign.fxml.physical.PhysicalTreeController;
+import au.id.soundadvice.systemdesign.fxml.logical.LogicalTreeController;
+import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;

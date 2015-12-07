@@ -24,26 +24,25 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.physical;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
-import au.id.soundadvice.systemdesign.files.Identifiable;
-import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
-import au.id.soundadvice.systemdesign.model.Function;
-import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
-import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.model.IDPath;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.fxml.DropHandlers.ItemDropHandler;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
+import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
+import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
+import au.id.soundadvice.systemdesign.model.ItemView;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
@@ -58,17 +57,16 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class LogicalTreeController {
+public class PhysicalTreeController {
 
-    public LogicalTreeController(
+    public PhysicalTreeController(
             Interactions interactions, EditState edit,
-            TreeView<Function> view) {
-        this.interactions = interactions;
+            TreeView<Item> view) {
         this.edit = edit;
         this.view = view;
         this.changed = new SingleRunnable<>(edit.getExecutor(), new Changed());
         this.updateView = new SingleRunnable<>(JFXExecutor.instance(), new UpdateView());
-        this.functionCreator = new FunctionCreator(edit);
+        this.interactions = interactions;
     }
 
     public void start() {
@@ -81,71 +79,55 @@ public class LogicalTreeController {
         edit.unsubscribe(changed);
     }
 
-    private void addContextMenu() {
-        view.setContextMenu(ContextMenus.logicalTreeBackgroundMenu(functionCreator));
-    }
-
-    public static final class FunctionAllocation {
-
-        public FunctionAllocation(Optional<Function> parent, SortedMap<String, Function> children) {
-            this.parent = parent;
-            this.children = children;
-        }
-
-        public String getDisplayName() {
-            return parent.map(Function::getName).orElse("Logical");
-        }
-
-        private final Optional<Function> parent;
-        private final SortedMap<String, Function> children;
-
-        private boolean isEmpty() {
-            return children.isEmpty();
-        }
+    public void addContextMenu() {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem addMenuItem = new MenuItem("Add Item");
+        contextMenu.getItems().add(addMenuItem);
+        addMenuItem.setOnAction(event -> {
+            interactions.createItem(ItemView.defaultOrigin);
+            event.consume();
+        });
+        view.setContextMenu(contextMenu);
     }
 
     private static class TreeState {
 
-        private final SortedMap<String, FunctionAllocation> allocation;
-        private final FunctionAllocation orphans;
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 83 * hash + Objects.hashCode(this.systemOfInterest);
+            hash = 83 * hash + Objects.hashCode(this.items);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final TreeState other = (TreeState) obj;
+            if (!Objects.equals(this.systemOfInterest, other.systemOfInterest)) {
+                return false;
+            }
+            if (!Objects.equals(this.items, other.items)) {
+                return false;
+            }
+            return true;
+        }
+
+        private final Optional<Item> systemOfInterest;
+        private final SortedMap<IDPath, Item> items;
 
         private TreeState(UndoState state) {
-            Optional<Item> systemOfInterest = state.getSystemOfInterest();
-            Baseline functional = state.getFunctional();
             Baseline allocated = state.getAllocated();
-
-            Map<UUID, Function> parentFunctions;
-            if (systemOfInterest.isPresent()) {
-                parentFunctions = systemOfInterest.get().findOwnedFunctions(functional)
-                        .collect(Identifiable.toMap());
-            } else {
-                parentFunctions = Collections.emptyMap();
-            }
-
-            Map<Function, SortedMap<String, Function>> rawAllocation = new HashMap<>();
-            parentFunctions.values()
-                    .forEach(parent -> rawAllocation.put(parent, new TreeMap<>()));
-            // Keep orphans separate to avoid null pointers in TreeMap
-            SortedMap<String, Function> rawOrphans = new TreeMap<>();
-            Function.find(allocated)
-                    .filter(function -> !function.isExternal())
-                    .forEach(child -> {
-                        // Parent may be null, ie child is orphaned
-                        Optional<Function> trace = child.getTrace(functional);
-                        SortedMap<String, Function> map = trace.isPresent()
-                                ? rawAllocation.get(trace.get()) : rawOrphans;
-                        map.put(child.getDisplayName(allocated), child);
-                    });
-
-            SortedMap<String, FunctionAllocation> tmpAllocation = new TreeMap<>();
-            rawAllocation.entrySet().stream()
-                    .map(entry -> new FunctionAllocation(Optional.of(entry.getKey()), Collections.unmodifiableSortedMap(entry.getValue())))
-                    .forEach(alloc -> {
-                        tmpAllocation.put(alloc.getDisplayName(), alloc);
-                    });
-            this.allocation = Collections.unmodifiableSortedMap(tmpAllocation);
-            this.orphans = new FunctionAllocation(
-                    Optional.empty(), Collections.unmodifiableSortedMap(rawOrphans));
+            this.systemOfInterest = state.getSystemOfInterest();
+            SortedMap<IDPath, Item> tmpItems = new TreeMap<>();
+            Item.find(allocated)
+                    .forEach((item) -> tmpItems.put(item.getIdPath(allocated), item));
+            this.items = Collections.unmodifiableSortedMap(tmpItems);
         }
     }
 
@@ -169,56 +151,56 @@ public class LogicalTreeController {
             TreeState state = treeState.get();
             TreeItem root = new TreeItem();
             root.setExpanded(true);
-            root.getChildren().addAll(
-                    state.allocation.values().stream()
-                    .filter(allocation -> allocation.parent.isPresent())
-                    .map(allocation -> {
-                        TreeItem parent = new TreeItem(allocation.parent.get());
-                        parent.setExpanded(true);
-                        parent.getChildren().addAll(allocation.children.values().stream()
-                                .map((child) -> new TreeItem(child))
-                                .toArray());
-                        return parent;
-                    }).toArray());
-            // Add orphans at the end
-            FunctionAllocation orphans = state.orphans;
-            if (!orphans.isEmpty()) {
-                TreeItem parent;
-                if (root.getChildren().isEmpty()) {
-                    parent = root;
-                } else {
-                    parent = new TreeItem();
-                    parent.setExpanded(true);
-                    root.getChildren().add(parent);
-                }
-                parent.getChildren().addAll(orphans.children.values().stream()
-                        .map((child) -> new TreeItem(child))
-                        .toArray());
+            TreeItem systemOfInterest;
+            if (state.systemOfInterest.isPresent()) {
+                systemOfInterest = toNode(state.systemOfInterest.get());
+                systemOfInterest.setExpanded(true);
+                root.getChildren().add(systemOfInterest);
+            } else {
+                systemOfInterest = root;
             }
+            state.items.values().stream().forEach((item) -> {
+                if (item.isExternal()) {
+                    root.getChildren().add(toNode(item));
+                } else {
+                    systemOfInterest.getChildren().add(toNode(item));
+                }
+            });
             view.setRoot(root);
             view.setShowRoot(false);
             view.setEditable(true);
             view.setCellFactory(view -> {
-                FunctionTreeCell cell = new FunctionTreeCell();
+                ItemTreeCell cell = new ItemTreeCell();
                 cell.start();
                 return cell;
             });
         }
+
+        private TreeItem toNode(Item item) {
+            TreeItem node = new TreeItem(item);
+            return node;
+        }
     }
 
-    private final class FunctionTreeCell extends TreeCell<Function> {
+    private final class ItemTreeCell extends TreeCell<Item> {
 
         private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
-        public FunctionTreeCell() {
-            MenuItem addMenuItem = new MenuItem("Add Function");
+        public ItemTreeCell() {
+            MenuItem addMenuItem = new MenuItem("Add Item");
             contextMenu.getItems().add(addMenuItem);
             addMenuItem.setOnAction(event -> {
-                functionCreator.add(getItem());
+                interactions.createItem(ItemView.defaultOrigin);
                 event.consume();
             });
-            MenuItem deleteMenuItem = new MenuItem("Delete Function");
+            MenuItem renameMenuItem = new MenuItem("Renumber");
+            contextMenu.getItems().add(renameMenuItem);
+            renameMenuItem.setOnAction(event -> {
+                interactions.renumber(getItem());
+                event.consume();
+            });
+            MenuItem deleteMenuItem = new MenuItem("Delete Item");
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction(event -> {
                 edit.updateAllocated(baseline -> {
@@ -226,29 +208,25 @@ public class LogicalTreeController {
                 });
                 event.consume();
             });
-            this.editableProperty().bind(this.itemProperty().isNotNull());
         }
 
         public void start() {
             DragSource.bind(this, () -> Optional.ofNullable(getItem()), false);
             DragTarget.bind(edit, this, () -> Optional.ofNullable(getItem()),
-                    new FunctionDropHandler(interactions, edit));
+                    new ItemDropHandler(interactions));
         }
 
         @Override
         public void startEdit() {
-            Function function = getItem();
-            if (function != null) {
-                super.startEdit();
+            super.startEdit();
 
-                if (!textField.isPresent()) {
-                    textField = Optional.of(createTextField(getItem()));
-                }
-                setText(null);
-                setGraphic(textField.get());
-                textField.get().selectAll();
-                textField.get().requestFocus();
+            if (!textField.isPresent()) {
+                textField = Optional.of(createTextField());
             }
+            setText(null);
+            setGraphic(textField.get());
+            textField.get().selectAll();
+            textField.get().requestFocus();
         }
 
         @Override
@@ -267,11 +245,11 @@ public class LogicalTreeController {
         }
 
         @Override
-        public void commitEdit(Function function) {
+        public void commitEdit(Item item) {
             edit.updateAllocated(allocated -> {
-                Optional<Function> current = allocated.get(function);
+                Optional<Item> current = allocated.get(item);
                 if (current.isPresent()) {
-                    Baseline.BaselineAnd<Function> result = current.get().setName(
+                    Baseline.BaselineAnd<Item> result = current.get().setName(
                             allocated, textField.get().getText());
                     super.commitEdit(result.getRelation());
                     return result.getBaseline();
@@ -282,8 +260,8 @@ public class LogicalTreeController {
         }
 
         @Override
-        public void updateItem(Function function, boolean empty) {
-            super.updateItem(function, empty);
+        public void updateItem(Item item, boolean empty) {
+            super.updateItem(item, empty);
 
             if (empty) {
                 setText(null);
@@ -302,8 +280,8 @@ public class LogicalTreeController {
         }
 
         @CheckReturnValue
-        private TextField createTextField(Function function) {
-            TextField node = new TextField(function.getName());
+        private TextField createTextField() {
+            TextField node = new TextField(getItem().getName());
             node.setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(getItem());
@@ -317,14 +295,13 @@ public class LogicalTreeController {
         }
 
         private String getString() {
-            return getItem() == null ? "(unallocated)" : getItem().toString();
+            return getItem() == null ? "" : getItem().toString();
         }
     }
-    private final Interactions interactions;
     private final EditState edit;
-    private final TreeView<Function> view;
+    private final TreeView<Item> view;
     private final AtomicReference<TreeState> treeState = new AtomicReference<>();
     private final SingleRunnable<Changed> changed;
     private final SingleRunnable<UpdateView> updateView;
-    private final FunctionCreator functionCreator;
+    private final Interactions interactions;
 }

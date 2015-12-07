@@ -49,7 +49,7 @@ public class FunctionCreator {
     private final EditState edit;
     private final AtomicReference<Item> mostRecentItem = new AtomicReference<>();
 
-    void add(Function nearby) {
+    public void add(Function nearby) {
         Baseline functional = edit.getFunctional();
         if (functional.get(nearby).isPresent()) {
             addToParent();

@@ -24,7 +24,7 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.logical;
 
 import au.id.soundadvice.systemdesign.beans.Direction;
 import au.id.soundadvice.systemdesign.model.Baseline;
@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.files.Identifiable;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;

@@ -24,7 +24,7 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.logical;
 
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
@@ -34,8 +34,10 @@ import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.beans.Direction;
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.LogicalSchematicBackgroundDropHandler;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;

@@ -25,7 +25,7 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.fxml.logical;
 
 import au.id.soundadvice.systemdesign.model.Function;
 import java.util.Optional;

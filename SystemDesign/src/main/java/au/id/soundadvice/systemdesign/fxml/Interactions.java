@@ -145,7 +145,7 @@ public class Interactions {
         });
     }
 
-    void addFunctionToItem(Item item, Optional<Function> trace, Point2D origin) {
+    public void addFunctionToItem(Item item, Optional<Function> trace, Point2D origin) {
         Optional<String> result;
         {
             // User interaction - read only
@@ -172,7 +172,7 @@ public class Interactions {
         }
     }
 
-    void renumber(Item item) {
+    public void renumber(Item item) {
         Optional<String> result;
         {
             // User interaction - read only
