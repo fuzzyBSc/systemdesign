@@ -204,7 +204,8 @@ public class GitVersionControl implements VersionControl {
     private ObjectId findMatchingIdentity(
             IdentityValidator identityValidator,
             ObjectId tree) throws IOException {
-        try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
+        TreeWalk treeWalk = new TreeWalk(repo.getRepository());
+        try {
             treeWalk.setRecursive(false);
             treeWalk.addTree(tree);
 
@@ -230,6 +231,8 @@ public class GitVersionControl implements VersionControl {
                 }
             }
             return ObjectId.zeroId();
+        } finally {
+            treeWalk.release();
         }
     }
 
@@ -242,13 +245,16 @@ public class GitVersionControl implements VersionControl {
             if (!version.get().getId().equals(diff.getKey())) {
                 // Grab the id of the commit we are trying to diff against
                 ObjectId id = ObjectId.fromString(version.get().getId());
-                try (RevWalk revWalk = new RevWalk(repo.getRepository())) {
+                RevWalk revWalk = new RevWalk(repo.getRepository());
+                try {
                     // Read the commit
                     RevCommit commit = revWalk.parseCommit(id);
                     ObjectId matchedDirectory = findMatchingIdentity(
                             identityValidator, commit.getTree());
                     diff = new Pair<>(version.get().getId(), matchedDirectory);
                     diffCache.set(diff);
+                } finally {
+                    revWalk.release();
                 }
             }
 
@@ -257,7 +263,8 @@ public class GitVersionControl implements VersionControl {
                 return Optional.empty();
             } else {
                 // Find the file in this tree
-                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
+                TreeWalk treeWalk = new TreeWalk(repo.getRepository());
+                try {
                     treeWalk.setRecursive(false);
                     treeWalk.addTree(diff.getValue());
 
@@ -273,6 +280,8 @@ public class GitVersionControl implements VersionControl {
                     }
                     // No such file
                     return Optional.empty();
+                } finally {
+                    treeWalk.release();
                 }
             }
         } else {
