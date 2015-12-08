@@ -39,17 +39,21 @@ import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.RelationDiff;
-import au.id.soundadvice.systemdesign.model.RelationPair;
+import au.id.soundadvice.systemdesign.model.UUIDPair;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javafx.geometry.Point2D;
 import javafx.scene.control.TabPane;
+import javafx.util.Pair;
 
 /**
  *
@@ -77,110 +81,203 @@ public class LogicalTabs {
     private final EditState edit;
     private final TabPane tabs;
 
-    public static final class FlowInfo {
+    public static final class FlowKey {
 
-        public Optional<Function> getDrawing() {
-            return drawing;
+        @Override
+        public String toString() {
+            return source + "(" + typeName + ")";
         }
 
-        public RelationPair<FunctionView> getViews() {
-            return views;
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 41 * hash + Objects.hashCode(this.flow);
+            hash = 41 * hash + Objects.hashCode(this.typeName);
+            return hash;
         }
 
-        public Flow getFlow() {
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final FlowKey other = (FlowKey) obj;
+            if (!Objects.equals(this.typeName, other.typeName)) {
+                return false;
+            }
+            if (!Objects.equals(this.flow, other.flow)) {
+                return false;
+            }
+            return true;
+        }
+
+        public static Stream<FlowKey> of(Baseline baseline) {
+            return Flow.find(baseline)
+                    .map(flow -> new FlowKey(baseline, flow));
+        }
+
+        public static Stream<RelationDiff<FlowKey>> of(
+                Optional<Baseline> diffBaseline, Baseline baseline) {
+            if (diffBaseline.isPresent()) {
+                Set<FlowKey> isKeys = of(baseline).collect(Collectors.toSet());
+                Set<FlowKey> wasKeys = of(diffBaseline.get()).collect(Collectors.toSet());
+                return Stream.concat(
+                        isKeys.stream()
+                        .map(key -> {
+                            if (wasKeys.contains(key)) {
+                                // Unchanged
+                                return new RelationDiff<>(
+                                        Optional.empty(), Optional.empty(),
+                                        baseline, Optional.of(key));
+                            } else {
+                                // Added
+                                return new RelationDiff<>(
+                                        diffBaseline, Optional.empty(),
+                                        baseline, Optional.of(key));
+                            }
+                        }),
+                        wasKeys.stream()
+                        .filter(key -> !isKeys.contains(key))
+                        .map(key -> {
+                            // Removed
+                            return new RelationDiff<>(
+                                    diffBaseline, Optional.of(key),
+                                    baseline, Optional.empty());
+                        }));
+            } else {
+                // Unchanged
+                return of(baseline).map(
+                        key -> new RelationDiff<>(
+                                Optional.empty(), Optional.empty(),
+                                baseline, Optional.of(key)));
+            }
+        }
+
+        public FlowKey(Baseline baseline, Flow flow) {
+            this.source = flow;
+            this.flow = new UUIDPair(
+                    flow.getLeft().getUuid(),
+                    flow.getRight().getUuid(),
+                    flow.getDirection());
+            this.typeName = flow.getType(baseline).getName();
+        }
+
+        public Flow getSource() {
+            return source;
+        }
+
+        public UUIDPair getFunctionScope() {
+            return flow.setDirection(Direction.None);
+        }
+
+        public UUIDPair getFunctionFlow() {
             return flow;
-        }
-
-        public boolean isDeleted() {
-            return deleted;
-        }
-
-        public boolean isAdded() {
-            return added;
         }
 
         public String getTypeName() {
             return typeName;
         }
 
-        public Direction getDirectionBetweenViews() {
-            return directionBetweenViews;
+        // Source does not contribute to equality or hash
+        private final Flow source;
+        private final UUIDPair flow;
+        private final String typeName;
+    }
+
+    public static final class DrawingFlow {
+
+        @Override
+        public String toString() {
+            return key.toString();
         }
 
-        public static Stream<FlowInfo> of(
-                Optional<Baseline> diffBaseline,
-                Baseline allocated,
-                Optional<Function> drawing,
-                RelationPair<FunctionView> views,
-                Flow flow) {
-            // Normalise views to be in the allocated baseline if possible
-            final RelationPair<FunctionView> normalizedViews = new RelationPair<>(
-                    RelationDiff.get(diffBaseline, allocated, views.getLeft()).getSample(),
-                    RelationDiff.get(diffBaseline, allocated, views.getRight()).getSample());
-            if (diffBaseline.isPresent()) {
-                RelationDiff<Flow> flowDiff = RelationDiff.get(diffBaseline, allocated, flow);
-                Optional<String> oldType = flowDiff.getWasInstance().map(
-                        sample -> sample.getType(diffBaseline.get()).getName());
-                Optional<String> newType = flowDiff.getIsInstance().map(
-                        sample -> sample.getType(allocated).getName());
-                if (oldType.equals(newType)
-                        && flowDiff.getIsInstance().map(Flow::getDirection).equals(
-                        flowDiff.getWasInstance().map(Flow::getDirection))) {
-                    // Unchanged
-                    return Stream.of(new FlowInfo(
-                            drawing, normalizedViews, flow, false, false,
-                            flow.getType(allocated).getName()));
-                } else {
-                    Stream<FlowInfo> wasInfo = flowDiff.getWasInstance().map(
-                            sample -> new FlowInfo(drawing, normalizedViews, sample, true, false, oldType.get()))
-                            .map(Stream::of).orElse(Stream.empty());
-                    Stream<FlowInfo> isInfo = flowDiff.getIsInstance().map(
-                            sample -> new FlowInfo(drawing, normalizedViews, sample, false, true, newType.get()))
-                            .map(Stream::of).orElse(Stream.empty());
-                    return Stream.concat(wasInfo, isInfo);
-                }
-            } else {
-                return Stream.of(new FlowInfo(
-                        drawing, normalizedViews, flow, false, false,
-                        flow.getType(allocated).getName()));
-            }
+        public FlowKey getKey() {
+            return key;
         }
 
-        private FlowInfo(
-                Optional<Function> drawing,
-                RelationPair<FunctionView> views,
-                Flow flow,
-                boolean deleted,
-                boolean added,
-                String typeName) {
+        public Optional<Function> getDrawing() {
+            return drawing;
+        }
+
+        public Pair<Point2D, Point2D> getOrigins() {
+            return new Pair<>(leftOrigin, rightOrigin);
+        }
+
+        public Point2D getLeftOrigin() {
+            return leftOrigin;
+        }
+
+        public Point2D getRightOrigin() {
+            return rightOrigin;
+        }
+
+        public static Stream<RelationDiff<DrawingFlow>> of(
+                Stream<FunctionInfo> views,
+                Stream<RelationDiff<FlowKey>> flows) {
+            // Find and categorise views
+            Map<UUID, Map<Optional<Function>, List<FunctionInfo>>> functionViews
+                    = views.collect(Collectors.groupingBy(
+                            info -> info.getFunction().getSample().getUuid(),
+                            Collectors.groupingBy(
+                                    FunctionInfo::getDrawing)));
+
+            // Expand flow keys into drawing flows
+            return flows.flatMap(flowKeyDiff -> {
+                FlowKey flowKey = flowKeyDiff.getSample();
+                Map<Optional<Function>, List<FunctionInfo>> leftViews = functionViews.getOrDefault(
+                        flowKey.flow.getLeft(), Collections.emptyMap());
+                Map<Optional<Function>, List<FunctionInfo>> rightViews = functionViews.getOrDefault(
+                        flowKey.flow.getRight(), Collections.emptyMap());
+                Stream<Optional<Function>> drawings = Stream.concat(
+                        leftViews.keySet().stream(),
+                        rightViews.keySet().stream().filter(key -> !leftViews.containsKey(key)));
+                return drawings.flatMap(drawing -> {
+                    Optional<FunctionInfo> leftInfo = leftViews.getOrDefault(
+                            drawing, Collections.emptyList()).stream().findFirst();
+                    Optional<FunctionInfo> rightInfo = rightViews.getOrDefault(
+                            drawing, Collections.emptyList()).stream().findFirst();
+                    if (leftInfo.isPresent() && rightInfo.isPresent()
+                            && (!drawing.isPresent()
+                            || leftInfo.get().getFunction().getSample().isTracedTo(drawing.get())
+                            || rightInfo.get().getFunction().getSample().isTracedTo(drawing.get()))) {
+                        /*
+                         * We found both views on this drawing, and either the
+                         * drawing is Optional.empty(), or one of the functions
+                         * traces to the drawing.
+                         */
+                        DrawingFlow drawingFlow = new DrawingFlow(
+                                flowKey, drawing,
+                                leftInfo.get().getView().getOrigin(), rightInfo.get().getView().getOrigin());
+                        // Match the diff state of the flow key
+                        return Stream.of(new RelationDiff<>(
+                                flowKeyDiff.getWasBaseline(),
+                                flowKeyDiff.isDeleted() ? Optional.of(drawingFlow) : Optional.empty(),
+                                flowKeyDiff.getIsBaseline(),
+                                !flowKeyDiff.isDeleted() ? Optional.of(drawingFlow) : Optional.empty()));
+                    } else {
+                        return Stream.empty();
+                    }
+                });
+            });
+        }
+
+        public DrawingFlow(FlowKey key, Optional<Function> drawing, Point2D leftOrigin, Point2D rightOrigin) {
+            this.key = key;
             this.drawing = drawing;
-            this.views = views;
-            this.flow = flow;
-            this.deleted = deleted;
-            this.added = added;
-            this.typeName = typeName;
-            /*
-             * The ordering of function view UUIDs and the ordering of the
-             * function UUIDs may differ. This will affect the direction drawn
-             * for the flows. We need to correct that here.
-             */
-            UUID leftFunctionUUID = views.getLeft().getFunction().getUuid();
-            UUID rightFunctionUUID = views.getRight().getFunction().getUuid();
-            if (leftFunctionUUID.compareTo(rightFunctionUUID)
-                    == views.getLeft().getUuid().compareTo(views.getRight().getUuid())) {
-                this.directionBetweenViews = flow.getDirection();
-            } else {
-                this.directionBetweenViews = flow.getDirection().reverse();
-            }
+            this.leftOrigin = leftOrigin;
+            this.rightOrigin = rightOrigin;
         }
 
+        FlowKey key;
         Optional<Function> drawing;
-        RelationPair<FunctionView> views;
-        Flow flow;
-        boolean deleted;
-        boolean added;
-        String typeName;
-        Direction directionBetweenViews;
+        Point2D leftOrigin;
+        Point2D rightOrigin;
     }
 
     public static final class FunctionInfo {
@@ -321,65 +418,16 @@ public class LogicalTabs {
             });
         }
 
-        private Stream<FlowInfo> findFlowInfo(
-                Baseline functional,
-                Optional<Baseline> diffBaseline, Baseline allocated,
-                Baseline baseline) {
-            return Flow.find(baseline)
-                    .flatMap(flow -> {
-                        RelationPair<Function> functions = flow.getEndpoints(baseline)
-                                .setDirection(Direction.None);
-                        // Build up cross-product of left and right views
-                        List<FunctionView> leftViews = functions.getLeft().findViews(baseline)
-                                .collect(Collectors.toList());
-                        List<FunctionView> rightViews = functions.getRight().findViews(baseline)
-                                .collect(Collectors.toList());
-                        return leftViews.stream()
-                                .flatMap(leftView -> {
-                                    return rightViews.stream()
-                                            .flatMap(rightView -> {
-                                                /*
-                                                 * Only include flow if
-                                                 * rightView and leftView appear
-                                                 * on the same drawing and one
-                                                 * of them traces to its
-                                                 * drawing.
-                                                 */
-                                                Optional<Function> leftTrace = leftView.getFunction(baseline).getTrace(functional);
-                                                Optional<Function> rightTrace = rightView.getFunction(baseline).getTrace(functional);
-                                                Optional<Function> leftDrawing = leftView.getDrawing(functional);
-                                                Optional<Function> rightDrawing = rightView.getDrawing(functional);
-                                                if (rightDrawing.equals(leftDrawing)
-                                                        && (leftTrace.equals(leftDrawing) || rightTrace.equals(rightDrawing))) {
-                                                    return FlowInfo.of(
-                                                            diffBaseline, allocated,
-                                                            leftDrawing, new RelationPair<>(leftView, rightView), flow);
-                                                } else {
-                                                    return Stream.empty();
-                                                }
-                                            });
-                                });
-                    });
-        }
-
-        private Stream<FlowInfo> findFlowInfo(
+        private Stream<RelationDiff<DrawingFlow>> findFlowInfo(
                 Baseline functional, Optional<Baseline> diffBaseline, Baseline allocated) {
-            Stream<FlowInfo> result = findFlowInfo(functional, diffBaseline, allocated, allocated);
-            if (diffBaseline.isPresent()) {
-                // Also look for deleted flows
-                result = Stream.concat(result,
-                        findFlowInfo(functional, diffBaseline, allocated, diffBaseline.get())
-                        .filter(info -> {
-                            // Only if this flow doesn't still exist
-                            Optional<Flow> existing = allocated.get(info.getFlow());
-                            return !existing.isPresent();
-                        }));
-            }
-            return result.sorted((a, b) -> {
-                // Sort by type name for drawing stability
-                return a.getTypeName()
-                        .compareTo(b.getTypeName());
-            });
+            Stream<RelationDiff<FlowKey>> keys = FlowKey.of(diffBaseline, allocated);
+            Stream<FunctionInfo> views = findFunctionInfo(functional, functionDiffs(diffBaseline, allocated));
+            return DrawingFlow.of(views, keys)
+                    .sorted((a, b) -> {
+                        // Sort by type name for drawing stability
+                        return a.getSample().getKey().getTypeName()
+                                .compareTo(b.getSample().getKey().getTypeName());
+                    });
         }
 
         private void fillTabs(
@@ -390,10 +438,10 @@ public class LogicalTabs {
                     = findFunctionInfo(functional, functionDiffs(diffBaseline, allocated))
                     .collect(Collectors.groupingBy(FunctionInfo::getDrawing));
 
-            Map<Optional<Function>, Map<RelationPair<FunctionView>, List<FlowInfo>>> flowsPerDiagram
+            Map<Optional<Function>, Map<Pair<Point2D, Point2D>, List<RelationDiff<DrawingFlow>>>> flowsPerDiagram
                     = findFlowInfo(functional, diffBaseline, allocated)
-                    .collect(Collectors.groupingBy(FlowInfo::getDrawing,
-                            Collectors.groupingBy(FlowInfo::getViews)));
+                    .collect(Collectors.groupingBy(diff -> diff.getSample().getDrawing(),
+                            Collectors.groupingBy(diff -> diff.getSample().getOrigins())));
 
             functionsPerDiagram.entrySet().stream()
                     .forEach(entry -> {
@@ -401,7 +449,7 @@ public class LogicalTabs {
                                 = Optional.ofNullable(controllers.get(entry.getKey().map(Function::getUuid)));
                         if (controller.isPresent()) {
                             List<FunctionInfo> functionInfo = entry.getValue();
-                            Map<RelationPair<FunctionView>, List<FlowInfo>> flows
+                            Map<Pair<Point2D, Point2D>, List<RelationDiff<DrawingFlow>>> flows
                                     = flowsPerDiagram.getOrDefault(entry.getKey(), Collections.emptyMap());
                             controller.get().populate(functionInfo, flows);
                         } else {

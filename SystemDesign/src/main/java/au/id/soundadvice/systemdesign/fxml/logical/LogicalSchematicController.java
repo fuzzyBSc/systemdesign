@@ -41,13 +41,12 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
-import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FlowInfo;
+import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.DrawingFlow;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FunctionInfo;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.RelationDiff;
-import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -73,6 +72,7 @@ import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Polygon;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.util.Pair;
 
 /**
  *
@@ -282,9 +282,9 @@ class LogicalSchematicController {
     }
 
     private Node toNode(
-            RelationPair<FunctionView> views, List<FlowInfo> flows) {
-        Point2D leftOrigin = views.getLeft().getOrigin();
-        Point2D rightOrigin = views.getRight().getOrigin();
+            Pair<Point2D, Point2D> views, List<RelationDiff<DrawingFlow>> flows) {
+        Point2D leftOrigin = views.getKey();
+        Point2D rightOrigin = views.getValue();
         boolean reverseDirection = false;
 
         if (leftOrigin.getX() > rightOrigin.getX()) {
@@ -309,14 +309,15 @@ class LogicalSchematicController {
         boolean negate = true;
         double radiusX = vector.magnitude() / 2;
         double radiusY = 0;
-        for (FlowInfo flowInfo : flows) {
-            Flow flow = flowInfo.getFlow();
-            Direction direction = flowInfo.getDirectionBetweenViews();
+        for (RelationDiff<DrawingFlow> flowInfo : flows) {
+            DrawingFlow sample = flowInfo.getSample();
+            Flow flow = sample.getKey().getSource();
+            Direction direction = sample.getKey().getFunctionFlow().getDirection();
             if (reverseDirection) {
                 direction = direction.reverse();
             }
             Node node = toNode(
-                    flow, flowInfo.getTypeName(), direction,
+                    flow, sample.getKey().getTypeName(), direction,
                     flowInfo.isDeleted(), flowInfo.isAdded(),
                     radiusX, radiusY, negate);
             group.getChildren().add(node);
@@ -336,7 +337,7 @@ class LogicalSchematicController {
 
     public void populate(
             List<FunctionInfo> drawingFunctions,
-            Map<RelationPair<FunctionView>, List<FlowInfo>> flows) {
+            Map<Pair<Point2D, Point2D>, List<RelationDiff<DrawingFlow>>> flows) {
         Pane pane = new AnchorPane();
         Group deleted = new Group();
         Group other = new Group();
