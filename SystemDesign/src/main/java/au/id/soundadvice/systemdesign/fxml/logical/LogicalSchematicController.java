@@ -26,7 +26,6 @@
  */
 package au.id.soundadvice.systemdesign.fxml.logical;
 
-import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
@@ -42,6 +41,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
+import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FlowInfo;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FunctionInfo;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FlowType;
@@ -52,7 +52,6 @@ import au.id.soundadvice.systemdesign.model.RelationPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
@@ -273,10 +272,9 @@ class LogicalSchematicController {
     }
 
     private Node toNode(
-            Baseline allocated,
-            FunctionView left, FunctionView right, List<Flow> flows) {
-        Point2D leftOrigin = left.getOrigin();
-        Point2D rightOrigin = right.getOrigin();
+            RelationPair<FunctionView> views, List<FlowInfo> flows) {
+        Point2D leftOrigin = views.getLeft().getOrigin();
+        Point2D rightOrigin = views.getRight().getOrigin();
         boolean reverseDirection = false;
 
         if (leftOrigin.getX() > rightOrigin.getX()) {
@@ -301,13 +299,13 @@ class LogicalSchematicController {
         boolean negate = true;
         double radiusX = vector.magnitude() / 2;
         double radiusY = 0;
-        for (int ii = 0; ii < flows.size(); ++ii) {
-            Flow flow = flows.get(ii);
-            Direction direction = flow.getDirection();
+        for (FlowInfo flowInfo : flows) {
+            Flow flow = flowInfo.getFlow();
+            Direction direction = flowInfo.getDirectionBetweenViews();
             if (reverseDirection) {
                 direction = direction.reverse();
             }
-            FlowType type = flow.getType().getTarget(allocated.getContext());
+            FlowType type = flowInfo.getType();
             Node node = toNode(flow, type, direction, radiusX, radiusY, negate);
             group.getChildren().add(node);
             if (negate) {
@@ -325,44 +323,14 @@ class LogicalSchematicController {
     }
 
     public void populate(
-            Baseline allocated,
             List<FunctionInfo> drawingFunctions,
-            Map<RelationPair<FunctionView>, List<Flow>> flows) {
+            Map<RelationPair<FunctionView>, List<FlowInfo>> flows) {
         Pane pane = new AnchorPane();
         Group deleted = new Group();
         Group other = new Group();
         flows.entrySet().forEach(entry -> {
-            FunctionView left = entry.getKey().getLeft();
-            FunctionView right = entry.getKey().getRight();
-            /*
-             * The ordering of function view UUIDs and the ordering of the
-             * function UUIDs may differ. This will affect the direction drawn
-             * for the flows. We need to correct that here.
-             */
-            {
-                UUID leftFunctionUUID = left.getFunction().getUuid();
-                UUID rightFunctionUUID = right.getFunction().getUuid();
-                if (leftFunctionUUID.compareTo(rightFunctionUUID)
-                        != left.getUuid().compareTo(right.getUuid())) {
-                    FunctionView tmp = left;
-                    left = right;
-                    right = tmp;
-                }
-            }
-            Function leftFunction = left.getFunction().getTarget(allocated.getContext());
-            Function rightFunction = right.getFunction().getTarget(allocated.getContext());
-            boolean leftExternal = leftFunction.isExternal();
-            boolean rightExternal = rightFunction.isExternal();
-            if (parentFunction.isPresent()) {
-                leftExternal = leftExternal || !leftFunction.isTracedTo(this.parentFunction.get());
-                rightExternal = rightExternal || !rightFunction.isTracedTo(this.parentFunction.get());
-            }
-            if (leftExternal && rightExternal) {
-                // This flow is entirely external to the diagram.
-            } else {
-                Node node = toNode(allocated, left, right, entry.getValue());
-                other.getChildren().add(node);
-            }
+            Node node = toNode(entry.getKey(), entry.getValue());
+            other.getChildren().add(node);
         });
         drawingFunctions.forEach(info -> {
             Node node = toNode(info);

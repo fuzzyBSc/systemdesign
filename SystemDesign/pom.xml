@@ -68,7 +68,7 @@
                         </executions>
                         <configuration>
                             <dateFormatTimeZone>${user.timezone}</dateFormatTimeZone>
-                            <verbose>true</verbose>
+                            <!--<verbose>true</verbose>-->
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
                             <generateGitPropertiesFilename>${project.build.outputDirectory}/about.properties</generateGitPropertiesFilename>
                             <format>properties</format>

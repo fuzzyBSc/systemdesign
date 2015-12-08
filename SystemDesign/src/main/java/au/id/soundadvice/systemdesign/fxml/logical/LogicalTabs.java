@@ -34,6 +34,7 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.Item;
@@ -77,7 +78,7 @@ public class LogicalTabs {
     private final EditState edit;
     private final TabPane tabs;
 
-    private static final class FlowInfo {
+    public static final class FlowInfo {
 
         public Optional<Function> getDrawing() {
             return drawing;
@@ -91,15 +92,39 @@ public class LogicalTabs {
             return flow;
         }
 
-        public FlowInfo(Optional<Function> drawing, RelationPair<FunctionView> views, Flow flow) {
+        public FlowType getType() {
+            return type;
+        }
+
+        public Direction getDirectionBetweenViews() {
+            return directionBetweenViews;
+        }
+
+        public FlowInfo(Baseline allocated, Optional<Function> drawing, RelationPair<FunctionView> views, Flow flow) {
             this.drawing = drawing;
             this.views = views;
             this.flow = flow;
+            this.type = flow.getType().getTarget(allocated.getContext());
+            /*
+             * The ordering of function view UUIDs and the ordering of the
+             * function UUIDs may differ. This will affect the direction drawn
+             * for the flows. We need to correct that here.
+             */
+            UUID leftFunctionUUID = views.getLeft().getFunction().getUuid();
+            UUID rightFunctionUUID = views.getRight().getFunction().getUuid();
+            if (leftFunctionUUID.compareTo(rightFunctionUUID)
+                    == views.getLeft().getUuid().compareTo(views.getRight().getUuid())) {
+                this.directionBetweenViews = flow.getDirection();
+            } else {
+                this.directionBetweenViews = flow.getDirection().reverse();
+            }
         }
 
         Optional<Function> drawing;
         RelationPair<FunctionView> views;
         Flow flow;
+        FlowType type;
+        Direction directionBetweenViews;
     }
 
     public static final class FunctionInfo {
@@ -248,7 +273,7 @@ public class LogicalTabs {
                     = findFunctionInfo(functional, functionDiffs(diffBaseline, allocated))
                     .collect(Collectors.groupingBy(FunctionInfo::getDrawing));
 
-            Map<Optional<Function>, Map<RelationPair<FunctionView>, List<Flow>>> flowsPerDiagram
+            Map<Optional<Function>, Map<RelationPair<FunctionView>, List<FlowInfo>>> flowsPerDiagram
                     = Flow.find(allocated)
                     .flatMap(flow -> {
                         RelationPair<Function> functions = flow.getEndpoints(allocated)
@@ -265,12 +290,18 @@ public class LogicalTabs {
                                                 /*
                                                  * Only include flow if
                                                  * rightView and leftView appear
-                                                 * on the same drawing.
+                                                 * on the same drawing and one
+                                                 * of them traces to its
+                                                 * drawing.
                                                  */
+                                                Optional<Function> leftTrace = leftView.getFunction(allocated).getTrace(functional);
+                                                Optional<Function> rightTrace = rightView.getFunction(allocated).getTrace(functional);
                                                 Optional<Function> leftDrawing = leftView.getDrawing(functional);
-                                                if (rightView.getDrawing(functional).equals(leftDrawing)) {
+                                                Optional<Function> rightDrawing = rightView.getDrawing(functional);
+                                                if (rightDrawing.equals(leftDrawing)
+                                                        && (leftTrace.equals(leftDrawing) || rightTrace.equals(rightDrawing))) {
                                                     return Stream.of(new FlowInfo(
-                                                            leftDrawing, new RelationPair<>(leftView, rightView), flow));
+                                                            allocated, leftDrawing, new RelationPair<>(leftView, rightView), flow));
                                                 } else {
                                                     return Stream.empty();
                                                 }
@@ -279,14 +310,13 @@ public class LogicalTabs {
                     })
                     .sorted((a, b) -> {
                         // Sort by type name for drawing stability
-                        return a.getFlow().getType(allocated).getName()
-                                .compareTo(b.getFlow().getType(allocated).getName());
+                        return a.getType().getName()
+                                .compareTo(b.getType().getName());
                     })
                     .collect(Collectors.groupingBy(
                             FlowInfo::getDrawing,
                             Collectors.groupingBy(FlowInfo::getViews,
-                                    Collectors.mapping(FlowInfo::getFlow,
-                                            Collectors.toList()))));
+                                    Collectors.toList())));
 
             functionsPerDiagram.entrySet().stream()
                     .forEach(entry -> {
@@ -294,10 +324,9 @@ public class LogicalTabs {
                                 = Optional.ofNullable(controllers.get(entry.getKey().map(Function::getUuid)));
                         if (controller.isPresent()) {
                             List<FunctionInfo> functionInfo = entry.getValue();
-                            Map<RelationPair<FunctionView>, List<Flow>> flows
+                            Map<RelationPair<FunctionView>, List<FlowInfo>> flows
                                     = flowsPerDiagram.getOrDefault(entry.getKey(), Collections.emptyMap());
-                            controller.get().populate(
-                                    allocated, functionInfo, flows);
+                            controller.get().populate(functionInfo, flows);
                         } else {
                             /*
                              * This is an unallocated function in an allocated
@@ -314,7 +343,7 @@ public class LogicalTabs {
                     .forEach(entry -> {
                         // Clear any controllers whose function list is now empty
                         entry.getValue().populate(
-                                allocated, Collections.emptyList(), Collections.emptyMap());
+                                Collections.emptyList(), Collections.emptyMap());
                     });
             Optional<Optional<Function>> toSelect = PreferredTab.getAndClear();
             Optional<LogicalSchematicController> tab

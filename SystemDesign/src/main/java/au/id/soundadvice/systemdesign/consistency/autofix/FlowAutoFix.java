@@ -1,4 +1,5 @@
 /*
+ * To change this license header, choose License Headers in Project Properties.
  * This is free and unencumbered software released into the public domain.
  *
  * Anyone is free to copy, modify, publish, use, compile, sell, or
@@ -26,26 +27,33 @@
  */
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
+import au.id.soundadvice.systemdesign.model.Baseline;
+import au.id.soundadvice.systemdesign.model.Flow;
+import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.UndoState;
-import java.util.function.UnaryOperator;
+import java.util.Iterator;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class AutoFix {
+public class FlowAutoFix {
 
-    public static UnaryOperator<UndoState> all() {
-        return state -> {
-            state = FlowTypeAutoFix.fix(state);
-            state = FlowAutoFix.fix(state);
-            state = IdentityMismatchAutoFix.fix(state);
-            state = FunctionViewAutoFix.fix(state);
-            state = ItemViewAutoFix.fix(state);
-            state = ExternalColorAutoFix.fix(state);
-            state = BudgetDeduplicate.fix(state);
-            return state;
-        };
+    public static Baseline removePurelyExternalFlows(Baseline baseline) {
+        Iterator<Flow> it = Flow.find(baseline).iterator();
+        while (it.hasNext()) {
+            Flow flow = it.next();
+            Function left = flow.getLeft(baseline);
+            Function right = flow.getRight(baseline);
+            if (left.isExternal() && right.isExternal()) {
+                // This flow shouln't exist at this level
+                baseline = flow.removeFrom(baseline);
+            }
+        }
+        return baseline;
     }
 
+    public static UndoState fix(UndoState state) {
+        return state.setAllocated(removePurelyExternalFlows(state.getAllocated()));
+    }
 }
