@@ -70,7 +70,7 @@
                             <dateFormatTimeZone>${user.timezone}</dateFormatTimeZone>
                             <verbose>true</verbose>
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                            <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                            <generateGitPropertiesFilename>${project.build.outputDirectory}/about.properties</generateGitPropertiesFilename>
                             <format>properties</format>
                             <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
                         </configuration>

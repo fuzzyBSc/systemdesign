@@ -11,9 +11,20 @@ get-orig-source:
 binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/share/applications
 	cp src/main/resources/*.desktop debian/systemdesign/usr/share/applications/
+
+binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/share/app-install/icons
 	cp src/main/resources/*.svg debian/systemdesign/usr/share/app-install/icons/
+
+binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/bin
 	cp src/main/resources/systemdesign.sh debian/systemdesign/usr/bin/systemdesign
 	chmod a+x debian/systemdesign/usr/bin/systemdesign
+
+# Patch jar with about info
+binary-install/systemdesign::
+	rm -f target/classes/about.properties
+	echo "version=$(shell git describe --always --tags)" >> target/classes/about.properties
+	echo "build.time=$(shell date --iso-8601=seconds)" >> target/classes/about.properties
+	jar uf debian/systemdesign/usr/share/java/System.Design.jar -C target/classes about.properties
 

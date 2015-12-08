@@ -62,7 +62,7 @@ public class AboutController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         Properties properties = new Properties();
-        InputStream gitProperties = getClass().getResourceAsStream("/git.properties");
+        InputStream gitProperties = getClass().getResourceAsStream("/about.properties");
         if (gitProperties != null) {
             try {
                 properties.load(gitProperties);
@@ -71,10 +71,14 @@ public class AboutController implements Initializable {
             }
         }
 
-        String versionText = properties.getProperty("git.commit.id.describe-short", "");
+        String versionText = properties.getProperty("version",
+                properties.getProperty("git.commit.id.describe-short",
+                        ""));
         version.setText(versionText);
 
-        String dateText = properties.getProperty("git.build.time", "");
+        String dateText = properties.getProperty("build.time",
+                properties.getProperty("git.build.time",
+                        ""));
         date.setText(dateText);
 
         close.setOnAction(event -> {
