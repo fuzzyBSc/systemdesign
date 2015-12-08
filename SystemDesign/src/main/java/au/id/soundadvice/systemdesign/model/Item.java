@@ -205,6 +205,22 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
         allocated = allocated.add(view);
 
         {
+            Iterator<BudgetAllocation> it = item.findBudgetAllocations(was).iterator();
+            while (it.hasNext()) {
+                allocated = allocated.add(it.next());
+            }
+        }
+        {
+            /*
+             * Restore functions before restoring interfaces, as interfaces will
+             * restore flows for any functions that exist
+             */
+            Iterator<Function> it = item.findOwnedFunctions(was).iterator();
+            while (it.hasNext()) {
+                allocated = Function.restore(was, allocated, it.next()).getBaseline();
+            }
+        }
+        {
             Iterator<Interface> it = item.findInterfaces(was).iterator();
             while (it.hasNext()) {
                 Interface iface = it.next();
@@ -212,18 +228,6 @@ public class Item implements BeanFactory<Baseline, ItemBean>, Relation {
                 if (otherItem.isPresent()) {
                     allocated = Interface.restore(was, allocated, iface).getBaseline();
                 }
-            }
-        }
-        {
-            Iterator<BudgetAllocation> it = item.findBudgetAllocations(was).iterator();
-            while (it.hasNext()) {
-                allocated = allocated.add(it.next());
-            }
-        }
-        {
-            Iterator<Function> it = item.findOwnedFunctions(was).iterator();
-            while (it.hasNext()) {
-                allocated = Function.restore(was, allocated, it.next()).getBaseline();
             }
         }
 

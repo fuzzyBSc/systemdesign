@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.relation.Reference;
 import au.id.soundadvice.systemdesign.relation.ReferenceFinder;
 import au.id.soundadvice.systemdesign.relation.Relation;
 import au.id.soundadvice.systemdesign.relation.RelationStore;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -114,7 +115,18 @@ public class Interface implements BeanFactory<Baseline, InterfaceBean>, Relation
         if (existing.isPresent()) {
             return allocated.and(existing.get());
         } else {
-            return allocated.add(iface).and(iface);
+            allocated = allocated.add(iface);
+            Iterator<Flow> flows = iface.findFlows(was).iterator();
+            while (flows.hasNext()) {
+                // Try to restore flows as well
+                Flow flow = flows.next();
+                Optional<Function> leftFunction = allocated.get(flow.getLeft().getUuid(), Function.class);
+                Optional<Function> rightFunction = allocated.get(flow.getRight().getUuid(), Function.class);
+                if (leftFunction.isPresent() && rightFunction.isPresent()) {
+                    allocated = Flow.restore(was, allocated, flow).getBaseline();
+                }
+            }
+            return allocated.and(iface);
         }
     }
 

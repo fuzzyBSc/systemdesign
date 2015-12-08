@@ -106,6 +106,25 @@ public class Flow implements BeanFactory<Baseline, FlowBean>, Relation {
                 flowType, endpoints.getDirection());
     }
 
+    public static BaselineAnd<Flow> restore(Baseline was, Baseline baseline, Flow flow) {
+        // Isn't an error to call restore without first restoring left and right functions.
+        Optional<Function> left = baseline.get(flow.getLeft(was));
+        Optional<Function> right = baseline.get(flow.getRight(was));
+        FlowType oldType = flow.getType(was);
+        // Match by id
+        Optional<FlowType> newType = baseline.get(oldType);
+        if (!newType.isPresent()) {
+            // Match by name
+            newType = FlowType.find(baseline, oldType.getName());
+        }
+        if (!newType.isPresent()) {
+            // Restore the type
+            baseline = baseline.add(oldType);
+            newType = Optional.of(oldType);
+        }
+        return add(baseline, left.get(), right.get(), newType.get(), flow.getDirection());
+    }
+
     @CheckReturnValue
     public static BaselineAnd<Flow> add(
             Baseline baseline,

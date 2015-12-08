@@ -153,7 +153,7 @@ public class ContextMenus {
     public static ContextMenu deletedInterfaceContextMenu(
             Baseline was, Interface iface, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem restoreMenuItem = new MenuItem("Restore Item");
+        MenuItem restoreMenuItem = new MenuItem("Restore Interface");
         restoreMenuItem.setOnAction(event -> {
             edit.updateAllocated(baseline -> {
                 Item wasLeftItem = iface.getLeft(was);
@@ -164,7 +164,7 @@ public class ContextMenus {
                     baseline = Item.restore(was, baseline, wasLeftItem).getBaseline();
                 }
                 if (!isRightItem.isPresent()) {
-                    baseline = Item.restore(was, baseline, wasLeftItem).getBaseline();
+                    baseline = Item.restore(was, baseline, wasRightItem).getBaseline();
                 }
                 return Interface.restore(was, baseline, iface).getBaseline();
             });
@@ -217,6 +217,20 @@ public class ContextMenus {
         return contextMenu;
     }
 
+    public static ContextMenu deletedFunctionContextMenu(
+            Baseline was, Function function, Interactions interactions, EditState edit) {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem restoreMenuItem = new MenuItem("Restore Function");
+        restoreMenuItem.setOnAction(event -> {
+            edit.updateAllocated(baseline -> {
+                return Function.restore(was, baseline, function).getBaseline();
+            });
+            event.consume();
+        });
+        contextMenu.getItems().add(restoreMenuItem);
+        return contextMenu;
+    }
+
     public static ContextMenu flowContextMenu(Flow flow, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         Menu typeMenu = new Menu("Set Type");
@@ -246,6 +260,30 @@ public class ContextMenus {
             event.consume();
         });
         contextMenu.getItems().add(deleteMenuItem);
+        return contextMenu;
+    }
+
+    public static ContextMenu deletedFlowContextMenu(
+            Baseline was, Flow flow, Interactions interactions, EditState edit) {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem restoreMenuItem = new MenuItem("Restore Flow");
+        restoreMenuItem.setOnAction(event -> {
+            edit.updateAllocated(baseline -> {
+                Function wasLeftFunction = flow.getLeft(was);
+                Function wasRightFunction = flow.getRight(was);
+                Optional<Function> isLeftFunction = baseline.get(wasLeftFunction);
+                Optional<Function> isRightFunction = baseline.get(wasRightFunction);
+                if (!isLeftFunction.isPresent()) {
+                    baseline = Function.restore(was, baseline, wasLeftFunction).getBaseline();
+                }
+                if (!isRightFunction.isPresent()) {
+                    baseline = Function.restore(was, baseline, wasRightFunction).getBaseline();
+                }
+                return Flow.restore(was, baseline, flow).getBaseline();
+            });
+            event.consume();
+        });
+        contextMenu.getItems().add(restoreMenuItem);
         return contextMenu;
     }
 

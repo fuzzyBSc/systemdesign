@@ -43,6 +43,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.DrawingFlow;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FunctionInfo;
+import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.model.Flow;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
@@ -191,7 +192,11 @@ class LogicalSchematicController {
         group.setLayoutX(info.getView().getOrigin().getX());
         group.setLayoutY(info.getView().getOrigin().getY());
 
-        if (!info.getFunction().isDeleted()) {
+        if (info.getFunction().isDeleted()) {
+            ContextMenu contextMenu = ContextMenus.deletedFunctionContextMenu(
+                    diff.getWasBaseline().get(), function, interactions, edit);
+            label.setContextMenu(contextMenu);
+        } else {
             ContextMenu contextMenu = ContextMenus.functionContextMenu(
                     info.getItem(), parentFunction, function, info.getView(), interactions, edit);
             label.setContextMenu(contextMenu);
@@ -211,6 +216,7 @@ class LogicalSchematicController {
     }
 
     private Node toNode(
+            Optional<Baseline> wasBaseline,
             Flow flow, String flowName, Direction direction,
             boolean deleted, boolean added,
             double radiusX, double radiusY, boolean negate) {
@@ -273,8 +279,14 @@ class LogicalSchematicController {
             reverseArrow.setLayoutY(layoutY);
         });
 
-        ContextMenu contextMenu = ContextMenus.flowContextMenu(flow, interactions, edit);
-        label.setContextMenu(contextMenu);
+        if (deleted) {
+            ContextMenu contextMenu = ContextMenus.deletedFlowContextMenu(
+                    wasBaseline.get(), flow, interactions, edit);
+            label.setContextMenu(contextMenu);
+        } else {
+            ContextMenu contextMenu = ContextMenus.flowContextMenu(flow, interactions, edit);
+            label.setContextMenu(contextMenu);
+        }
 
         Group group = new Group(path, label, normalArrow, reverseArrow);
         group.getStyleClass().add("schematicFlow");
@@ -317,6 +329,7 @@ class LogicalSchematicController {
                 direction = direction.reverse();
             }
             Node node = toNode(
+                    flowInfo.getWasBaseline(),
                     flow, sample.getKey().getTypeName(), direction,
                     flowInfo.isDeleted(), flowInfo.isAdded(),
                     radiusX, radiusY, negate);
