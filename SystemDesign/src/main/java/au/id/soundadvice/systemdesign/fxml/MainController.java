@@ -200,7 +200,7 @@ public class MainController implements Initializable {
                 URL resource = getClass().getResource("/fxml/About.fxml");
                 root = FXMLLoader.load(resource);
                 Stage stage = new Stage();
-                stage.setTitle("My New Stage Title");
+                stage.setTitle("About");
                 stage.setScene(new Scene(root, 450, 450));
                 stage.show();
             } catch (RuntimeException | IOException ex) {
