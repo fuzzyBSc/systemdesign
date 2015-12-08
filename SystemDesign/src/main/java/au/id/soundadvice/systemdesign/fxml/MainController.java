@@ -38,11 +38,17 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
@@ -50,6 +56,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
+import javafx.stage.Stage;
 
 /**
  * FXML Controller class
@@ -57,6 +64,8 @@ import javafx.scene.layout.Pane;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class MainController implements Initializable {
+
+    private static final Logger LOG = Logger.getLogger(MainController.class.getName());
 
     @FXML
     private TreeView<Item> physicalTree;
@@ -94,6 +103,8 @@ public class MainController implements Initializable {
     private Menu diffVersionMenu;
     @FXML
     private MenuItem diffNoneMenuItem;
+    @FXML
+    private MenuItem aboutMenuItem;
     @FXML
     private TabPane tabs;
 
@@ -181,6 +192,20 @@ public class MainController implements Initializable {
         downMenuItem.setOnAction(event -> {
             interactions.navigateDown();
             event.consume();
+        });
+
+        aboutMenuItem.setOnAction(event -> {
+            Parent root;
+            try {
+                URL resource = getClass().getResource("/fxml/About.fxml");
+                root = FXMLLoader.load(resource);
+                Stage stage = new Stage();
+                stage.setTitle("My New Stage Title");
+                stage.setScene(new Scene(root, 450, 450));
+                stage.show();
+            } catch (RuntimeException | IOException ex) {
+                LOG.log(Level.SEVERE, null, ex);
+            }
         });
 
         versionMenuController = new VersionMenuController(

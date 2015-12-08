@@ -206,7 +206,7 @@ public class LogicalTabs {
                     .distinct();
         }
 
-        private Stream<FunctionInfo> findInfo(
+        private Stream<FunctionInfo> findFunctionInfo(
                 Baseline functional,
                 Stream<RelationDiff<Function>> functions) {
             return functions.flatMap(function -> {
@@ -245,7 +245,7 @@ public class LogicalTabs {
                 Optional<Baseline> diffBaseline, Baseline allocated) {
             // Divide up all function views between the various controllers
             Map<Optional<Function>, List<FunctionInfo>> functionsPerDiagram
-                    = findInfo(functional, functionDiffs(diffBaseline, allocated))
+                    = findFunctionInfo(functional, functionDiffs(diffBaseline, allocated))
                     .collect(Collectors.groupingBy(FunctionInfo::getDrawing));
 
             Map<Optional<Function>, Map<RelationPair<FunctionView>, List<Flow>>> flowsPerDiagram
