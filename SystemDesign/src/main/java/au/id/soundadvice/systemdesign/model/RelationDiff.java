@@ -130,7 +130,7 @@ public class RelationDiff<T> {
         return wasInstance.isPresent() && !isInstance.isPresent();
     }
 
-    private RelationDiff(
+    public RelationDiff(
             Optional<Baseline> wasBaseline, Optional<T> wasInstance,
             Baseline isBaseline, Optional<T> isInstance) {
         this.wasBaseline = wasBaseline;

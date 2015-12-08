@@ -44,7 +44,6 @@ import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FlowInfo;
 import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs.FunctionInfo;
 import au.id.soundadvice.systemdesign.model.Flow;
-import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.FunctionView;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.RelationDiff;
@@ -212,7 +211,8 @@ class LogicalSchematicController {
     }
 
     private Node toNode(
-            Flow flow, FlowType flowType, Direction direction,
+            Flow flow, String flowName, Direction direction,
+            boolean deleted, boolean added,
             double radiusX, double radiusY, boolean negate) {
         int startDegrees;
         if (negate) {
@@ -250,7 +250,17 @@ class LogicalSchematicController {
 
         }
 
-        Label label = new Label(flowType.getName().replace(" ", "\n"));
+        TextFlow textFlow = new TextFlow();
+        Text text = new Text(flowName);
+        if (deleted) {
+            text.getStyleClass().add("deleted");
+        }
+        if (added) {
+            text.getStyleClass().add("changed");
+        }
+        textFlow.getChildren().add(text);
+        Label label = new Label(null, textFlow);
+
         label.boundsInLocalProperty().addListener((info, old, bounds) -> {
             double halfWidth = bounds.getWidth() / 2;
             double halfHeight = bounds.getHeight() / 2;
@@ -305,8 +315,10 @@ class LogicalSchematicController {
             if (reverseDirection) {
                 direction = direction.reverse();
             }
-            FlowType type = flowInfo.getType();
-            Node node = toNode(flow, type, direction, radiusX, radiusY, negate);
+            Node node = toNode(
+                    flow, flowInfo.getTypeName(), direction,
+                    flowInfo.isDeleted(), flowInfo.isAdded(),
+                    radiusX, radiusY, negate);
             group.getChildren().add(node);
             if (negate) {
                 radiusY += 35;
