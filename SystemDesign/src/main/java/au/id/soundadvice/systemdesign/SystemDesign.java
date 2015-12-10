@@ -103,6 +103,8 @@ public class SystemDesign extends Application {
                         CSVReader rightReader = new CSVReader(right);
                         CSVWriter out = new CSVWriter(new PrintWriter(System.out))) {
                     Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out);
+                    // Close to flush
+                    out.close();
                     System.exit(0);
                 } catch (IOException ex) {
                     System.err.println(ex.toString());
