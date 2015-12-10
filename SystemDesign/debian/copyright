@@ -1,9 +1,9 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: SystemDesign
-Source: http://maven.apache.org
+Source: https://github.com/fuzzyBSc/systemdesign
 
 Files: *
-Copyright: 2015, Benjamin Carlyle
+Copyright: 2015, Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
 License: public-domain
 
 Files: debian/*

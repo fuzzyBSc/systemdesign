@@ -39,8 +39,10 @@ import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
+import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
@@ -91,6 +93,8 @@ public class MainController implements Initializable {
     private MenuItem openMenuItem;
     @FXML
     private Menu openRecentMenu;
+    @FXML
+    private MenuItem exploreMenuItem;
     @FXML
     private MenuItem saveMenuItem;
     @FXML
@@ -189,6 +193,50 @@ public class MainController implements Initializable {
                     event.consume();
                 },
                 Optional.empty());
+        exploreMenuItem.setOnAction(event -> {
+            Optional<Directory> directory = edit.getCurrentDirectory();
+            if (directory.isPresent()) {
+                try {
+                    ProcessBuilder builder = new ProcessBuilder();
+                    builder.command("nautilus", directory.get().getPath().toString());
+                    builder.directory(directory.get().getPath().toFile());
+                    builder.inheritIO();
+                    builder.start();
+                } catch (IOException ex) {
+                    try {
+                        /*
+                         * I'm hitting a bug where this call hangs the whole
+                         * application on Ubuntu, so we only do this as a
+                         * fallback when nautilus is not available.
+                         */
+                        Desktop.getDesktop().open(directory.get().getPath().toFile());
+                    } catch (IOException ex2) {
+                        ex2.addSuppressed(ex);
+                        LOG.log(Level.WARNING, null, ex2);
+                    }
+                }
+            } else {
+                try {
+                    ProcessBuilder builder = new ProcessBuilder();
+                    builder.command("nautilus");
+                    builder.inheritIO();
+                    builder.start();
+                } catch (IOException ex) {
+                    try {
+                        /*
+                         * I'm hitting a bug where this call hangs the whole
+                         * application on Ubuntu, so we only do this as a
+                         * fallback when nautilus is not available.
+                         */
+                        Desktop.getDesktop().open(Paths.get(".").toFile());
+                    } catch (IOException ex2) {
+                        ex2.addSuppressed(ex);
+                        LOG.log(Level.WARNING, null, ex2);
+                    }
+                }
+            }
+            event.consume();
+        });
         saveMenuItem.setOnAction(event -> {
             interactions.trySave();
             event.consume();

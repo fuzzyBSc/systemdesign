@@ -119,6 +119,7 @@
                         <Menu fx:id="diffBranchMenu" mnemonicParsing="false" text="Diff To Branch" />
                         <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
                         <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
+                        <MenuItem fx:id="exploreMenuItem" mnemonicParsing="false" text="Explore" />
                     </items>
                      <accelerator>
                         <KeyCodeCombination alt="DOWN" code="V" control="UP" meta="UP" shift="UP" shortcut="UP" />
