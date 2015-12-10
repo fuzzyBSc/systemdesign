@@ -206,4 +206,37 @@ public class MergeTest {
         }
     }
 
+    @Test
+    public void functionsTest() throws Exception {
+        String O = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
+                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
+                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
+                + "\"Report Inconsistency (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistency\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
+                + "\"Store Models (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Models\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+        String A = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
+                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
+                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
+                + "\"Report Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistencies\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
+                + "\"Store Models (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Models\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+        String B = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
+                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
+                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
+                + "\"Report Inconsistency (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistency\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
+                + "\"Store Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Inconsistencies\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+        String P = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
+                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
+                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
+                + "\"Report Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistencies\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
+                + "\"Store Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Inconsistencies\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+        try (
+                CSVReader ancestor = new CSVReader(new StringReader(O));
+                CSVReader left = new CSVReader(new StringReader(A));
+                CSVReader right = new CSVReader(new StringReader(B));
+                StringWriter result = new StringWriter();
+                CSVWriter out = new CSVWriter(result)) {
+            Merge.threeWayCSV(ancestor, left, right, out);
+            assertEquals(P, result.toString());
+        }
+    }
+
 }
