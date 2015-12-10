@@ -1,3 +1,11 @@
+systemdesign (0.5-1) UNRELEASED; urgency=medium
+
+  * Add git diff and merge support
+  * Support flows between functions on the same item
+  * Add freedesktop integration
+
+ -- Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>  Thu, 11 Dec 2015 00:00:00 +1000
+
 systemdesign (0.4-1) UNRELEASED; urgency=medium
 
   * Add budgeting support
