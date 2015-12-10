@@ -38,6 +38,7 @@ import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.model.FlowType;
 import au.id.soundadvice.systemdesign.model.Function;
 import au.id.soundadvice.systemdesign.model.Item;
+import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
@@ -87,6 +88,8 @@ public class MainController implements Initializable {
     private MenuItem newMenuItem;
     @FXML
     private MenuItem openMenuItem;
+    @FXML
+    private Menu openRecentMenu;
     @FXML
     private MenuItem saveMenuItem;
     @FXML
@@ -172,6 +175,17 @@ public class MainController implements Initializable {
             }
             event.consume();
         });
+        ContextMenus.initPerInstanceSubmenu(
+                openRecentMenu,
+                () -> RecentFiles.getRecentFiles(),
+                path -> path.getFileName().toString(),
+                (event, path) -> {
+                    if (interactions.checkSave("Save before closing?")) {
+                        interactions.tryLoad(edit, Directory.forPath(path));
+                    }
+                    event.consume();
+                },
+                Optional.empty());
         saveMenuItem.setOnAction(event -> {
             interactions.trySave();
             event.consume();

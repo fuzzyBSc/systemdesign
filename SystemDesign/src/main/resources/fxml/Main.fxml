@@ -65,6 +65,11 @@
                                         <KeyCodeCombination alt="UP" code="O" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                                     </accelerator>
                                 </MenuItem>
+                        <Menu fx:id="openRecentMenu" mnemonicParsing="false" text="Open Recent">
+                          <items>
+                            <MenuItem mnemonicParsing="false" text="Action 1" />
+                          </items>
+                        </Menu>
                                 <MenuItem fx:id="saveMenuItem" mnemonicParsing="false" text="Save">
                                     <accelerator>
                                         <KeyCodeCombination alt="UP" code="S" control="DOWN" meta="UP" shift="UP" shortcut="UP" />

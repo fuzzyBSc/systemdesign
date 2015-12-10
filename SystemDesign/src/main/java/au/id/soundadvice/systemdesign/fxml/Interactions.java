@@ -43,6 +43,7 @@ import au.id.soundadvice.systemdesign.model.Interface;
 import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.RelationPair;
 import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
+import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -640,6 +641,7 @@ public class Interactions {
     public boolean tryLoad(EditState edit, Directory dir) {
         try {
             edit.load(dir);
+            RecentFiles.addRecentFile(dir.getPath());
             return true;
         } catch (IOException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -655,6 +657,10 @@ public class Interactions {
     public boolean tryLoadChooser(Window window, EditState edit) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("System Designs");
+        Optional<Directory> current = edit.getCurrentDirectory();
+        if (current.isPresent()) {
+            chooser.setInitialDirectory(current.get().getPath().toFile());
+        }
         File selectedDirectory = chooser.showDialog(window);
         if (selectedDirectory == null) {
             return false;
