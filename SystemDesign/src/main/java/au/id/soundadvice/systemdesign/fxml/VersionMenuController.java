@@ -71,7 +71,13 @@ public class VersionMenuController {
         ContextMenus.initPerInstanceSubmenu(
                 menu,
                 () -> getter.apply(edit.getVersionControl())
-                .sorted((a, b) -> -a.getTimestamp().compareTo(b.getTimestamp())),
+                .sorted((a, b) -> {
+                    int tscompare = -a.getTimestamp().compareTo(b.getTimestamp());
+                    if (tscompare != 0) {
+                        return tscompare;
+                    }
+                    return a.getDescription().compareTo(b.getDescription());
+                }),
                 info -> {
                     CheckMenuItem item = new CheckMenuItem(info.getDescription());
                     if (edit.getDiffBaselineVersion().equals(Optional.of(info))) {
@@ -83,7 +89,8 @@ public class VersionMenuController {
                     edit.setDiffVersion(Optional.of(versionInfo));
                     e.consume();
                 },
-                Optional.empty());
+                Optional.empty()
+        );
     }
 
     public void start() {
