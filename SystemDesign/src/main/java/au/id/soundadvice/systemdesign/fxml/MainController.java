@@ -51,6 +51,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
@@ -101,11 +102,13 @@ public class MainController implements Initializable {
     @FXML
     private MenuItem downMenuItem;
     @FXML
+    private Menu versionsMenu;
+    @FXML
     private Menu diffBranchMenu;
     @FXML
     private Menu diffVersionMenu;
     @FXML
-    private MenuItem diffNoneMenuItem;
+    private CheckMenuItem diffNoneMenuItem;
     @FXML
     private MenuItem aboutMenuItem;
     @FXML
@@ -178,7 +181,7 @@ public class MainController implements Initializable {
         ContextMenus.initPerInstanceSubmenu(
                 openRecentMenu,
                 () -> RecentFiles.getRecentFiles(),
-                path -> path.getFileName().toString(),
+                path -> new MenuItem(path.getFileName().toString()),
                 (event, path) -> {
                     if (interactions.checkSave("Save before closing?")) {
                         interactions.tryLoad(edit, Directory.forPath(path));
@@ -223,7 +226,8 @@ public class MainController implements Initializable {
         });
 
         versionMenuController = new VersionMenuController(
-                edit, diffBranchMenu, diffVersionMenu, diffNoneMenuItem);
+                edit, diffBranchMenu, diffVersionMenu,
+                versionsMenu, diffNoneMenuItem);
         versionMenuController.start();
 
         edit.subscribe(buttonDisable);

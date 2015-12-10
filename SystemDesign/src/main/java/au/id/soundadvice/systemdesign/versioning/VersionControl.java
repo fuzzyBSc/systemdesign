@@ -53,6 +53,8 @@ public interface VersionControl extends Closeable {
 
     public Stream<VersionInfo> getVersions() throws IOException;
 
+    public Optional<VersionInfo> getDefaultBaseline();
+
     public void changed(Path filename) throws IOException;
 
     public boolean canCommit();

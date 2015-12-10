@@ -44,6 +44,7 @@ import au.id.soundadvice.systemdesign.model.ItemView;
 import au.id.soundadvice.systemdesign.model.RelationPair;
 import au.id.soundadvice.systemdesign.model.UndoState.StateAnd;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
+import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -642,6 +643,11 @@ public class Interactions {
         try {
             edit.load(dir);
             RecentFiles.addRecentFile(dir.getPath());
+            Optional<VersionInfo> baseline = edit.getVersionControl().getDefaultBaseline();
+            if (baseline.isPresent()) {
+                // Open default diff baseline
+                edit.setDiffVersion(baseline);
+            }
             return true;
         } catch (IOException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);

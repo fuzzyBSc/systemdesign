@@ -53,7 +53,7 @@ public class ContextMenus {
     public static <T> void initPerInstanceSubmenu(
             Menu menu,
             Supplier<Stream<T>> supplier,
-            java.util.function.Function<T, String> stringifier,
+            java.util.function.Function<T, MenuItem> menufier,
             BiConsumer<ActionEvent, T> action,
             Optional<MenuItem> extra) {
         MenuItem dummy = new MenuItem("dummy");
@@ -65,7 +65,7 @@ public class ContextMenus {
             menu.getItems().addAll(
                     supplier.get()
                     .map(instance -> {
-                        MenuItem menuItem = new MenuItem(stringifier.apply(instance));
+                        MenuItem menuItem = menufier.apply(instance);
                         menuItem.setOnAction(actionEvent -> action.accept(actionEvent, instance));
                         return menuItem;
                     })
@@ -243,7 +243,7 @@ public class ContextMenus {
                 typeMenu,
                 () -> FlowType.find(edit.getAllocated())
                 .sorted((a, b) -> a.getName().compareTo(b.getName())),
-                type -> type.getName(),
+                type -> new MenuItem(type.getName()),
                 (e, type) -> edit.updateAllocated(allocated -> {
                     Optional<Flow> flowSample = allocated.get(flow);
                     Optional<FlowType> typeSample = allocated.get(type);

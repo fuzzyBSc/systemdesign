@@ -28,13 +28,38 @@
 package au.id.soundadvice.systemdesign.versioning;
 
 import java.util.Calendar;
-import java.util.Optional;
+import java.util.Objects;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class VersionInfo {
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 41 * hash + Objects.hashCode(this.id);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final VersionInfo other = (VersionInfo) obj;
+        if (!Objects.equals(this.id, other.id)) {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public String toString() {
@@ -53,19 +78,13 @@ public class VersionInfo {
         return timestamp;
     }
 
-    public Optional<String> getBaseline() {
-        return baseline;
-    }
-
-    public VersionInfo(String id, String description, Calendar timestamp, Optional<String> baseline) {
+    public VersionInfo(String id, String description, Calendar timestamp) {
         this.id = id;
         this.description = description;
         this.timestamp = timestamp;
-        this.baseline = baseline;
     }
 
     private final String id;
     private final String description;
     private final Calendar timestamp;
-    private final Optional<String> baseline;
 }

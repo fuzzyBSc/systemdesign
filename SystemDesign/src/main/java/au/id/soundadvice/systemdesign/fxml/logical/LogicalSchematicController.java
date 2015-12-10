@@ -404,7 +404,7 @@ class LogicalSchematicController {
                 () -> Item.find(edit.getAllocated())
                 .filter(item -> !item.isExternal())
                 .sorted((a, b) -> a.getShortId().compareTo(b.getShortId())),
-                Item::getDisplayName,
+                item -> new MenuItem(item.getDisplayName()),
                 (e, item) -> {
                     Point2D origin = lastContextMenuClick.get()
                     .map(evt -> new Point2D(evt.getX(), evt.getY()))

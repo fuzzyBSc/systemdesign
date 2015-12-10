@@ -110,6 +110,20 @@ public class GitVersionControl implements VersionControl {
         }
     }
 
+    @Override
+    public Optional<VersionInfo> getDefaultBaseline() {
+        try {
+            return refToVersionInfo(
+                    repo.branchList()
+                    .setListMode(ListMode.ALL)
+                    .setContains("HEAD")
+                    .call()
+                    .stream()).findAny();
+        } catch (GitAPIException ex) {
+            return Optional.empty();
+        }
+    }
+
     private Stream<VersionInfo> refToVersionInfo(Stream<Ref> refs) {
         return refs.flatMap(ref -> {
             try {
@@ -117,7 +131,6 @@ public class GitVersionControl implements VersionControl {
                         = repo.log().add(ref.getObjectId()).setMaxCount(1).call();
                 return StreamSupport.stream(iterable.spliterator(), false)
                         .map(commit -> {
-                            RevCommit[] parents = commit.getParents();
                             Calendar timestamp = Calendar.getInstance();
                             timestamp.setTimeInMillis(commit.getCommitTime() * 1000L);
                             String name = ref.getName();
@@ -128,13 +141,12 @@ public class GitVersionControl implements VersionControl {
                             } else if (name.startsWith("refs/remotes/")) {
                                 name = name.substring(13);
                             }
+                            String description = name
+                                    + " (" + commit.getId().abbreviate(7).name() + ')';
                             return new VersionInfo(
                                     ref.getObjectId().name(),
-                                    name,
-                                    timestamp,
-                                    parents.length == 0
-                                            ? Optional.empty()
-                                            : Optional.of(parents[0].getId().getName()));
+                                    description,
+                                    timestamp);
                         });
             } catch (MissingObjectException | IncorrectObjectTypeException | GitAPIException ex) {
                 LOG.log(Level.WARNING, null, ex);

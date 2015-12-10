@@ -114,11 +114,11 @@
                         <KeyCodeCombination alt="DOWN" code="N" control="UP" meta="UP" shift="UP" shortcut="UP" />
                      </accelerator>
                         </Menu>
-                  <Menu mnemonicParsing="false" text="Versions">
+                  <Menu fx:id="versionsMenu" mnemonicParsing="false" text="Versions">
                     <items>
                         <Menu fx:id="diffBranchMenu" mnemonicParsing="false" text="Diff To Branch" />
                         <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
-                      <MenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
+                        <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
                     </items>
                      <accelerator>
                         <KeyCodeCombination alt="DOWN" code="V" control="UP" meta="UP" shift="UP" shortcut="UP" />

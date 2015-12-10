@@ -36,8 +36,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
 
 /**
  *
@@ -50,12 +50,16 @@ public class VersionMenuController {
     private final EditState edit;
     private final Menu diffBranchMenu;
     private final Menu diffVersionMenu;
-    private final MenuItem diffNoneMenuItem;
+    private final Menu diffNoneMenu;
+    private final CheckMenuItem diffNoneMenuItem;
 
     public VersionMenuController(
             EditState edit,
-            Menu diffBranchMenu, Menu diffVersionMenu, MenuItem diffNoneMenuItem) {
+            Menu diffBranchMenu, Menu diffVersionMenu,
+            Menu diffNoneMenu,
+            CheckMenuItem diffNoneMenuItem) {
         this.edit = edit;
+        this.diffNoneMenu = diffNoneMenu;
         this.diffBranchMenu = diffBranchMenu;
         this.diffVersionMenu = diffVersionMenu;
         this.diffNoneMenuItem = diffNoneMenuItem;
@@ -68,7 +72,13 @@ public class VersionMenuController {
                 menu,
                 () -> getter.apply(edit.getVersionControl())
                 .sorted((a, b) -> -a.getTimestamp().compareTo(b.getTimestamp())),
-                VersionInfo::getDescription,
+                info -> {
+                    CheckMenuItem item = new CheckMenuItem(info.getDescription());
+                    if (edit.getDiffBaselineVersion().equals(Optional.of(info))) {
+                        item.setSelected(true);
+                    }
+                    return item;
+                },
                 (e, versionInfo) -> {
                     edit.setDiffVersion(Optional.of(versionInfo));
                     e.consume();
@@ -92,6 +102,10 @@ public class VersionMenuController {
                 LOG.log(Level.WARNING, null, ex);
                 return Stream.empty();
             }
+        });
+        diffNoneMenu.setOnShowing(e -> {
+            diffNoneMenuItem.setSelected(
+                    !edit.getDiffBaselineVersion().isPresent());
         });
         diffNoneMenuItem.setOnAction(e2 -> {
             edit.setDiffVersion(Optional.empty());

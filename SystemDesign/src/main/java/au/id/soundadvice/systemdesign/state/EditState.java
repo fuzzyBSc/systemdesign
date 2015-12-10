@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.util.Pair;
 
 /**
  *
@@ -57,7 +58,11 @@ import java.util.logging.Logger;
 public class EditState {
 
     public Optional<Baseline> getDiffBaseline() {
-        return diffBaseline.get();
+        return diffBaseline.get().map(Pair::getValue);
+    }
+
+    public Optional<VersionInfo> getDiffBaselineVersion() {
+        return diffBaseline.get().map(Pair::getKey);
     }
 
     public VersionControl getVersionControl() {
@@ -279,7 +284,7 @@ public class EditState {
                 Baseline was = Baseline.load(
                         path.get(),
                         path.get().getOpenerForVersion(versioning, version));
-                diffBaseline.set(Optional.of(was));
+                diffBaseline.set(Optional.of(new Pair<>(version.get(), was)));
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
                 diffBaseline.set(Optional.empty());
@@ -293,7 +298,7 @@ public class EditState {
     private final AtomicReference<VersionControl> versionControl;
     private final AtomicReference<Optional<VersionInfo>> diffVersion
             = new AtomicReference<>(Optional.empty());
-    private final AtomicReference<Optional<Baseline>> diffBaseline
+    private final AtomicReference<Optional<Pair<VersionInfo, Baseline>>> diffBaseline
             = new AtomicReference<>(Optional.empty());
     private final Stack<Identity> lastChild = new Stack<>();
     private final UndoBuffer<UndoState> undo;

@@ -85,4 +85,9 @@ public class NullVersionControl implements VersionControl {
         }
     }
 
+    @Override
+    public Optional<VersionInfo> getDefaultBaseline() {
+        return Optional.empty();
+    }
+
 }
