@@ -33,10 +33,14 @@ import au.id.soundadvice.systemdesign.versioning.VersionInfo;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Calendar;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -81,6 +85,8 @@ public class GitVersionControl implements VersionControl {
                     .setMustExist(true);
             repositoryRoot = Paths.get(builder.getGitDir().getAbsolutePath()).getParent();
             repo = new Git(builder.build());
+
+            checkCSVMergeDriver(repositoryRoot);
         } catch (RuntimeException ex) {
             throw new IOException(ex);
         }
@@ -302,6 +308,68 @@ public class GitVersionControl implements VersionControl {
                 return Optional.of(Files.newBufferedReader(path));
             } else {
                 return Optional.empty();
+            }
+        }
+    }
+
+    private static void checkCSVMergeDriver(Path repositoryRoot) throws IOException {
+        Path config = repositoryRoot.resolve(".git/config");
+        String header = "[merge \"mergecsvwithuuid\"]";
+        boolean stanzafound;
+        try (BufferedReader reader = Files.newBufferedReader(config)) {
+            stanzafound = reader.lines()
+                    .filter(line -> line.equals(header))
+                    .findAny()
+                    .isPresent();
+        }
+        if (!stanzafound) {
+            Path jarlocation;
+            try {
+                jarlocation = Paths.get(GitVersionControl.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            } catch (URISyntaxException ex) {
+                jarlocation = Paths.get("I do not exist");
+                LOG.log(Level.WARNING, null, ex);
+            }
+            Optional<Path> mergeDriver = Stream.of(
+                    Paths.get("/usr/share/java/SystemDesign.jar"),
+                    jarlocation)
+                    .filter(Files::exists)
+                    .findFirst();
+            if (!mergeDriver.isPresent()) {
+                LOG.warning("Unable to find jar to configure git merge");
+                return;
+            }
+            String driver = "java -jar " + mergeDriver.get() + " -merge %O %A %B";
+
+            if (Files.exists(config)) {
+                Path configBackup = config.resolveSibling("config.bak");
+                Files.copy(config, configBackup, StandardCopyOption.REPLACE_EXISTING);
+            }
+            try (Writer writer = Files.newBufferedWriter(
+                    config,
+                    StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
+                writer.write(System.lineSeparator());
+                writer.write(header);
+                writer.write(System.lineSeparator());
+                writer.write("name = Merge CSV Files that contain a uuid column");
+                writer.write(System.lineSeparator());
+                writer.write("driver = ");
+                writer.write(driver);
+                writer.write(System.lineSeparator());
+                writer.write("recursive = binary");
+                writer.write(System.lineSeparator());
+            }
+            Path attributes = repositoryRoot.resolve(".git/info/gitattibutes");
+            if (Files.exists(attributes)) {
+                Path attributesBackup = attributes.resolveSibling("gitattributes.bak");
+                Files.copy(attributes, attributesBackup, StandardCopyOption.REPLACE_EXISTING);
+            }
+            try (Writer writer = Files.newBufferedWriter(
+                    attributes,
+                    StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
+                writer.write(System.lineSeparator());
+                writer.write(".csv   merge=mergecsvwithuuid");
+                writer.write(System.lineSeparator());
             }
         }
     }

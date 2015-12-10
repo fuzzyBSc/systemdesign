@@ -26,10 +26,18 @@
  */
 package au.id.soundadvice.systemdesign;
 
+import au.com.bytecode.opencsv.CSVReader;
+import au.com.bytecode.opencsv.CSVWriter;
+import au.id.soundadvice.systemdesign.files.Merge;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.MainController;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.Executors;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -84,7 +92,29 @@ public class SystemDesign extends Application {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        launch(args);
+        if (args.length > 0 && args[0].endsWith("-merge")) {
+            if (args.length == 4) {
+                System.out.println("Merge");
+                try (
+                        BufferedReader ancestor = Files.newBufferedReader(Paths.get(args[1]));
+                        BufferedReader left = Files.newBufferedReader(Paths.get(args[2]));
+                        BufferedReader right = Files.newBufferedReader(Paths.get(args[3]));
+                        CSVReader ancestorReader = new CSVReader(ancestor);
+                        CSVReader leftReader = new CSVReader(left);
+                        CSVReader rightReader = new CSVReader(right);
+                        CSVWriter out = new CSVWriter(new PrintWriter(System.out))) {
+                    Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out);
+                } catch (IOException ex) {
+                    System.err.println(ex.toString());
+                    System.exit(1);
+                }
+            } else {
+                System.out.println("Unexpected arguments " + Arrays.toString(args));
+                System.exit(1);
+            }
+        } else {
+            launch(args);
+        }
     }
 
 }
