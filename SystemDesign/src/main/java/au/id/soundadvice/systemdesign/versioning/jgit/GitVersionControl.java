@@ -368,7 +368,7 @@ public class GitVersionControl implements VersionControl {
                     attributes,
                     StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
                 writer.write(System.lineSeparator());
-                writer.write(".csv   merge=mergecsvwithuuid");
+                writer.write("*.csv   merge=mergecsvwithuuid");
                 writer.write(System.lineSeparator());
             }
         }
