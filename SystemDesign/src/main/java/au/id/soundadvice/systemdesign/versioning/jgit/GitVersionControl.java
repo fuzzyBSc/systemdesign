@@ -165,7 +165,11 @@ public class GitVersionControl implements VersionControl {
     public void changed(Path filename) throws IOException {
         try {
             Path pattern = this.repositoryRoot.relativize(filename);
-            repo.add().addFilepattern(pattern.toString()).call();
+            if (Files.exists(filename)) {
+                repo.add().addFilepattern(pattern.toString()).call();
+            } else {
+                repo.rm().addFilepattern(pattern.toString()).call();
+            }
         } catch (GitAPIException ex) {
             throw new IOException(ex);
         }
