@@ -94,7 +94,6 @@ public class SystemDesign extends Application {
     public static void main(String[] args) {
         if (args.length > 0 && args[0].endsWith("-merge")) {
             if (args.length == 4) {
-                System.out.println("Merge");
                 try (
                         BufferedReader ancestor = Files.newBufferedReader(Paths.get(args[1]));
                         BufferedReader left = Files.newBufferedReader(Paths.get(args[2]));
@@ -104,6 +103,7 @@ public class SystemDesign extends Application {
                         CSVReader rightReader = new CSVReader(right);
                         CSVWriter out = new CSVWriter(new PrintWriter(System.out))) {
                     Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out);
+                    System.exit(0);
                 } catch (IOException ex) {
                     System.err.println(ex.toString());
                     System.exit(1);

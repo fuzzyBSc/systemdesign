@@ -87,16 +87,22 @@ public class Merge {
             String[] header = optHeader.get();
             return () -> {
                 try {
-                    String[] line = reader.readNext();
-                    if (line == null) {
-                        return Optional.empty();
+                    for (;;) {
+                        String[] line = reader.readNext();
+                        if (line == null) {
+                            return Optional.empty();
+                        }
+                        if (line.length == 1 && line[0].isEmpty()) {
+                            // Loop again on an empty line
+                            continue;
+                        }
+                        Map<String, String> result = new HashMap<>();
+                        for (int ii = 0; ii < header.length; ++ii) {
+                            String cell = line.length > ii ? line[ii] : "";
+                            result.put(header[ii], cell);
+                        }
+                        return Optional.of(result);
                     }
-                    Map<String, String> result = new HashMap<>();
-                    for (int ii = 0; ii < header.length; ++ii) {
-                        String cell = line.length > ii ? line[ii] : "";
-                        result.put(header[ii], cell);
-                    }
-                    return Optional.of(result);
                 } catch (IOException ex) {
                     throw new UncheckedIOException(ex);
                 }
