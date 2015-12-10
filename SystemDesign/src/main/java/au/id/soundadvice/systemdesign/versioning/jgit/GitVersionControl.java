@@ -351,15 +351,15 @@ public class GitVersionControl implements VersionControl {
                 writer.write(System.lineSeparator());
                 writer.write(header);
                 writer.write(System.lineSeparator());
-                writer.write("name = Merge CSV Files that contain a uuid column");
+                writer.write("\tname = Merge CSV Files that contain a uuid column");
                 writer.write(System.lineSeparator());
-                writer.write("driver = ");
+                writer.write("\tdriver = ");
                 writer.write(driver);
                 writer.write(System.lineSeparator());
-                writer.write("recursive = binary");
+                writer.write("\trecursive = binary");
                 writer.write(System.lineSeparator());
             }
-            Path attributes = repositoryRoot.resolve(".git/info/gitattibutes");
+            Path attributes = repositoryRoot.resolve(".git/info/attibutes");
             if (Files.exists(attributes)) {
                 Path attributesBackup = attributes.resolveSibling("gitattributes.bak");
                 Files.copy(attributes, attributesBackup, StandardCopyOption.REPLACE_EXISTING);
