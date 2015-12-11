@@ -1,0 +1,7 @@
+"description","leftItem","rightItem","uuid"
+"1.5.1:1.5.5 Governer:Worm Gear","ef3ab26b-ac54-473b-a026-0a1e0f578df8","19a4e5d5-db3c-43a7-9e78-2f51df0cac2d","a3155ad3-c3c9-4735-8928-9c851f362da2"
+"1.1:1.5.2 Drum:Cog 1","9258a1b5-8dbc-46a3-961e-00de474afc0a","9e20fe6b-1ba3-4e47-8c04-012a988d7df6","b36b0198-7ba4-4caf-920b-cf1c9e7db07e"
+"1.5.1:3 Governer:Atmosphere","81649146-416a-43de-b536-acedbd1cf3c6","19a4e5d5-db3c-43a7-9e78-2f51df0cac2d","56bb5df3-b994-4bc7-b843-e4f13a3874f0"
+"1.5.2:1.5.3 Cog 1:Cog 2","9258a1b5-8dbc-46a3-961e-00de474afc0a","6354e2da-70da-4537-9cf4-d36c168f3682","5792d1eb-6764-4bc1-9fe0-d88dcbce9532"
+"1.5.3:1.5.4 Cog 2:Cog 3","af349713-6b9a-4c17-b685-cb41b01eacf8","6354e2da-70da-4537-9cf4-d36c168f3682","6731ee16-da32-4f8e-97ac-e2eea12f50a4"
+"1.5.4:1.5.5 Cog 3:Worm Gear","af349713-6b9a-4c17-b685-cb41b01eacf8","ef3ab26b-ac54-473b-a026-0a1e0f578df8","7b381fc9-3ddc-4fe1-a8ec-61d4a124943b"
