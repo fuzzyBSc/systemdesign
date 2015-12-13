@@ -257,7 +257,7 @@ class LogicalSchematicController {
         }
 
         TextFlow textFlow = new TextFlow();
-        Text text = new Text(flowName);
+        Text text = new Text(flowName.replaceAll("\\s+", "\n"));
         if (deleted) {
             text.getStyleClass().add("deleted");
         }
