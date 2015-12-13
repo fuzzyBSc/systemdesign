@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
@@ -37,16 +38,23 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Changed implements ChangeSubscribable {
 
-    public class Transaction implements AutoCloseable {
+    public class Inhibit implements AutoCloseable {
 
-        public Transaction() {
+        public Inhibit() {
             inhibit.incrementAndGet();
+        }
+
+        public void changed() {
+            Changed.this.changed();
         }
 
         @Override
         public void close() {
             if (inhibit.decrementAndGet() == 0) {
-                changed();
+                // Last inhibit
+                if (changePending.get() != 0) {
+                    notifyChanged();
+                }
             }
         }
 
@@ -56,8 +64,9 @@ public class Changed implements ChangeSubscribable {
         this.executor = executor;
     }
 
-    public Transaction start() {
-        return new Transaction();
+    @CheckReturnValue
+    public Inhibit inhibit() {
+        return new Inhibit();
     }
 
     @Override
@@ -70,10 +79,49 @@ public class Changed implements ChangeSubscribable {
         subscribers.remove(subscriber);
     }
 
-    private void changed() {
+    public void changed() {
+        /*
+         * Note potential race between transaction close and this inhibit check.
+         *
+         * In changed() we call ++changePending -> inhibit.get() and fire
+         * notifyChanged() whenever the sequence is --inhibit -> inhibit.get()
+         *
+         * In close() we call --inhibit -> changePending.get() and fire
+         * notifyChanged() whenver the sequence is ++changePending ->
+         * changePending.get()
+         *
+         * The possible sequences are:
+         *
+         * (1) ++changePending -> inhibit.get() -> --inhibit ->
+         * changePending.get(): close() fires.
+         *
+         * (2) ++changePending -> --inhibit -> inhibit.get() ->
+         * changePending.get(): Both fire
+         *
+         * (3) ++changePending -> --inhibit -> changePending.get() ->
+         * inhibit.get() : Both fire
+         *
+         * (4)--inhibit -> ++changePending -> inhibit.get() ->
+         * changePending.get(): Both fire
+         *
+         * (5)--inhibit -> ++changePending -> changePending.get() ->
+         * inhibit.get() : Both fire
+         *
+         * (6)--inhibit -> changePending.get() -> ++changePending ->
+         * inhibit.get() : changed() fires
+         *
+         */
+        changePending.incrementAndGet();
+        if (inhibit.get() == 0) {
+            notifyChanged();
+        }
+    }
+
+    private void notifyChanged() {
         if (notifyNeeded.getAndIncrement() == 0) {
             executor.execute(() -> {
                 for (;;) {
+                    changePending.set(0);
                     notifyNeeded.set(1);
                     subscribers.parallelStream().forEach(f -> f.run());
                     if (notifyNeeded.decrementAndGet() == 0) {
@@ -85,6 +133,7 @@ public class Changed implements ChangeSubscribable {
     }
 
     private final AtomicInteger inhibit = new AtomicInteger(0);
+    private final AtomicInteger changePending = new AtomicInteger(0);
     private final AtomicInteger notifyNeeded = new AtomicInteger(0);
     private final Executor executor;
     private final List<Runnable> subscribers = new CopyOnWriteArrayList<>();

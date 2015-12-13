@@ -99,12 +99,12 @@ public class UndoBuffer<T> {
         return matched;
     }
 
-    public final void update(UnaryOperator<T> update) {
+    public final boolean update(UnaryOperator<T> update) {
         for (;;) {
             T oldState = get();
             T newState = update.apply(oldState);
             if (compareAndSet(oldState, newState)) {
-                break;
+                return !oldState.equals(newState);
             }
         }
     }

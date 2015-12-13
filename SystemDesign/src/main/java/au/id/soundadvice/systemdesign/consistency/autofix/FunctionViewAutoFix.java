@@ -53,7 +53,7 @@ import javafx.util.Pair;
  */
 public class FunctionViewAutoFix {
 
-    static UndoState fix(UndoState state) {
+    private static UndoState removeViewsOnMissingDrawings(UndoState state) {
         if (state.getSystemOfInterest().isPresent()) {
             final UndoState preTraceState = state;
             Iterator<FunctionView> it = FunctionView.find(preTraceState.getAllocated()).iterator();
@@ -67,7 +67,10 @@ public class FunctionViewAutoFix {
                 }
             }
         }
+        return state;
+    }
 
+    private static UndoState removeDuplicateViewsPerDrawing(UndoState state) {
         final UndoState preDeduplicateState = state;
         Map<Function, Map<Optional<Function>, List<FunctionView>>> viewsByFunctionAndDrawing
                 = FunctionView.find(preDeduplicateState.getAllocated())
@@ -86,7 +89,10 @@ public class FunctionViewAutoFix {
                 }
             }
         }
+        return state;
+    }
 
+    private static UndoState addMissingFunctionViews(UndoState state) {
         final UndoState preAddState = state;
         Stream<Pair<Function, Optional<Function>>> additions
                 = Function.find(preAddState.getAllocated())
@@ -108,7 +114,13 @@ public class FunctionViewAutoFix {
             }
             state = state.setAllocated(allocated);
         }
+        return state;
+    }
 
+    static UndoState fix(UndoState state) {
+        state = removeViewsOnMissingDrawings(state);
+        state = removeDuplicateViewsPerDrawing(state);
+        state = addMissingFunctionViews(state);
         return state;
     }
 

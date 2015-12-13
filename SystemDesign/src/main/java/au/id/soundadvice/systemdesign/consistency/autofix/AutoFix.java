@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
 import au.id.soundadvice.systemdesign.model.UndoState;
-import java.util.function.UnaryOperator;
 
 /**
  *
@@ -35,17 +34,19 @@ import java.util.function.UnaryOperator;
  */
 public class AutoFix {
 
-    public static UnaryOperator<UndoState> all() {
-        return state -> {
-            state = FlowTypeAutoFix.fix(state);
-            state = FlowAutoFix.fix(state);
-            state = IdentityMismatchAutoFix.fix(state);
-            state = FunctionViewAutoFix.fix(state);
-            state = ItemViewAutoFix.fix(state);
-            state = ExternalColorAutoFix.fix(state);
-            state = BudgetDeduplicate.fix(state);
-            return state;
-        };
+    public static UndoState onLoad(UndoState state) {
+        state = FlowTypeAutoFix.fix(state);
+        state = FlowAutoFix.fix(state);
+        state = IdentityMismatchAutoFix.fix(state);
+        state = FunctionViewAutoFix.fix(state);
+        state = ItemViewAutoFix.fix(state);
+        state = ExternalColorAutoFix.fix(state);
+        state = BudgetDeduplicate.fix(state);
+        return state;
     }
 
+    public static UndoState onChange(UndoState state) {
+        state = FunctionViewAutoFix.fix(state);
+        return state;
+    }
 }

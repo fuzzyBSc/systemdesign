@@ -199,13 +199,36 @@ public class Function implements BeanFactory<Baseline, FunctionBean>, Relation {
     public Stream<Optional<Function>> getExpectedDrawings(UndoState state) {
         Baseline functional = state.getFunctional();
         Baseline allocated = state.getAllocated();
-        /*
-         * If we belong to the system of interest we should appear on the
-         * diagram for our trace.
-         */
-        Stream<Optional<Function>> result = external
-                ? Stream.empty()
-                : Stream.of(getTrace(functional));
+
+        Stream<Optional<Function>> result;
+        if (external) {
+            /*
+             * We should appear on each diagram that we have a flow with in the
+             * functional baseline.
+             */
+            Optional<Item> systemOfInterest = state.getSystemOfInterest();
+            Optional<Function> functionInstance = functional.get(this);
+            if (systemOfInterest.isPresent() && functionInstance.isPresent()) {
+                result = functionInstance.get().findFlows(functional)
+                        .map(flow -> {
+                            Function otherEnd = flow.otherEnd(
+                                    functional, functionInstance.get());
+                            return Optional.of(otherEnd);
+                        })
+                        .filter(otherEnd -> {
+                            Item otherEndItem = otherEnd.get().getItem(functional);
+                            return otherEndItem.equals(systemOfInterest.get());
+                        });
+            } else {
+                result = Stream.empty();
+            }
+        } else {
+            /*
+             * We should appear on the diagram for our trace.
+             */
+            result = Stream.of(getTrace(functional));
+        }
+
         /*
          * We should appear on any diagram for which we have a flow to a
          * function that traces to that diagram.

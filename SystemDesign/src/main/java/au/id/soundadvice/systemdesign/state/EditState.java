@@ -29,7 +29,7 @@ package au.id.soundadvice.systemdesign.state;
 import au.id.soundadvice.systemdesign.model.UndoState;
 import au.id.soundadvice.systemdesign.model.Baseline;
 import au.id.soundadvice.systemdesign.concurrent.Changed;
-import au.id.soundadvice.systemdesign.concurrent.Changed.Transaction;
+import au.id.soundadvice.systemdesign.concurrent.Changed.Inhibit;
 import au.id.soundadvice.systemdesign.consistency.autofix.AutoFix;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.SaveTransaction;
@@ -80,15 +80,17 @@ public class EditState {
     }
 
     public static EditState init(Executor executor) {
-        return new EditState(
+        EditState result = new EditState(
                 executor,
                 Optional.empty(), new NullVersionControl(),
                 UndoState.createNew(),
                 true);
+        result.subscribe(() -> result.updateState(AutoFix::onChange));
+        return result;
     }
 
     public void clear() {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             UndoState state = UndoState.createNew();
             this.currentDirectory.set(Optional.empty());
             VersionControl old = this.versionControl.getAndSet(new NullVersionControl());
@@ -101,6 +103,7 @@ public class EditState {
             this.lastChild.clear();
             this.undo.reset(state);
             this.savedState.set(state);
+            xact.changed();
         }
     }
 
@@ -128,10 +131,11 @@ public class EditState {
                 .map(Directory::getParent);
         if (parentDir.isPresent()
                 && Files.exists(parentDir.get().getIdentityFile())) {
-            try (Transaction xact = this.changed.start()) {
+            try (Inhibit xact = this.changed.inhibit()) {
                 UndoState state = undo.get();
                 loadImpl(parentDir.get());
                 lastChild.push(Identity.find(state.getAllocated()));
+                xact.changed();
             }
         }
     }
@@ -141,8 +145,7 @@ public class EditState {
     }
 
     public void loadChild(Identity child) throws IOException {
-        try (Transaction xact = this.changed.start()) {
-
+        try (Inhibit xact = this.changed.inhibit()) {
             Optional<Directory> parentDir = currentDirectory.get();
             if (!parentDir.isPresent()) {
                 throw new IOException("Parent is not saved yet");
@@ -191,6 +194,7 @@ public class EditState {
                     lastChild.clear();
                 }
             }
+            xact.changed();
         }
     }
 
@@ -202,9 +206,10 @@ public class EditState {
         if (dir == null) {
             throw new IOException("Cannot load from null directory");
         }
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             loadImpl(dir);
             lastChild.clear();
+            xact.changed();
         }
     }
 
@@ -226,7 +231,7 @@ public class EditState {
         loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
 
         // Set undo again here to allow automatic changes to be undone
-        undo.update(AutoFix.all());
+        undo.update(AutoFix::onLoad);
     }
 
     public boolean saveNeeded() {
@@ -234,13 +239,14 @@ public class EditState {
     }
 
     public void save() throws IOException {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             Optional<Directory> dir = currentDirectory.get();
             if (dir.isPresent()) {
                 saveTo(dir.get(), versionControl.get());
             } else {
                 throw new IOException("Model has not been saved yet");
             }
+            xact.changed();
         }
     }
 
@@ -265,15 +271,17 @@ public class EditState {
     }
 
     public void saveTo(Directory dir) throws IOException {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             saveTo(dir, VersionControl.forPath(dir.getPath()));
+            xact.changed();
         }
     }
 
     public void setDiffVersion(Optional<VersionInfo> version) {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             this.diffVersion.set(version);
             loadDiffBaseline(currentDirectory.get(), versionControl.get(), version);
+            xact.changed();
         }
     }
 
@@ -324,7 +332,7 @@ public class EditState {
     public void renameDirectory(Path from, Path to) throws IOException {
         Optional<Directory> current = currentDirectory.get();
         if (current.isPresent() && current.get().getPath().equals(from)) {
-            try (Transaction xact = this.changed.start()) {
+            try (Inhibit xact = this.changed.inhibit()) {
                 VersionControl versioning = versionControl.get();
                 versioning.renameDirectory(from, to);
                 Optional<Directory> newDirectory = Optional.of(Directory.forPath(to));
@@ -339,6 +347,7 @@ public class EditState {
                     }
                 }
                 loadDiffBaseline(newDirectory, newVersionControl, diffVersion.get());
+                xact.changed();
             }
         }
     }
@@ -350,9 +359,11 @@ public class EditState {
      * @param update A function to update the baseline.
      */
     public void updateFunctional(UnaryOperator<Baseline> update) {
-        try (Transaction xact = this.changed.start()) {
-            undo.update(state -> state.setFunctional(
-                    update.apply(state.getFunctional())));
+        try (Inhibit xact = this.changed.inhibit()) {
+            if (undo.update(state -> state.setFunctional(
+                    update.apply(state.getFunctional())))) {
+                xact.changed();
+            }
         }
     }
 
@@ -362,9 +373,11 @@ public class EditState {
      * @param update A function to update the baseline.
      */
     public void updateAllocated(UnaryOperator<Baseline> update) {
-        try (Transaction xact = this.changed.start()) {
-            undo.update(state -> state.setAllocated(
-                    update.apply(state.getAllocated())));
+        try (Inhibit xact = this.changed.inhibit()) {
+            if (undo.update(state -> state.setAllocated(
+                    update.apply(state.getAllocated())))) {
+                xact.changed();
+            }
         }
     }
 
@@ -375,8 +388,10 @@ public class EditState {
      * simultaneously.
      */
     public void updateState(UnaryOperator<UndoState> update) {
-        try (Transaction xact = this.changed.start()) {
-            undo.update(update);
+        try (Inhibit xact = this.changed.inhibit()) {
+            if (undo.update(update)) {
+                xact.changed();
+            }
         }
     }
 
@@ -412,14 +427,16 @@ public class EditState {
     }
 
     public void undo() {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             undo.undo();
+            xact.changed();
         }
     }
 
     public void redo() {
-        try (Transaction xact = this.changed.start()) {
+        try (Inhibit xact = this.changed.inhibit()) {
             undo.redo();
+            xact.changed();
         }
     }
 
