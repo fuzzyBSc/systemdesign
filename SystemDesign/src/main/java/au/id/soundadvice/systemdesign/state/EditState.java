@@ -155,7 +155,7 @@ public class EditState {
                 loadImpl(existing.get());
             } else {
                 // Synthesise a child baseline, since none has been saved yet
-                String prefix = child.getIdPath().toString();
+                String prefix = child.toString();
                 int count = 0;
                 Directory childDir;
                 do {
