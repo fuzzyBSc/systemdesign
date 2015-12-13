@@ -363,7 +363,7 @@ public class GitVersionControl implements VersionControl {
                 writer.write("\trecursive = binary");
                 writer.write(System.lineSeparator());
             }
-            Path attributes = repositoryRoot.resolve(".git/info/attibutes");
+            Path attributes = repositoryRoot.resolve(".git/info/attributes");
             if (Files.exists(attributes)) {
                 Path attributesBackup = attributes.resolveSibling("gitattributes.bak");
                 Files.copy(attributes, attributesBackup, StandardCopyOption.REPLACE_EXISTING);
