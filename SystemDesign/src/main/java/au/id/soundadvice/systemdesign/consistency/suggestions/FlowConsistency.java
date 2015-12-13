@@ -391,12 +391,26 @@ public class FlowConsistency {
             Baseline.BaselineAnd<FlowType> typeAddResult
                     = FlowType.add(functional, Optional.empty(), summary.type.getName());
             functional = typeAddResult.getBaseline();
-            FlowType type = typeAddResult.getRelation();
+            FlowType functionalType = typeAddResult.getRelation();
             functional = Flow.add(
                     functional,
                     summary.scope.setDirection(summary.direction),
-                    type).getBaseline();
-            return state.setFunctional(functional);
+                    functionalType).getBaseline();
+            state = state.setFunctional(functional);
+            // If we did just create the type above we might also need to add
+            // a new trace upwards from the allocated type to the new functional
+            // baseline type.
+            Baseline allocated = state.getAllocated();
+            Optional<FlowType> allocatedType = allocated.get(summary.type);
+            if (allocatedType.isPresent()) {
+                Optional<FlowType> existingTrace = allocatedType.get().getTrace(functional);
+                if (!existingTrace.isPresent()) {
+                    allocated = allocatedType.get().setTrace(
+                            allocated, Optional.of(functionalType)).getBaseline();
+                    state = state.setAllocated(allocated);
+                }
+            }
+            return state;
         } else {
             return state;
         }
