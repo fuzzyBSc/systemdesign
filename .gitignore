@@ -7,3 +7,10 @@
 /SystemDesign/target/
 /context
 /SystemDesign/nbproject/
+/ModuleAPI/target/
+/Application/nbproject/
+/BaseModule/target/
+/Application/target/
+/PhysicalModule/target/
+/BudgetModule/target/
+/LogicalModule/target/

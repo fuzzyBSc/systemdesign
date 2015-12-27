@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.net.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.input.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="600.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="au.id.soundadvice.systemdesign.fxml.MainController">
+    <stylesheets>
+        <URL value="@/styles/main.css" />
+    </stylesheets>
+    <children>
+        <BorderPane layoutX="-1.0" prefHeight="404.0" prefWidth="600.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="0.0">
+            <left>
+                <Accordion BorderPane.alignment="CENTER">
+                    <panes>
+                        <TitledPane animated="false" text="Physical">
+                            <content>
+                                <TreeView id="physicalTree" fx:id="physicalTree" prefHeight="200.0" prefWidth="200.0" />
+                            </content>
+                        </TitledPane>
+                        <TitledPane animated="false" text="Logical">
+                            <content>
+                                <TreeView fx:id="logicalTree" prefHeight="200.0" prefWidth="200.0" />
+                            </content>
+                        </TitledPane>
+                        <TitledPane prefHeight="200.0" prefWidth="200.0" text="Type">
+                            <content>
+                                <TreeView fx:id="typeTree" prefHeight="200.0" prefWidth="200.0" />
+                            </content>
+                        </TitledPane>
+                        <TitledPane prefHeight="200.0" prefWidth="200.0" text="Budget">
+                            <content>
+                                <TreeView fx:id="budgetTree" prefHeight="200.0" prefWidth="200.0" />
+                            </content>
+                        </TitledPane>
+                    </panes>
+                </Accordion>
+            </left>
+            <bottom>
+                <TilePane prefHeight="0.0" prefWidth="600.0" BorderPane.alignment="CENTER">
+                    <children>
+                        <Button fx:id="upButton" mnemonicParsing="false" text="Up" />
+                        <Button fx:id="downButton" mnemonicParsing="false" text="Down" />
+                    </children>
+                </TilePane>
+            </bottom>
+            <right>
+                <VBox fx:id="suggestions" prefHeight="375.0" prefWidth="214.0" BorderPane.alignment="CENTER" />
+            </right>
+            <top>
+                <MenuBar BorderPane.alignment="CENTER">
+                    <menus>
+                        <Menu mnemonicParsing="false" text="File">
+                            <items>
+                                <MenuItem fx:id="newMenuItem" mnemonicParsing="false" text="New">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="N" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                                <MenuItem fx:id="openMenuItem" mnemonicParsing="false" text="Open">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="O" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                        <Menu fx:id="openRecentMenu" mnemonicParsing="false" text="Open Recent">
+                          <items>
+                            <MenuItem mnemonicParsing="false" text="Action 1" />
+                          </items>
+                        </Menu>
+                                <MenuItem fx:id="saveMenuItem" mnemonicParsing="false" text="Save">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="S" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                        <MenuItem fx:id="exitMenuItem" mnemonicParsing="false" text="Exit" />
+                            </items>
+                     <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="F" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="Edit">
+                            <items>
+                                <MenuItem fx:id="undoMenuItem" mnemonicParsing="false" text="Undo">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="Z" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                                <MenuItem fx:id="redoMenuItem" mnemonicParsing="false" text="Redo">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="Y" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                            </items>
+                     <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="E" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="Navigate">
+                            <items>
+                                <MenuItem fx:id="upMenuItem" mnemonicParsing="false" text="Up to Parent">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="DOWN" code="PAGE_UP" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                                <MenuItem fx:id="downMenuItem" mnemonicParsing="false" text="Down to Last Child">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="DOWN" code="PAGE_DOWN" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                            </items>
+                     <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="N" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator>
+                        </Menu>
+                  <Menu fx:id="versionsMenu" mnemonicParsing="false" text="Versions">
+                    <items>
+                        <Menu fx:id="diffBranchMenu" mnemonicParsing="false" text="Diff To Branch" />
+                        <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
+                        <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
+                        <MenuItem fx:id="exploreMenuItem" mnemonicParsing="false" text="Explore" />
+                    </items>
+                     <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="V" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator>
+                  </Menu>
+                        <Menu mnemonicParsing="false" text="Help">
+                            <items>
+                                <MenuItem fx:id="aboutMenuItem" mnemonicParsing="false" text="About" />
+                            </items>
+                     <accelerator>
+                        <KeyCodeCombination alt="DOWN" code="H" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+            </top>
+            <center>
+                <TabPane fx:id="tabs" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+                    <tabs>
+                        <Tab fx:id="physicalDrawing" text="Physical">
+                            <content>
+                                <ScrollPane>
+                                    <content>
+                                        <AnchorPane minHeight="0.0" minWidth="0.0" />
+                                    </content>
+                                </ScrollPane>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+            </center>
+        </BorderPane>
+    </children>
+</AnchorPane>
