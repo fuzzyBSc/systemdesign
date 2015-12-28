@@ -50,6 +50,11 @@ import javax.annotation.CheckReturnValue;
 public class ByUUID<E extends Relation> {
 
     @Override
+    public String toString() {
+        return relations.toString();
+    }
+
+    @Override
     public int hashCode() {
         int hash = 7;
         hash = 71 * hash + Objects.hashCode(this.relations);

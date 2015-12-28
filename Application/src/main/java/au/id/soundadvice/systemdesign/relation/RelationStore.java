@@ -45,6 +45,11 @@ import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
 public class RelationStore implements Relations {
 
     @Override
+    public String toString() {
+        return relations.toString();
+    }
+
+    @Override
     public int hashCode() {
         int hash = 5;
         hash = 53 * hash + Objects.hashCode(this.relations);

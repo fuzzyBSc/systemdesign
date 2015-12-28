@@ -161,6 +161,10 @@ public class BeanReader<T> implements Closeable {
                     properties.put(descriptor.getName(), descriptor);
                 }
                 String[] headerNames = reader.get().readNext();
+                while (headerNames != null && headerNames.length == 1 && headerNames[0].isEmpty()) {
+                    // Ignore empty lines
+                    headerNames = reader.get().readNext();
+                }
                 if (headerNames == null) {
                     this.header = Collections.emptyList();
                 } else {
@@ -183,6 +187,10 @@ public class BeanReader<T> implements Closeable {
         if (reader.isPresent()) {
             try {
                 String[] line = reader.get().readNext();
+                while (line != null && line.length == 1 && line[0].isEmpty()) {
+                    // Ignore empty lines
+                    line = reader.get().readNext();
+                }
                 if (line == null) {
                     return Optional.empty();
                 }

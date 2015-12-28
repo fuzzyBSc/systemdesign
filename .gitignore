@@ -4,7 +4,11 @@
 *.jar
 *.war
 *.ear
+*.swp
+/systemdesign-*.zip
+/systemdesign_*.deb
 /SystemDesign/target/
+/SystemDesign/debian/files
 /context
 /SystemDesign/nbproject/
 /ModuleAPI/target/

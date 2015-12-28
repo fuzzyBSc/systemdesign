@@ -25,4 +25,9 @@
 #   --site-xml=<location>: Optional, the location for site.xml if it needs to be installed.
 #     Empty by default. [mh_install]
 #
-pom.xml --has-package-version --java-lib
+pom.xml --has-package-version
+../Application/pom.xml --has-package-version
+../ModuleAPI/pom.xml --has-package-version --java-lib
+../PhysicalModule/pom.xml --has-package-version --java-lib
+../LogicalModule/pom.xml --has-package-version --java-lib
+../BudgetModule/pom.xml --has-package-version --java-lib

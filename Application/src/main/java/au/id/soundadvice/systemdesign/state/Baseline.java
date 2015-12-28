@@ -26,8 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.state;
 
+import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.physical.Identity;
-import static au.id.soundadvice.systemdesign.files.BeanFile.saveBeans;
 import au.id.soundadvice.systemdesign.files.BeanReader;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.files.FileOpener;
@@ -141,6 +141,13 @@ public class Baseline {
                 Baseline.load(directory, directory));
     }
 
+    private static void saveBeans(
+            SaveTransaction transaction, Path csv,
+            Class beanClass, Stream beans) throws IOException {
+        // Non type-safe wrapper
+        BeanFile.saveBeans(transaction, csv, beanClass, beans);
+    }
+
     /**
      * Save the allocated baseline to the nominated directory.
      *
@@ -157,8 +164,6 @@ public class Baseline {
             try {
                 Modules.getModules()
                         .flatMap(module -> module.saveMementos(baseline))
-                        // Sort by UUID
-                        .sorted((left, right) -> left.getUuid().compareTo(right.getUuid()))
                         // Collect for saving
                         .collect(Collectors.groupingBy(Object::getClass))
                         // Save each type
@@ -166,9 +171,8 @@ public class Baseline {
                             Path csv = directory.getPathForClass(entry.getKey());
                             try {
                                 saveBeans(transaction, csv,
-                                        Identifiable.class,
-                                        entry.getValue().stream()
-                                        .map(bean -> (Identifiable) bean));
+                                        entry.getKey(),
+                                        entry.getValue().stream());
                             } catch (IOException ex) {
                                 throw new UncheckedIOException(ex);
                             }

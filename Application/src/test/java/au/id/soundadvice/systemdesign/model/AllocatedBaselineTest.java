@@ -68,7 +68,7 @@ public class AllocatedBaselineTest {
     public void testEmpty() throws Exception {
         System.out.println("load");
         Path repo = Paths.get(tmp.getRoot().getAbsolutePath());
-        Directory modelDirectory = Directory.forPath(repo.resolve("Logger.getLogger(GitVersionControl.class.getName()).log(Level.SEVERE, null, ex);model"));
+        Directory modelDirectory = Directory.forPath(repo.resolve("model"));
         Directory systemDirectory = modelDirectory.resolve("system");
         Directory subsystemDirectory = systemDirectory.resolve("subsystem");
         FileUtils.recursiveDelete(modelDirectory.getPath());

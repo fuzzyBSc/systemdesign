@@ -6,7 +6,7 @@ ZIP=systemdesign-${VERSION}.zip
 mvn clean
 mvn install
 rm -vf "../${ZIP}"
-(cd target
+(cd ../Application/target
 	mv SystemDesign-*.jar SystemDesign.jar
 	zip -r ../../${ZIP} SystemDesign.jar lib
 )
