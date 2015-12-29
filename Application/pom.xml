@@ -132,19 +132,19 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.x</version>
+			<version>4.11</version>
 			<scope>test</scope>
 			<type>jar</type>
 		</dependency>
 		<dependency>
 			<groupId>net.sf.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
-			<version>debian</version>
+			<version>2.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jgit</groupId>
 			<artifactId>org.eclipse.jgit</artifactId>
-			<version>debian</version>
+			<version>3.7.1.201504261725-r</version>
 		</dependency>
 		<dependency>
 			<groupId>au.id.soundadvice.systemdesign</groupId>
