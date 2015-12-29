@@ -5,28 +5,44 @@ include /usr/share/cdbs/1/class/maven.mk
 
 JAVA_HOME := $(wildcard /usr/lib/jvm/java-8-openjdk-*/)
 
+# Work around the failure of javadoc:jar build if only "package" is invoked
+DEB_MAVEN_BUILD_TARGET = install
+
 get-orig-source:
 	uscan --download-current-version --force-download --no-symlink
 
 binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/share/applications
-	cp src/main/resources/*.desktop debian/systemdesign/usr/share/applications/
+	cp ../Application/src/main/resources/*.desktop debian/systemdesign/usr/share/applications/
 
 binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/share/app-install/icons
-	cp src/main/resources/*.svg debian/systemdesign/usr/share/app-install/icons/
+	cp ../Application/src/main/resources/*.svg debian/systemdesign/usr/share/app-install/icons/
 
 binary-install/systemdesign::
 	mkdir -p debian/systemdesign/usr/bin
-	cp src/main/resources/systemdesign.sh debian/systemdesign/usr/bin/systemdesign
+	cp ../Application/src/main/resources/systemdesign.sh debian/systemdesign/usr/bin/systemdesign
 	chmod a+x debian/systemdesign/usr/bin/systemdesign
 
 # Patch jar with about info
 binary-install/systemdesign::
-	rm -f target/classes/about.properties
-	echo "version=$(shell git describe --always --tags)" >> target/classes/about.properties
-	echo "build.time=$(shell date --iso-8601=seconds)" >> target/classes/about.properties
-	jar uf debian/systemdesign/usr/share/java/SystemDesign.jar -C target/classes about.properties
+	rm -f ../Application/target/classes/about.properties
+	echo "version=$(shell git describe --always --tags)" >> ../Application/target/classes/about.properties
+	echo "build.time=$(shell date --iso-8601=seconds)" >> ../Application/target/classes/about.properties
+	jar uf debian/systemdesign/usr/share/java/SystemDesign.jar -C ../Application/target/classes about.properties
+
+# Put apidocs where the systemdesign-doc build will see it
+binary-install/systemdesign::
+	mkdir -p target && cp -r ../Application/target/apidocs target
+
+# Patch to make sure that BudgetModule.jar appears in /usr/share/java (!?!)
+binary-install/systemdesign::
+	MVNDIR=$$(ls -d debian/systemdesign/usr/share/maven-repo/au/id/soundadvice/systemdesign/BudgetModule/* | grep -v 'debian$$'); \
+	JAR=$$(echo $$MVNDIR/BudgetModule-*.jar); \
+	NAME=$$(basename "$$JAR"); \
+	mv "$$JAR" debian/systemdesign/usr/share/java/BudgetModule.jar; \
+	ln -s BudgetModule.jar debian/systemdesign/usr/share/java/$$NAME; \
+	ln -s ../../../../../../../java/BudgetModule.jar $$JAR; \
 
 binary-install/systemdesign-doc::
 	mkdir -p debian/systemdesign-doc/usr/share/doc/systemdesign-doc

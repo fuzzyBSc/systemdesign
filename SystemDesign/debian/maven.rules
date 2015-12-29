@@ -1,8 +1,8 @@
 
 au.id.soundadvice SystemDesign jar s/.*/debian/ * *
-au.id.soundadvice.systemdesign SystemDesign jar s/.*/debian/ * *
+au.id.soundadvice.systemdesign BudgetModule jar s/.*/debian/ * *
+au.id.soundadvice.systemdesign LogicalModule jar s/.*/debian/ * *
 au.id.soundadvice.systemdesign ModuleAPI jar s/.*/debian/ * *
 au.id.soundadvice.systemdesign PhysicalModule jar s/.*/debian/ * *
-au.id.soundadvice.systemdesign LogicalModule jar s/.*/debian/ * *
-au.id.soundadvice.systemdesign BudgetModule jar s/.*/debian/ * *
+au.id.soundadvice.systemdesign SystemDesign jar s/.*/debian/ * *
 junit junit jar s/4\..*/4.x/ * *

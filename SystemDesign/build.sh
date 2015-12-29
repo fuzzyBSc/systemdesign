@@ -15,6 +15,11 @@ rm -vf "../${ZIP}"
 )
 
 # Build debian package
+rm -rf debian/maven-repo/*
+if [ -f /usr/share/java/SystemDesign.jar ]; then
+	echo We need to remove the package before will build OK
+	sudo apt-get remove systemdesign systemdesign-doc
+fi
 dpkg-buildpackage -us -uc -b
 for ii in ../*; do
 	if [ -f "$ii/pom.xml.save" ]; then

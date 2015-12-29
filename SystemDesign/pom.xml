@@ -1,15 +1,22 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>au.id.soundadvice</groupId>
-    <artifactId>SystemDesign</artifactId>
-    <version>0.6</version>
-    <packaging>pom</packaging>
-    <modules>
-        <module>../ModuleAPI</module>
-        <module>../PhysicalModule</module>
-        <module>../Application</module>
-        <module>../BudgetModule</module>
-        <module>../LogicalModule</module>
-    </modules>
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>au.id.soundadvice</groupId>
+	<artifactId>SystemDesign</artifactId>
+	<version>0.6</version>
+	<packaging>pom</packaging>
+	<properties>
+		<debian.hasPackageVersion>
+		</debian.hasPackageVersion>
+		<debian.mavenRules>au.id.soundadvice SystemDesign jar s/.*/debian/ * *</debian.mavenRules>
+		<debian.originalVersion>0.6</debian.originalVersion>
+		<debian.package>systemdesign</debian.package>
+	</properties>
+	<modules>
+		<module>../ModuleAPI</module>
+		<module>../PhysicalModule</module>
+		<module>../Application</module>
+		<module>../BudgetModule</module>
+		<module>../LogicalModule</module>
+	</modules>
 </project>
