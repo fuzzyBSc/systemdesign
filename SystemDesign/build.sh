@@ -16,5 +16,9 @@ rm -vf "../${ZIP}"
 
 # Build debian package
 dpkg-buildpackage -us -uc -b
-mv pom.xml.save pom.xml
+for ii in ../*; do
+	if [ -f "$ii/pom.xml.save" ]; then
+		mv -v "$ii/pom.xml.save" "$ii/pom.xml"
+	fi
+done
 

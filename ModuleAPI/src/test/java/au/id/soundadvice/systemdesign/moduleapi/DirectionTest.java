@@ -27,7 +27,6 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi;
 
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
