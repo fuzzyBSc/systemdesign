@@ -261,6 +261,13 @@ public class MainController implements Initializable {
             }
             event.consume();
         });
+        Runnable updateExploreMenuItemSensitivity = () -> {
+            exploreMenuItem.setDisable(
+                    !edit.getCurrentDirectory().isPresent());
+        };
+        edit.subscribe(updateExploreMenuItemSensitivity);
+        updateExploreMenuItemSensitivity.run();
+
         saveMenuItem.setOnAction(event -> {
             interactions.trySave();
             event.consume();
