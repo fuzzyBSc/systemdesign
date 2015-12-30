@@ -65,21 +65,22 @@
                                         <KeyCodeCombination alt="UP" code="O" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                                     </accelerator>
                                 </MenuItem>
-                        <Menu fx:id="openRecentMenu" mnemonicParsing="false" text="Open Recent">
-                          <items>
-                            <MenuItem mnemonicParsing="false" text="Action 1" />
-                          </items>
-                        </Menu>
+                                <MenuItem fx:id="revertMenuItem" mnemonicParsing="false" text="Revert">
+                                    <accelerator>
+                                        <KeyCodeCombination alt="UP" code="F5" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                                    </accelerator>
+                                </MenuItem>
+                                <Menu fx:id="openRecentMenu" mnemonicParsing="false" text="Open Recent" />
                                 <MenuItem fx:id="saveMenuItem" mnemonicParsing="false" text="Save">
                                     <accelerator>
                                         <KeyCodeCombination alt="UP" code="S" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                                     </accelerator>
                                 </MenuItem>
-                        <MenuItem fx:id="exitMenuItem" mnemonicParsing="false" text="Exit" />
+                                <MenuItem fx:id="exitMenuItem" mnemonicParsing="false" text="Exit" />
                             </items>
-                     <accelerator>
-                        <KeyCodeCombination alt="DOWN" code="F" control="UP" meta="UP" shift="UP" shortcut="UP" />
-                     </accelerator>
+                            <accelerator>
+                                <KeyCodeCombination alt="DOWN" code="F" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                            </accelerator>
                         </Menu>
                         <Menu mnemonicParsing="false" text="Edit">
                             <items>
@@ -94,9 +95,9 @@
                                     </accelerator>
                                 </MenuItem>
                             </items>
-                     <accelerator>
-                        <KeyCodeCombination alt="DOWN" code="E" control="UP" meta="UP" shift="UP" shortcut="UP" />
-                     </accelerator>
+                            <accelerator>
+                                <KeyCodeCombination alt="DOWN" code="E" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                            </accelerator>
                         </Menu>
                         <Menu mnemonicParsing="false" text="Navigate">
                             <items>
@@ -111,28 +112,31 @@
                                     </accelerator>
                                 </MenuItem>
                             </items>
-                     <accelerator>
-                        <KeyCodeCombination alt="DOWN" code="N" control="UP" meta="UP" shift="UP" shortcut="UP" />
-                     </accelerator>
+                            <accelerator>
+                                <KeyCodeCombination alt="DOWN" code="N" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                            </accelerator>
                         </Menu>
-                  <Menu fx:id="versionsMenu" mnemonicParsing="false" text="Versions">
-                    <items>
-                        <Menu fx:id="diffBranchMenu" mnemonicParsing="false" text="Diff To Branch" />
-                        <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
-                        <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
-                        <MenuItem fx:id="exploreMenuItem" mnemonicParsing="false" text="Explore" />
-                    </items>
-                     <accelerator>
-                        <KeyCodeCombination alt="DOWN" code="V" control="UP" meta="UP" shift="UP" shortcut="UP" />
-                     </accelerator>
-                  </Menu>
+                        <Menu fx:id="versionsMenu" mnemonicParsing="false" text="Versions">
+                            <items>
+                                <Menu fx:id="diffBranchMenu" mnemonicParsing="false" text="Diff To Branch" />
+                                <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
+                                <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
+                                <SeparatorMenuItem mnemonicParsing="false" />
+                                <MenuItem fx:id="initialiseGitMenuItem" mnemonicParsing="false" text="Initialise Git" />
+                                <MenuItem fx:id="exploreMenuItem" mnemonicParsing="false" text="Explore" />
+                                <MenuItem fx:id="commitMenuItem" mnemonicParsing="false" text="Commit" />
+                            </items>
+                            <accelerator>
+                                <KeyCodeCombination alt="DOWN" code="V" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                            </accelerator>
+                        </Menu>
                         <Menu mnemonicParsing="false" text="Help">
                             <items>
                                 <MenuItem fx:id="aboutMenuItem" mnemonicParsing="false" text="About" />
                             </items>
-                     <accelerator>
-                        <KeyCodeCombination alt="DOWN" code="H" control="UP" meta="UP" shift="UP" shortcut="UP" />
-                     </accelerator>
+                            <accelerator>
+                                <KeyCodeCombination alt="DOWN" code="H" control="UP" meta="UP" shift="UP" shortcut="UP" />
+                            </accelerator>
                         </Menu>
                     </menus>
                 </MenuBar>

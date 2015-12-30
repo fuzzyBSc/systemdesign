@@ -59,7 +59,7 @@ public interface VersionControl extends Closeable {
 
     public boolean canCommit();
 
-    public void commit() throws IOException;
+    public void commit(String message) throws IOException;
 
     public void renameDirectory(Path from, Path to) throws IOException;
 
@@ -67,5 +67,7 @@ public interface VersionControl extends Closeable {
             IdentityValidator identity,
             String file,
             Optional<VersionInfo> versionInfo) throws IOException;
+
+    public boolean isNull();
 
 }

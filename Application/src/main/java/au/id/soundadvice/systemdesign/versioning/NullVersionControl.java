@@ -60,7 +60,7 @@ public class NullVersionControl implements VersionControl {
     }
 
     @Override
-    public void commit() {
+    public void commit(String message) {
         throw new UnsupportedOperationException("Not supported.");
     }
 
@@ -88,6 +88,11 @@ public class NullVersionControl implements VersionControl {
     @Override
     public Optional<VersionInfo> getDefaultBaseline() {
         return Optional.empty();
+    }
+
+    @Override
+    public boolean isNull() {
+        return true;
     }
 
 }

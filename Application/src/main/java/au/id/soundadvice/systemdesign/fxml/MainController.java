@@ -39,6 +39,7 @@ import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
+import au.id.soundadvice.systemdesign.versioning.jgit.GitVersionControl;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URL;
@@ -58,9 +59,11 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import org.eclipse.jgit.api.errors.GitAPIException;
 
 /**
  * FXML Controller class
@@ -92,6 +95,8 @@ public class MainController implements Initializable {
     @FXML
     private MenuItem openMenuItem;
     @FXML
+    private MenuItem revertMenuItem;
+    @FXML
     private Menu openRecentMenu;
     @FXML
     private MenuItem exploreMenuItem;
@@ -115,6 +120,10 @@ public class MainController implements Initializable {
     private Menu diffVersionMenu;
     @FXML
     private CheckMenuItem diffNoneMenuItem;
+    @FXML
+    private MenuItem initialiseGitMenuItem;
+    @FXML
+    private MenuItem commitMenuItem;
     @FXML
     private MenuItem aboutMenuItem;
     @FXML
@@ -181,6 +190,19 @@ public class MainController implements Initializable {
         openMenuItem.setOnAction(event -> {
             if (interactions.checkSave("Save before closing?")) {
                 interactions.tryLoadChooser(upButton.getScene().getWindow(), edit);
+            }
+            event.consume();
+        });
+        revertMenuItem.setOnAction(event -> {
+            Optional<Directory> dir = edit.getCurrentDirectory();
+            if (dir.isPresent()) {
+                if (interactions.checkSave("Save before reloading?")) {
+                    try {
+                        edit.load(dir.get());
+                    } catch (IOException ex) {
+                        LOG.log(Level.SEVERE, null, ex);
+                    }
+                }
             }
             event.consume();
         });
@@ -283,6 +305,51 @@ public class MainController implements Initializable {
                 edit, diffBranchMenu, diffVersionMenu,
                 versionsMenu, diffNoneMenuItem);
         versionMenuController.start();
+
+        initialiseGitMenuItem.setOnAction(event -> {
+            Optional<Directory> dir = edit.getCurrentDirectory();
+            if (edit.getVersionControl().isNull()
+                    && dir.isPresent()) {
+                try {
+                    GitVersionControl.init(dir.get().getPath());
+                    edit.reloadVersionControl();
+                } catch (GitAPIException ex) {
+                    LOG.log(Level.SEVERE, null, ex);
+                }
+            }
+            event.consume();
+        });
+        Runnable updateInitaliseGitMenuItemSensitivity = () -> {
+            initialiseGitMenuItem.setDisable(
+                    !edit.getVersionControl().isNull()
+                    || !edit.getCurrentDirectory().isPresent());
+        };
+        edit.subscribe(updateInitaliseGitMenuItemSensitivity);
+        updateInitaliseGitMenuItemSensitivity.run();
+
+        commitMenuItem.setOnAction(event -> {
+            if (interactions.checkSave("Save before committing?")) {
+                TextInputDialog dialog = new TextInputDialog();
+                dialog.setTitle("Commit changes");
+                dialog.setHeaderText("Enter Commit Message");
+
+                Optional<String> interactionResult = dialog.showAndWait();
+                if (interactionResult.isPresent()) {
+                    try {
+                        edit.getVersionControl().commit(interactionResult.get());
+                    } catch (IOException ex) {
+                        LOG.log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+            event.consume();
+        });
+        Runnable updateCommitMenuItemSensitivity = () -> {
+            commitMenuItem.setDisable(
+                    !edit.getVersionControl().canCommit());
+        };
+        edit.subscribe(updateCommitMenuItemSensitivity);
+        updateCommitMenuItemSensitivity.run();
 
         edit.subscribe(buttonDisable);
         buttonDisable.run();

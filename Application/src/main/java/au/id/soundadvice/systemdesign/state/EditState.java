@@ -103,13 +103,7 @@ public class EditState {
         try (Inhibit xact = this.changed.inhibit()) {
             UndoState state = Baseline.createUndoState();
             this.currentDirectory.set(Optional.empty());
-            VersionControl old = this.versionControl.getAndSet(new NullVersionControl());
-            try {
-                old.close();
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, null, ex);
-            }
-            this.diffBaseline.set(Optional.empty());
+            loadVersionControl(Optional.empty());
             this.lastChild.clear();
             this.undo.reset(state);
             this.savedState.set(state);
@@ -236,18 +230,9 @@ public class EditState {
                     state = state.setAllocated(Baseline.create(child));
                     Optional<Directory> newDir = Optional.of(childDir);
                     currentDirectory.set(newDir);
-                    VersionControl newVersionControl = VersionControl.forPath(childDir.getPath());
-                    VersionControl old = this.versionControl.getAndSet(newVersionControl);
-                    if (old != newVersionControl) {
-                        try {
-                            old.close();
-                        } catch (IOException ex) {
-                            LOG.log(Level.WARNING, null, ex);
-                        }
-                    }
                     undo.reset(state);
                     savedState.set(state);
-                    loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
+                    loadVersionControl(newDir);
                 } else {
                     throw new IOException("No such child");
                 }
@@ -282,18 +267,9 @@ public class EditState {
         UndoState state = Baseline.loadUndoState(dir);
         Optional<Directory> newDir = Optional.of(dir);
         currentDirectory.set(newDir);
-        VersionControl newVersionControl = VersionControl.forPath(dir.getPath());
-        VersionControl old = this.versionControl.getAndSet(newVersionControl);
-        if (old != newVersionControl) {
-            try {
-                old.close();
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, null, ex);
-            }
-        }
         undo.reset(state);
         savedState.set(state);
-        loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
+        loadVersionControl(newDir);
 
         // Set undo again here to allow automatic changes to be undone
         undo.update(AutoFix::onLoad);
@@ -301,6 +277,23 @@ public class EditState {
 
     public boolean saveNeeded() {
         return !undo.get().equals(savedState.get());
+    }
+
+    public void reloadVersionControl() {
+        loadVersionControl(currentDirectory.get());
+    }
+
+    private void loadVersionControl(Optional<Directory> dir) {
+        VersionControl newVersionControl = dir
+                .map(d -> VersionControl.forPath(d.getPath()))
+                .orElseGet(NullVersionControl::new);
+        VersionControl old = this.versionControl.getAndSet(newVersionControl);
+        try {
+            old.close();
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, null, ex);
+        }
+        loadDiffBaseline(dir, newVersionControl, diffVersion.get());
     }
 
     public void save() throws IOException {
@@ -323,16 +316,8 @@ public class EditState {
         }
         Optional<Directory> newDir = Optional.of(dir);
         currentDirectory.set(newDir);
-        VersionControl old = this.versionControl.getAndSet(newVersionControl);
-        if (old != newVersionControl) {
-            try {
-                old.close();
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, null, ex);
-            }
-        }
         savedState.set(state);
-        loadDiffBaseline(newDir, newVersionControl, diffVersion.get());
+        loadVersionControl(newDir);
     }
 
     public void saveTo(Directory dir) throws IOException {
@@ -400,18 +385,9 @@ public class EditState {
             try (Inhibit xact = this.changed.inhibit()) {
                 VersionControl versioning = versionControl.get();
                 versioning.renameDirectory(from, to);
-                Optional<Directory> newDirectory = Optional.of(Directory.forPath(to));
-                currentDirectory.set(newDirectory);
-                VersionControl newVersionControl = VersionControl.forPath(to);
-                VersionControl old = this.versionControl.getAndSet(newVersionControl);
-                if (old != newVersionControl) {
-                    try {
-                        old.close();
-                    } catch (IOException ex) {
-                        LOG.log(Level.WARNING, null, ex);
-                    }
-                }
-                loadDiffBaseline(newDirectory, newVersionControl, diffVersion.get());
+                Optional<Directory> newDir = Optional.of(Directory.forPath(to));
+                currentDirectory.set(newDir);
+                loadVersionControl(newDir);
                 xact.changed();
             }
         }

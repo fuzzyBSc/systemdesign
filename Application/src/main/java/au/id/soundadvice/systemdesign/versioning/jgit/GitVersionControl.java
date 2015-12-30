@@ -73,6 +73,15 @@ public class GitVersionControl implements VersionControl {
 
     private static final Logger LOG = Logger.getLogger(GitVersionControl.class.getName());
 
+    public static void init(Path path) throws GitAPIException {
+        Git repo = Git.init().setDirectory(path.toFile()).call();
+        try {
+            repo.add().addFilepattern(".").call();
+        } finally {
+            repo.close();
+        }
+    }
+
     public GitVersionControl(Path path) throws IOException {
         try {
             // Cribbed from Git.open, but with findGitDir rather than setGitDir
@@ -181,9 +190,9 @@ public class GitVersionControl implements VersionControl {
     }
 
     @Override
-    public void commit() throws IOException {
+    public void commit(String message) throws IOException {
         try {
-            repo.commit().call();
+            repo.commit().setMessage(message).call();
         } catch (GitAPIException ex) {
             throw new IOException(ex);
         }
@@ -363,7 +372,9 @@ public class GitVersionControl implements VersionControl {
                 writer.write("\trecursive = binary");
                 writer.write(System.lineSeparator());
             }
-            Path attributes = repositoryRoot.resolve(".git/info/attributes");
+            Path info = repositoryRoot.resolve(".git/info");
+            Files.createDirectories(info);
+            Path attributes = info.resolve("attributes");
             if (Files.exists(attributes)) {
                 Path attributesBackup = attributes.resolveSibling("gitattributes.bak");
                 Files.copy(attributes, attributesBackup, StandardCopyOption.REPLACE_EXISTING);
@@ -376,6 +387,11 @@ public class GitVersionControl implements VersionControl {
                 writer.write(System.lineSeparator());
             }
         }
+    }
+
+    @Override
+    public boolean isNull() {
+        return false;
     }
 
 }
