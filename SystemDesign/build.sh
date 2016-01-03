@@ -16,6 +16,7 @@ rm -vf "../${ZIP}"
 
 # Build debian package
 rm -rf debian/maven-repo/*
+/usr/share/maven-debian-helper/copy-repo.sh /home/fuzzy/git/systemdesign/SystemDesign/debian
 if [ -f /usr/share/java/SystemDesign.jar ]; then
 	echo We need to remove the package before will build OK
 	sudo apt-get remove systemdesign systemdesign-doc
