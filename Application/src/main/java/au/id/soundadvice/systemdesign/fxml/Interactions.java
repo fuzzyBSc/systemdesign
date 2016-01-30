@@ -92,9 +92,22 @@ public class Interactions {
             edit.updateState(state -> {
                 Relations allocated = state.getAllocated();
                 Color color = Identity.getSystemOfInterest(state)
-                        .map(item -> item.getView(state.getFunctional()))
-                        .map(ItemView::getColor)
+                        .map(item -> item.getView(state.getFunctional()).getColor())
                         .orElse(Color.LIGHTYELLOW);
+                // Shift color
+                // Adjust hue by +/- 128 out of the 256 range
+                double hueShift = Math.random() * 128 - 64;
+                // Adjust saturation by +/- 30%
+                double saturationMultiplier = Math.random() * .6 + .7;
+                // Adjust brightness by +/- 20%
+                double brightnessMultiplier = Math.random() * .4 + .8;
+                double opacityMultiplier = 1;
+                color = color.deriveColor(
+                        hueShift,
+                        saturationMultiplier,
+                        brightnessMultiplier,
+                        opacityMultiplier);
+
                 Pair<Relations, Item> createResult = Item.create(
                         allocated, name.get(), origin, color);
                 allocated = createResult.getKey();
