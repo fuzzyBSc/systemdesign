@@ -49,7 +49,7 @@ public class ReferenceFinderTest {
         ReferenceFinder fromFinder = new ReferenceFinder(FromRelation.class);
 
         ToRelation to = new ToRelation();
-        FromRelation from = new FromRelation(to.getUuid());
+        FromRelation from = new FromRelation(to.getIdentifier());
 
         assertTrue(toFinder.getReferences(to).count() == 0);
         assertFalse(fromFinder.getReferences(from).count() == 0);
@@ -58,7 +58,7 @@ public class ReferenceFinderTest {
 
         assertSame(to, from.getReference().getTarget(store));
         Collection<? extends FromRelation> reverse = store.findReverse(
-                to.getUuid(), FromRelation.class)
+                to.getIdentifier(), FromRelation.class)
                 .collect(Collectors.toList());
         assertEquals(1, reverse.size());
         assertSame(from, reverse.iterator().next());

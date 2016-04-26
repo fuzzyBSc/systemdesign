@@ -38,7 +38,7 @@ import au.id.soundadvice.systemdesign.logical.FunctionView;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;
 import au.id.soundadvice.systemdesign.state.RelationDiff;
-import au.id.soundadvice.systemdesign.moduleapi.UUIDPair;
+import au.id.soundadvice.systemdesign.moduleapi.IdentifierPair;
 import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.util.Collections;
@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -76,7 +75,7 @@ public class LogicalTabs {
         onChange.run();
     }
 
-    private final Map<Optional<UUID>, LogicalSchematicController> controllers
+    private final Map<Optional<String>, LogicalSchematicController> controllers
             = new ConcurrentHashMap<>();
     private final Interactions interactions;
     private final EditState edit;
@@ -162,9 +161,9 @@ public class LogicalTabs {
 
         public FlowKey(Relations baseline, Flow flow) {
             this.source = flow;
-            this.flow = new UUIDPair(
-                    flow.getLeft().getUuid(),
-                    flow.getRight().getUuid(),
+            this.flow = new IdentifierPair(
+                    flow.getLeft().getKey(),
+                    flow.getRight().getKey(),
                     flow.getDirection());
             this.typeName = flow.getType(baseline).getName();
         }
@@ -173,11 +172,11 @@ public class LogicalTabs {
             return source;
         }
 
-        public UUIDPair getFunctionScope() {
+        public IdentifierPair getFunctionScope() {
             return flow.setDirection(Direction.None);
         }
 
-        public UUIDPair getFunctionFlow() {
+        public IdentifierPair getFunctionFlow() {
             return flow;
         }
 
@@ -187,7 +186,7 @@ public class LogicalTabs {
 
         // Source does not contribute to equality or hash
         private final Flow source;
-        private final UUIDPair flow;
+        private final IdentifierPair flow;
         private final String typeName;
     }
 
@@ -222,9 +221,9 @@ public class LogicalTabs {
                 Stream<FunctionInfo> views,
                 Stream<RelationDiff<FlowKey>> flows) {
             // Find and categorise views
-            Map<UUID, Map<Optional<Function>, List<FunctionInfo>>> functionViews
+            Map<String, Map<Optional<Function>, List<FunctionInfo>>> functionViews
                     = views.collect(Collectors.groupingBy(
-                            info -> info.getFunction().getSample().getUuid(),
+                            info -> info.getFunction().getSample().getIdentifier(),
                             Collectors.groupingBy(
                                     FunctionInfo::getDrawing)));
 
@@ -335,11 +334,11 @@ public class LogicalTabs {
         private void createTabs(
                 Relations functional,
                 Optional<Item> systemOfInterest) {
-            List<Optional<UUID>> drawings;
+            List<Optional<String>> drawings;
             if (systemOfInterest.isPresent()) {
                 drawings = Function.findOwnedFunctions(functional, systemOfInterest.get())
                         .sorted((a, b) -> a.getName().compareTo(b.getName()))
-                        .map(function -> Optional.of(function.getUuid()))
+                        .map(function -> Optional.of(function.getIdentifier()))
                         .collect(Collectors.toList());
             } else {
                 drawings = Collections.singletonList(Optional.empty());
@@ -362,10 +361,10 @@ public class LogicalTabs {
                         newTab.start();
                     });
             {
-                Iterator<Map.Entry<Optional<UUID>, LogicalSchematicController>> it
+                Iterator<Map.Entry<Optional<String>, LogicalSchematicController>> it
                         = controllers.entrySet().iterator();
                 while (it.hasNext()) {
-                    Map.Entry<Optional<UUID>, LogicalSchematicController> entry = it.next();
+                    Map.Entry<Optional<String>, LogicalSchematicController> entry = it.next();
                     if (!drawings.contains(entry.getKey())) {
                         entry.getValue().stop();
                         it.remove();
@@ -447,7 +446,7 @@ public class LogicalTabs {
             functionsPerDiagram.entrySet().stream()
                     .forEach(entry -> {
                         Optional<LogicalSchematicController> controller
-                                = Optional.ofNullable(controllers.get(entry.getKey().map(Function::getUuid)));
+                                = Optional.ofNullable(controllers.get(entry.getKey().map(Function::getIdentifier)));
                         if (controller.isPresent()) {
                             List<FunctionInfo> functionInfo = entry.getValue();
                             Map<Pair<Point2D, Point2D>, List<RelationDiff<DrawingFlow>>> flows
@@ -474,7 +473,7 @@ public class LogicalTabs {
             Optional<Optional<Function>> toSelect = PreferredTab.getAndClear();
             Optional<LogicalSchematicController> tab
                     = toSelect.flatMap(drawing -> Optional.ofNullable(
-                            controllers.get(drawing.map(Function::getUuid))));
+                            controllers.get(drawing.map(Function::getIdentifier))));
             if (tab.isPresent()) {
                 tab.get().select();
             }

@@ -84,7 +84,7 @@ public class FlowTypeAutoFix {
             while (it.hasNext()) {
                 FlowType type = it.next();
                 FlowType canonicalType = canonicalTypes.get(type.getName());
-                if (!type.getUuid().equals(canonicalType.getUuid())) {
+                if (!type.getIdentifier().equals(canonicalType.getIdentifier())) {
                     baseline = type.removeFrom(baseline);
                 }
             }

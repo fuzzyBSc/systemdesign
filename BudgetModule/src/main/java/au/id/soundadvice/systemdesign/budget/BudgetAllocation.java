@@ -51,7 +51,7 @@ public class BudgetAllocation implements Relation {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.uuid);
+        hash = 59 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -64,7 +64,7 @@ public class BudgetAllocation implements Relation {
             return false;
         }
         final BudgetAllocation other = (BudgetAllocation) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.item, other.item)) {
@@ -89,7 +89,7 @@ public class BudgetAllocation implements Relation {
     }
 
     public static Stream<BudgetAllocation> find(Relations baseline, Item item) {
-        return baseline.findReverse(item.getUuid(), BudgetAllocation.class);
+        return baseline.findReverse(item.getIdentifier(), BudgetAllocation.class);
     }
 
     public static Range sumAmounts(Stream<BudgetAllocation> stream) {
@@ -101,8 +101,8 @@ public class BudgetAllocation implements Relation {
     public static BudgetAllocation create(
             Item item, Budget budget, Range amount) {
         return new BudgetAllocation(
-                UUID.randomUUID(),
-                item.getUuid(), budget.getUuid(),
+                UUID.randomUUID().toString(),
+                item.getIdentifier(), budget.getIdentifier(),
                 amount);
     }
 
@@ -121,12 +121,12 @@ public class BudgetAllocation implements Relation {
 
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<BudgetAllocation, Budget> getBudget() {
@@ -155,40 +155,39 @@ public class BudgetAllocation implements Relation {
             return this;
         } else {
             return new BudgetAllocation(
-                    uuid, item.getUuid(), budget.getUuid(), amount);
+                    identifier, item.getKey(), budget.getKey(), amount);
         }
     }
 
     @CheckReturnValue
     public Pair<Relations, BudgetAllocation> setBudget(Relations baseline, Budget budget) {
-        if (this.budget.getUuid() == budget.getUuid()) {
+        if (this.budget.getKey().equals(budget.getIdentifier())) {
             return new Pair<>(baseline, this);
         } else {
             BudgetAllocation newValue = new BudgetAllocation(
-                    uuid, item.getUuid(), budget.getUuid(), amount);
+                    identifier, item.getKey(), budget.getIdentifier(), amount);
             return new Pair<>(baseline.add(newValue), newValue);
         }
     }
 
     public BudgetAllocation(BudgetAllocationBean bean) {
-        this(
-                bean.getUuid(),
+        this(bean.getIdentifier(),
                 bean.getItem(),
                 bean.getBudget(),
                 Range.fromRange(bean.getMinimum(), bean.getMaximum()));
     }
 
     private BudgetAllocation(
-            UUID uuid,
-            UUID item, UUID budget,
+            String uuid,
+            String item, String budget,
             Range amount) {
-        this.uuid = uuid;
+        this.identifier = uuid;
         this.item = new Reference<>(this, item, Item.class);
         this.budget = new Reference<>(this, budget, Budget.class);
         this.amount = amount;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<BudgetAllocation, Item> item;
     private final Reference<BudgetAllocation, Budget> budget;
     private final Range amount;
@@ -203,7 +202,7 @@ public class BudgetAllocation implements Relation {
         } else {
             description = itemTarget.getDisplayName() + " provides " + amount + " " + budgetTarget.getKey();
         }
-        return new BudgetAllocationBean(uuid, item.getUuid(), budget.getUuid(), amount, description);
+        return new BudgetAllocationBean(identifier, item.getKey(), budget.getKey(), amount, description);
     }
     private static final ReferenceFinder<BudgetAllocation> FINDER
             = new ReferenceFinder<>(BudgetAllocation.class);

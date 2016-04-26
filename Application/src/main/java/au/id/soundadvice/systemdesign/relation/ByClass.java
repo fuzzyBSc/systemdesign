@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,17 +59,17 @@ public class ByClass<E extends Relation> {
                 byClass.entrySet().parallelStream()
                 .collect(Collectors.toMap(
                         entry -> entry.getKey(),
-                        entry -> ByUUID.valueOf(entry.getValue().stream())))));
+                        entry -> ByIdentifier.valueOf(entry.getValue().stream())))));
     }
 
-    private final Map<Class<?>, ByUUID<E>> relations;
+    private final Map<Class<?>, ByIdentifier<E>> relations;
 
-    private ByClass(Map<Class<?>, ByUUID<E>> unmodifiable) {
+    private ByClass(Map<Class<?>, ByIdentifier<E>> unmodifiable) {
         this.relations = unmodifiable;
     }
 
     public <T> Stream<T> get(Class<T> key) {
-        ByUUID<E> result = relations.get(key);
+        ByIdentifier<E> result = relations.get(key);
         if (result == null) {
             return Stream.empty();
         } else {
@@ -79,15 +78,15 @@ public class ByClass<E extends Relation> {
     }
 
     public Stream<Relation> stream() {
-        return relations.values().stream().flatMap(ByUUID::stream);
+        return relations.values().stream().flatMap(ByIdentifier::stream);
     }
 
     @CheckReturnValue
     private ByClass<E> putImpl(E value) {
-        HashMap<Class<?>, ByUUID<E>> map = new HashMap<>(relations);
-        ByUUID<E> set = relations.get(value.getClass());
+        HashMap<Class<?>, ByIdentifier<E>> map = new HashMap<>(relations);
+        ByIdentifier<E> set = relations.get(value.getClass());
         if (set == null) {
-            set = ByUUID.empty();
+            set = ByIdentifier.empty();
         }
         set = set.put(value);
         map.put(value.getClass(), set);
@@ -96,13 +95,13 @@ public class ByClass<E extends Relation> {
 
     @CheckReturnValue
     public ByClass<E> put(E value) {
-        ByClass<E> tmp = remove(value.getUuid());
+        ByClass<E> tmp = remove(value.getIdentifier());
         return tmp.putImpl(value);
     }
 
     @CheckReturnValue
-    public ByClass<E> remove(UUID key) {
-        return new ByClass<>(Collections.<Class<?>, ByUUID<E>>unmodifiableMap(
+    public ByClass<E> remove(String key) {
+        return new ByClass<>(Collections.<Class<?>, ByIdentifier<E>>unmodifiableMap(
                 relations.entrySet().parallelStream()
                 .map(entry -> new Pair<>(
                         entry.getKey(), entry.getValue().remove(key)))
@@ -113,8 +112,8 @@ public class ByClass<E extends Relation> {
     }
 
     @CheckReturnValue
-    public ByClass<E> removeAll(Collection<UUID> keys) {
-        return new ByClass<>(Collections.<Class<?>, ByUUID<E>>unmodifiableMap(
+    public ByClass<E> removeAll(Collection<String> keys) {
+        return new ByClass<>(Collections.<Class<?>, ByIdentifier<E>>unmodifiableMap(
                 relations.entrySet().parallelStream()
                 .map(entry -> new Pair<>(
                         entry.getKey(), entry.getValue().removeAll(keys)))
@@ -124,7 +123,7 @@ public class ByClass<E extends Relation> {
                         entry -> entry.getValue()))));
     }
 
-    public Stream<ByUUID<E>> values() {
+    public Stream<ByIdentifier<E>> values() {
         return relations.values().stream();
     }
 

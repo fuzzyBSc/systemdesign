@@ -180,9 +180,9 @@ public class PhysicalSchematicController {
             Interface iface = diff.getSample();
             Optional<Relations> was = diff.getWasBaseline();
             Relations is = diff.getIsBaseline();
-            Item left = RelationDiff.get(was, is, iface.getLeft().getUuid(), Item.class)
+            Item left = RelationDiff.get(was, is, iface.getLeft().getKey(), Item.class)
                     .getSample();
-            Item right = RelationDiff.get(was, is, iface.getRight().getUuid(), Item.class)
+            Item right = RelationDiff.get(was, is, iface.getRight().getKey(), Item.class)
                     .getSample();
             ItemView leftView = left.findViews(is).findAny()
                     .orElseGet(() -> left.getView(was.get()));
@@ -260,7 +260,7 @@ public class PhysicalSchematicController {
                 // Add deleted functions
                 flow.getChildren().addAll(
                         was.get()
-                        .findReverse(item.getUuid(), Function.class)
+                        .findReverse(item.getIdentifier(), Function.class)
                         .map(function -> RelationDiff.get(was, is, function))
                         .filter(RelationDiff::isDeleted)
                         .map(functionDiff -> {
@@ -274,7 +274,7 @@ public class PhysicalSchematicController {
             // Add remainder
             flow.getChildren().addAll(
                     is
-                    .findReverse(item.getUuid(), Function.class)
+                    .findReverse(item.getIdentifier(), Function.class)
                     .map(function -> RelationDiff.get(was, is, function))
                     .flatMap(functionDiff -> {
                         Optional<String> wasName = functionDiff.getWasInstance()

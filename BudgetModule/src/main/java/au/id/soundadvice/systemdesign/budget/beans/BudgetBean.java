@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.budget.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import java.util.UUID;
 
 /**
  *
@@ -52,12 +51,12 @@ public class BudgetBean implements Identifiable {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public String getName() {
@@ -68,8 +67,8 @@ public class BudgetBean implements Identifiable {
         this.name = name;
     }
 
-    public BudgetBean(UUID uuid, String name, String unit, String description) {
-        this.uuid = uuid;
+    public BudgetBean(String identifier, String name, String unit, String description) {
+        this.identifier = identifier;
         this.name = name;
         this.unit = unit;
         this.description = description;
@@ -78,7 +77,7 @@ public class BudgetBean implements Identifiable {
     public BudgetBean() {
     }
 
-    private UUID uuid;
+    private String identifier;
     private String name;
     private String unit;
     private String description;

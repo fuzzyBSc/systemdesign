@@ -1,4 +1,4 @@
-"budget","description","item","maximum","minimum","uuid"
+"budget","description","item","maximum","minimum","identifier"
 "b1a4422e-b6c3-4a7e-9fe5-38272b495473","2 Striker Arm provides 40 Width(mm)","02b97801-d502-41e3-b934-65b13a96e521","40","40","025772d1-e986-4d36-967f-13a4f7193f6f"
 "b1a4422e-b6c3-4a7e-9fe5-38272b495473","1 Trap Base provides 40 Width(mm)","727114fc-a600-48ac-99ce-f76aced61402","40","40","1df73025-06bb-467c-8483-97b7a31d0ebc"
 "32aadc89-c9b4-4ba0-8018-c7ed6d0199f7","1 Trap Base provides 60 Length(mm)","727114fc-a600-48ac-99ce-f76aced61402","60","60","53869c41-1bdf-4329-aad1-5d4bf5e0d570"

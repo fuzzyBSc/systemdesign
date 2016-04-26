@@ -1,4 +1,4 @@
-"description","direction","interface","left","right","type","uuid"
+"description","direction","interface","left","right","type","identifier"
 "Approve Changes (3 Control Board) --Approved Versions-> Store Models (1 System Modelling System)","Normal","6f0a80c1-564d-43f1-b566-8c0bc0c762ab","a2ef8fb3-dae7-44b5-acf9-232190762242","7a9ae517-1122-4e21-9acd-4fee178a108a","a6983d69-5ca2-4ddc-bf39-3c6e30c6f842","8be71e39-942f-425b-b3f0-3f49cea8d3d2"
 "Store Models (1 System Modelling System) --Model Data-> Report Inconsistency (1 System Modelling System)","Reverse","2f1080ae-e18e-4498-9149-4283e4c7643b","4902c502-bc8d-4a45-b912-bbc8c10c7598","7a9ae517-1122-4e21-9acd-4fee178a108a","abbf9d40-85d6-4edc-8b22-0ef5f34ad99d","8faab5a7-aaaf-4d50-849a-70a510c4817e"
 "Store Models (1 System Modelling System) --Candidate Versions-> Approve Changes (3 Control Board)","Reverse","6f0a80c1-564d-43f1-b566-8c0bc0c762ab","a2ef8fb3-dae7-44b5-acf9-232190762242","7a9ae517-1122-4e21-9acd-4fee178a108a","b55cebf1-0ae0-48f3-bad1-bc6b4c5b708b","ed4869f4-5de7-4d9e-aa63-186314bd3b94"

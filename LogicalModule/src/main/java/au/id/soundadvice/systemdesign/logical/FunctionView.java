@@ -55,7 +55,7 @@ public class FunctionView implements Relation {
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 83 * hash + Objects.hashCode(this.uuid);
+        hash = 83 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -68,7 +68,7 @@ public class FunctionView implements Relation {
             return false;
         }
         final FunctionView other = (FunctionView) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.function, other.function)) {
@@ -100,30 +100,30 @@ public class FunctionView implements Relation {
             Relations baseline, Function function, Optional<Function> drawing, Point2D origin) {
         Optional<FunctionView> existingView = function.findViews(baseline)
                 .filter(view -> view.drawing.equals(
-                        drawing.map(Function::getUuid)))
+                        drawing.map(Function::getIdentifier)))
                 .findAny();
         if (existingView.isPresent()) {
             return new Pair<>(baseline, existingView.get());
         } else {
             FunctionView view = new FunctionView(
-                    UUID.randomUUID(),
-                    function.getUuid(), drawing.map(Identifiable::getUuid), origin);
+                    UUID.randomUUID().toString(),
+                    function.getIdentifier(), drawing.map(Identifiable::getIdentifier), origin);
             return new Pair<>(baseline.add(view), view);
         }
     }
 
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @Override
     public String toString() {
-        return uuid.toString();
+        return identifier;
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<FunctionView, Function> getFunction() {
@@ -147,27 +147,27 @@ public class FunctionView implements Relation {
     }
 
     public FunctionView(FunctionViewBean bean) {
-        this.uuid = bean.getUuid();
+        this.identifier = bean.getIdentifier();
         this.drawing = Optional.ofNullable(bean.getDrawing());
         this.function = new Reference<>(this, bean.getFunction(), Function.class);
         this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
     }
 
-    private FunctionView(UUID uuid, UUID function, Optional<UUID> drawing, Point2D origin) {
-        this.uuid = uuid;
+    private FunctionView(String identifier, String function, Optional<String> drawing, Point2D origin) {
+        this.identifier = identifier;
         this.function = new Reference<>(this, function, Function.class);
         this.drawing = drawing;
         this.origin = origin;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<FunctionView, Function> function;
-    private final Optional<UUID> drawing;
+    private final Optional<String> drawing;
     private final Point2D origin;
 
     public FunctionViewBean toBean(Relations baseline) {
         return new FunctionViewBean(
-                uuid, function.getUuid(), getDisplayName(baseline), drawing,
+                identifier, function.getKey(), getDisplayName(baseline), drawing,
                 (int) origin.getX(), (int) origin.getY());
     }
 
@@ -188,7 +188,7 @@ public class FunctionView implements Relation {
         if (origin.equals(value)) {
             return new Pair<>(baseline, this);
         } else {
-            FunctionView result = new FunctionView(uuid, function.getUuid(), drawing, value);
+            FunctionView result = new FunctionView(identifier, function.getKey(), drawing, value);
             return new Pair<>(baseline.add(result), result);
         }
     }

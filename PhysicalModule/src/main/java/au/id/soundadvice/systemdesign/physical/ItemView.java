@@ -76,7 +76,7 @@ public class ItemView implements Relation {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.uuid);
+        hash = 67 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -89,7 +89,7 @@ public class ItemView implements Relation {
             return false;
         }
         final ItemView other = (ItemView) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.item, other.item)) {
@@ -119,13 +119,13 @@ public class ItemView implements Relation {
             Item item,
             Point2D origin,
             Color color) {
-        ItemView view = new ItemView(UUID.randomUUID(), item.getUuid(), origin, color);
+        ItemView view = new ItemView(UUID.randomUUID().toString(), item.getIdentifier(), origin, color);
         return new Pair<>(baseline.add(view), view);
     }
 
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @Override
@@ -134,21 +134,21 @@ public class ItemView implements Relation {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<ItemView, Item> getItem() {
         return item;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<ItemView, Item> item;
     private final Point2D origin;
     private final Color color;
 
     public ItemView(ItemViewBean bean) {
-        this.uuid = bean.getUuid();
+        this.identifier = bean.getIdentifier();
         this.item = new Reference(this, bean.getItem(), Item.class);
         this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
         this.color = bean.getColor();
@@ -156,8 +156,8 @@ public class ItemView implements Relation {
 
     public ItemViewBean toBean(Relations baseline) {
         return new ItemViewBean(
-                uuid,
-                item.getUuid(), item.getTarget(baseline).getDisplayName(),
+                identifier,
+                item.getKey(), item.getTarget(baseline).getDisplayName(),
                 origin.getX(), origin.getY(),
                 color);
     }
@@ -175,11 +175,11 @@ public class ItemView implements Relation {
     }
 
     private ItemView(
-            UUID uuid,
-            UUID item,
+            String identifier,
+            String item,
             Point2D origin,
             Color color) {
-        this.uuid = uuid;
+        this.identifier = identifier;
         this.item = new Reference(this, item, Item.class);
         this.origin = origin;
         this.color = color;
@@ -190,7 +190,7 @@ public class ItemView implements Relation {
         if (this.origin.equals(origin)) {
             return new Pair<>(baseline, this);
         } else {
-            ItemView result = new ItemView(uuid, item.getUuid(), origin, color);
+            ItemView result = new ItemView(identifier, item.getKey(), origin, color);
             return new Pair<>(baseline.add(result), result);
         }
     }
@@ -200,7 +200,7 @@ public class ItemView implements Relation {
         if (this.color.equals(color)) {
             return new Pair<>(baseline, this);
         } else {
-            ItemView result = new ItemView(uuid, item.getUuid(), origin, color);
+            ItemView result = new ItemView(identifier, item.getKey(), origin, color);
             return new Pair<>(baseline.add(result), result);
         }
     }

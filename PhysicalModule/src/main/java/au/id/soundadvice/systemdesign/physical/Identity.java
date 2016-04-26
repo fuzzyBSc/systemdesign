@@ -48,7 +48,7 @@ public class Identity implements Relation {
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 43 * hash + Objects.hashCode(this.uuid);
+        hash = 43 * hash + Objects.hashCode(this.identity);
         return hash;
     }
 
@@ -61,7 +61,7 @@ public class Identity implements Relation {
             return false;
         }
         final Identity other = (Identity) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identity, other.identity)) {
             return false;
         }
         if (!Objects.equals(this.idPath, other.idPath)) {
@@ -77,7 +77,7 @@ public class Identity implements Relation {
         Optional<Identity> optionalIdentity
                 = Identity.findAll(state.getAllocated()).findAny();
         return optionalIdentity.flatMap(
-                identity -> state.getFunctional().get(identity.getUuid(), Item.class));
+                identity -> state.getFunctional().get(identity.getIdentifier(), Item.class));
     }
 
     /**
@@ -107,7 +107,7 @@ public class Identity implements Relation {
     }
 
     public static Identity create() {
-        return new Identity(UUID.randomUUID(), IDPath.empty(), "");
+        return new Identity(UUID.randomUUID().toString(), IDPath.empty(), "");
     }
 
     @Override
@@ -119,15 +119,15 @@ public class Identity implements Relation {
         }
     }
 
-    public Identity(UUID uuid, IDPath idPath, String name) {
-        this.uuid = uuid;
+    public Identity(String identity, IDPath idPath, String name) {
+        this.identity = identity;
         this.idPath = idPath;
         this.name = name;
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identity;
     }
 
     public IDPath getIdPath() {
@@ -135,17 +135,17 @@ public class Identity implements Relation {
     }
 
     public Identity(IdentityBean bean) {
-        this.uuid = bean.getUuid();
+        this.identity = bean.getIdentifier();
         this.idPath = IDPath.valueOfDotted(bean.getId());
         this.name = bean.getName();
     }
 
-    private final UUID uuid;
+    private final String identity;
     private final IDPath idPath;
     private final String name;
 
     public IdentityBean toBean() {
-        return new IdentityBean(uuid, idPath.toString(), name);
+        return new IdentityBean(identity, idPath.toString(), name);
     }
     private static final ReferenceFinder<Identity> FINDER
             = new ReferenceFinder<>(Identity.class);
@@ -166,13 +166,13 @@ public class Identity implements Relation {
     public static Relations setIdentity(Relations baseline, Identity id) {
         Iterator<Identity> existing = findAll(baseline).iterator();
         while (existing.hasNext()) {
-            baseline = baseline.remove(existing.next().getUuid());
+            baseline = baseline.remove(existing.next().getIdentifier());
         }
         return baseline.add(id);
     }
 
     @CheckReturnValue
     public Identity setId(IDPath value) {
-        return new Identity(uuid, value, name);
+        return new Identity(identity, value, name);
     }
 }

@@ -1,4 +1,4 @@
-"color","description","item","originX","originY","uuid"
-"0xb3e6b3ff","1 Music Box","a9c10359-8782-4a0b-9087-e845742733ae","170.0","130.0","3e830895-afaf-4654-902a-e9f00de4a6b6"
-"0xffccffff","2 Listener","87c0830a-bbfb-43b8-9890-fdb62cfd2670","360.0","180.0","6b95f426-18c0-4c68-9fed-f487f5e81132"
-"0xb3ccffff","3 Atmosphere","81649146-416a-43de-b536-acedbd1cf3c6","170.0","240.0","720a43ca-63b1-401c-b0c0-30e79d47b47b"
+"color","description","identifier","item","originX","originY"
+"0xb3e6b3ff","1 Music Box","3e830895-afaf-4654-902a-e9f00de4a6b6","a9c10359-8782-4a0b-9087-e845742733ae","170.0","130.0"
+"0xffccffff","2 Listener","6b95f426-18c0-4c68-9fed-f487f5e81132","87c0830a-bbfb-43b8-9890-fdb62cfd2670","360.0","180.0"
+"0xb3ccffff","3 Atmosphere","720a43ca-63b1-401c-b0c0-30e79d47b47b","81649146-416a-43de-b536-acedbd1cf3c6","170.0","240.0"

@@ -116,11 +116,11 @@ public class FlowTypeAutoFixTest {
         final Relations notfixedAllocated = state.getAllocated();
         assertEquals(3, Flow.find(notfixedFunctional)
                 .filter(flow -> flow.getType(notfixedFunctional).getName().equals("Functional Type"))
-                .map(flow -> flow.getType(notfixedFunctional).getUuid())
+                .map(flow -> flow.getType(notfixedFunctional).getIdentifier())
                 .distinct().count());
         assertEquals(3, Flow.find(notfixedAllocated)
                 .filter(flow -> flow.getType(notfixedAllocated).getName().equals("Allocated Type"))
-                .map(flow -> flow.getType(notfixedAllocated).getUuid())
+                .map(flow -> flow.getType(notfixedAllocated).getIdentifier())
                 .distinct().count());
 
         System.out.println("Fix removes duplicates");
@@ -137,11 +137,11 @@ public class FlowTypeAutoFixTest {
         System.out.println("Created flows still exist and now all point to the same FlowType instance");
         assertEquals(1, Flow.find(fixedFunctional)
                 .filter(flow -> flow.getType(fixedFunctional).getName().equals("Functional Type"))
-                .map(flow -> flow.getType(fixedFunctional).getUuid())
+                .map(flow -> flow.getType(fixedFunctional).getIdentifier())
                 .distinct().count());
         assertEquals(1, Flow.find(fixedAllocated)
                 .filter(flow -> flow.getType(fixedAllocated).getName().equals("Allocated Type"))
-                .map(flow -> flow.getType(fixedAllocated).getUuid())
+                .map(flow -> flow.getType(fixedAllocated).getIdentifier())
                 .distinct().count());
     }
 

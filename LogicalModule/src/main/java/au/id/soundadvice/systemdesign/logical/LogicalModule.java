@@ -68,7 +68,7 @@ public class LogicalModule implements Module {
             }
             Optional<Interface> iface
                     = Interface.find(functional, system.get())
-                    .filter(candidate -> item.getUuid().equals(candidate.otherEnd(functional, system.get()).getUuid()))
+                    .filter(candidate -> item.getIdentifier().equals(candidate.otherEnd(functional, system.get()).getIdentifier()))
                     .findAny();
             if (!iface.isPresent()) {
                 return state;
@@ -144,12 +144,12 @@ public class LogicalModule implements Module {
                         return Stream.of(new FlowType((FlowTypeBean) bean));
                     } else if (FlowBean.class.equals(bean.getClass())) {
                         FlowBean flowBean = (FlowBean) bean;
-                        if (flowBean.getTypeUUID() == null) {
+                        if (flowBean.getType() == null) {
                             // Legacy bean: v0.2 support
                             // Autofix will remove any duplicates we create
                             FlowType flowType = FlowType.create(
                                     Optional.empty(), flowBean.getType());
-                            flowBean.setType(flowType.getUuid().toString());
+                            flowBean.setType(flowType.getIdentifier());
                             return Stream.of(
                                     flowType,
                                     new Flow(flowBean));

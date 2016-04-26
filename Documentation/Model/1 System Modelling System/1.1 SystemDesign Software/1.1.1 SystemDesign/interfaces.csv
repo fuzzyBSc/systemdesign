@@ -1,4 +1,4 @@
-"description","leftItem","rightItem","uuid"
+"description","leftItem","rightItem","identifier"
 "1.1.1.6:1.1.1.9 consistency:model","b79a9ca1-2a86-4e79-8298-0916b9068035","e0fada80-0f84-4546-a80c-7f0fbf21a46f","825c5a12-045d-42bb-a1e8-e85fde6b8f05"
 "1.1.1.4:1.1.1.9 beans:model","b79a9ca1-2a86-4e79-8298-0916b9068035","c195736f-02b6-4a6a-9521-9d504183fc9e","e30c5bf2-42be-4b7a-8680-8fa3032d835e"
 "1.1.1.6:1.1.1.8 consistency:fxml","e0fada80-0f84-4546-a80c-7f0fbf21a46f","5e437618-fca4-4025-9e9e-3e88b6ab9afa","fe3f7373-3017-471b-ba01-737d1ef8b16b"

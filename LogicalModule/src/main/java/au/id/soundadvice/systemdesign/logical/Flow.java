@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.logical;
 
-import au.id.soundadvice.systemdesign.moduleapi.UUIDPair;
+import au.id.soundadvice.systemdesign.moduleapi.IdentifierPair;
 import au.id.soundadvice.systemdesign.moduleapi.RelationPair;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.Interface;
@@ -53,13 +53,13 @@ public class Flow implements Relation {
 
     @Override
     public String toString() {
-        return uuid.toString();
+        return identifier.toString();
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 23 * hash + Objects.hashCode(this.uuid);
+        hash = 23 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -72,7 +72,7 @@ public class Flow implements Relation {
             return false;
         }
         final Flow other = (Flow) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.iface, other.iface)) {
@@ -99,20 +99,20 @@ public class Flow implements Relation {
     }
 
     public static Stream<Flow> find(Relations baseline, Interface iface) {
-        return baseline.findReverse(iface.getUuid(), Flow.class);
+        return baseline.findReverse(iface.getIdentifier(), Flow.class);
     }
 
     public static Optional<Flow> get(
             Relations baseline, Function left, Function right, FlowType type) {
-        return get(baseline, left.getUuid(), right.getUuid(), type.getUuid());
+        return get(baseline, left.getIdentifier(), right.getIdentifier(), type.getIdentifier());
     }
 
     private static Optional<Flow> get(
-            Relations baseline, UUID leftFunction, UUID rightFunction, UUID type) {
+            Relations baseline, String leftFunction, String rightFunction, String type) {
         return baseline.findReverse(leftFunction, Flow.class).parallel()
                 .filter(candidate -> {
                     return rightFunction.equals(candidate.flowScope.otherEnd(leftFunction))
-                            && type.equals(candidate.getType().getUuid());
+                            && type.equals(candidate.getType().getKey());
                 }).findAny();
     }
 
@@ -154,17 +154,17 @@ public class Flow implements Relation {
             }
         } else {
             Flow flow = new Flow(
-                    UUID.randomUUID(),
-                    iface.getUuid(),
-                    new UUIDPair(left.getUuid(), right.getUuid(), direction),
-                    flowType.getUuid());
+                    UUID.randomUUID().toString(),
+                    iface.getIdentifier(),
+                    new IdentifierPair(left.getIdentifier(), right.getIdentifier(), direction),
+                    flowType.getIdentifier());
             return new Pair<>(baseline.add(flow), flow);
         }
     }
 
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @CheckReturnValue
@@ -180,7 +180,7 @@ public class Flow implements Relation {
                 return baseline;
             } else if (remaining == Direction.None) {
                 // Remove the flow completely
-                return baseline.remove(existingFlow.getUuid());
+                return baseline.remove(existingFlow.getIdentifier());
             } else {
                 // Update the flow
                 Flow updated = existingFlow.setDirectionFrom(left, remaining);
@@ -192,8 +192,8 @@ public class Flow implements Relation {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<Flow, Interface> getInterface() {
@@ -225,7 +225,7 @@ public class Flow implements Relation {
     }
 
     public Direction getDirectionFrom(Function from) {
-        return flowScope.getDirectionFrom(from.getUuid());
+        return flowScope.getDirectionFrom(from.getIdentifier());
     }
 
     public Reference<Flow, FlowType> getType() {
@@ -237,14 +237,14 @@ public class Flow implements Relation {
     }
 
     public Flow(FlowBean bean) {
-        this(bean.getUuid(),
+        this(bean.getIdentifier(),
                 bean.getInterface(),
-                new UUIDPair(bean.getLeft(), bean.getRight(), bean.getDirection()),
-                bean.getTypeUUID());
+                new IdentifierPair(bean.getLeft(), bean.getRight(), bean.getDirection()),
+                bean.getType());
     }
 
-    private Flow(UUID uuid, UUID iface, UUIDPair flowScope, UUID type) {
-        this.uuid = uuid;
+    private Flow(String identifier, String iface, IdentifierPair flowScope, String type) {
+        this.identifier = identifier;
         this.iface = new Reference<>(this, iface, Interface.class);
         this.flowScope = flowScope;
         this.left = new Reference<>(this, flowScope.getLeft(), Function.class);
@@ -252,9 +252,9 @@ public class Flow implements Relation {
         this.type = new Reference<>(this, type, FlowType.class);
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<Flow, Interface> iface;
-    private final UUIDPair flowScope;
+    private final IdentifierPair flowScope;
     private final Reference<Flow, Function> left;
     private final Reference<Flow, Function> right;
     private final Reference<Flow, FlowType> type;
@@ -286,10 +286,10 @@ public class Flow implements Relation {
         }
 
         return new FlowBean(
-                uuid, iface.getUuid(),
+                identifier, iface.getKey(),
                 flowScope.getDirection(),
-                left.getUuid(), right.getUuid(),
-                type.getUuid(), builder.toString());
+                left.getKey(), right.getKey(),
+                type.getKey(), builder.toString());
     }
     private static final ReferenceFinder<Flow> FINDER
             = new ReferenceFinder<>(Flow.class);
@@ -301,7 +301,7 @@ public class Flow implements Relation {
 
     @CheckReturnValue
     public Pair<Relations, Flow> setType(Relations baseline, FlowType type) {
-        if (this.type.getUuid().equals(type.getUuid())) {
+        if (this.type.getKey().equals(type.getIdentifier())) {
             return new Pair<>(baseline, this);
         } else {
             // Add flow direction(s) for the new type
@@ -313,7 +313,7 @@ public class Flow implements Relation {
             baseline = addResult.getKey();
             Flow replacement = addResult.getValue();
             // Remove ourselves
-            baseline = baseline.remove(uuid);
+            baseline = baseline.remove(identifier);
 
             // See if the old type should be removed
             FlowType oldType = this.type.getTarget(baseline);
@@ -327,8 +327,8 @@ public class Flow implements Relation {
     @CheckReturnValue
     private Flow setDirectionFrom(Function from, Direction value) {
         return new Flow(
-                uuid, iface.getUuid(),
-                flowScope.setDirectionFrom(from.getUuid(), value), type.getUuid());
+                identifier, iface.getKey(),
+                flowScope.setDirectionFrom(from.getIdentifier(), value), type.getKey());
     }
 
     public RelationPair<Function> getEndpoints(Relations baseline) {
@@ -336,7 +336,7 @@ public class Flow implements Relation {
     }
 
     public Function otherEnd(Relations baseline, Function function) {
-        UUID otherEndUUID = flowScope.otherEnd(function.getUuid());
+        String otherEndUUID = flowScope.otherEnd(function.getIdentifier());
         // Assume referential integrity is guaranteed by store
         return baseline.get(otherEndUUID, Function.class).get();
     }
@@ -344,9 +344,9 @@ public class Flow implements Relation {
     public Function otherEnd(Relations baseline, Item item) {
         Function leftFunction = left.getTarget(baseline);
         Function rightFunction = right.getTarget(baseline);
-        if (leftFunction.getItem().getUuid().equals(item.getUuid())) {
+        if (leftFunction.getItem().getKey().equals(item.getIdentifier())) {
             return rightFunction;
-        } else if (rightFunction.getItem().getUuid().equals(item.getUuid())) {
+        } else if (rightFunction.getItem().getKey().equals(item.getIdentifier())) {
             return leftFunction;
         } else {
             throw new IllegalArgumentException(this + " does not link to " + item);
@@ -354,13 +354,13 @@ public class Flow implements Relation {
     }
 
     public boolean hasEnd(Function function) {
-        return flowScope.hasEnd(function.getUuid());
+        return flowScope.hasEnd(function.getIdentifier());
     }
 
     public boolean hasEnd(Relations baseline, Item item) {
         Function leftFunction = left.getTarget(baseline);
         Function rightFunction = right.getTarget(baseline);
-        return leftFunction.getItem().getUuid().equals(item.getUuid())
-                || rightFunction.getItem().getUuid().equals(item.getUuid());
+        return leftFunction.getItem().getKey().equals(item.getIdentifier())
+                || rightFunction.getItem().getKey().equals(item.getIdentifier());
     }
 }

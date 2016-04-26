@@ -52,7 +52,7 @@ public class BeanFile<T extends Identifiable> {
             SaveTransaction transaction, Path csv,
             Class<B> beanClass, Stream<B> beans) throws IOException {
         save(transaction, csv, beanClass,
-                beans.sorted((left, right) -> left.getUuid().compareTo(right.getUuid())));
+                beans.sorted((left, right) -> left.getIdentifier().compareTo(right.getIdentifier())));
     }
 
     public static <B extends Identifiable> void saveBean(

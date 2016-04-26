@@ -37,7 +37,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
@@ -171,13 +170,13 @@ public class Directory implements IdentityValidator, FileOpener {
                 () -> new Directory(Optional.empty(), path.getParent()));
     }
 
-    private static Optional<Directory> getChild(Directory parent, UUID uuid) throws IOException {
+    private static Optional<Directory> getChild(Directory parent, String identifier) throws IOException {
         try (DirectoryStream<Path> dir = Files.newDirectoryStream(parent.path)) {
             return StreamSupport.stream(dir.spliterator(), true)
                     .filter(path -> {
                         if (Files.isDirectory(path)) {
                             Optional<Identity> identity = Directory.getIdentity(path);
-                            return identity.isPresent() && uuid.equals(identity.get().getUuid());
+                            return identity.isPresent() && identifier.equals(identity.get().getIdentifier());
                         } else {
                             return false;
                         }
@@ -187,9 +186,9 @@ public class Directory implements IdentityValidator, FileOpener {
         }
     }
 
-    public Optional<Directory> getChild(UUID uuid) throws IOException {
+    public Optional<Directory> getChild(String identifier) throws IOException {
         // Call out via static to avoid accidental references to this
-        return getChild(this, uuid);
+        return getChild(this, identifier);
     }
 
     public Directory resolve(String name) {

@@ -1,4 +1,4 @@
-"external","id","name","uuid"
-"false","3","Atmosphere","81649146-416a-43de-b536-acedbd1cf3c6"
-"false","2","Listener","87c0830a-bbfb-43b8-9890-fdb62cfd2670"
-"false","1","Music Box","a9c10359-8782-4a0b-9087-e845742733ae"
+"external","id","identifier","name"
+"false","3","81649146-416a-43de-b536-acedbd1cf3c6","Atmosphere"
+"false","2","87c0830a-bbfb-43b8-9890-fdb62cfd2670","Listener"
+"false","1","a9c10359-8782-4a0b-9087-e845742733ae","Music Box"

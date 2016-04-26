@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.moduleapi.relation;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  *
@@ -76,7 +75,7 @@ public class Reference<F, T extends Relation> {
         return from;
     }
 
-    public UUID getUuid() {
+    public String getKey() {
         return key;
     }
 
@@ -85,13 +84,13 @@ public class Reference<F, T extends Relation> {
         return baseline.get(key, type).get();
     }
 
-    public Reference(F from, UUID toKey, Class<T> toType) {
+    public Reference(F from, String toKey, Class<T> toType) {
         this.from = from;
         this.key = toKey;
         this.type = toType;
     }
 
     private final F from;
-    private final UUID key;
+    private final String key;
     private final Class<T> type;
 }

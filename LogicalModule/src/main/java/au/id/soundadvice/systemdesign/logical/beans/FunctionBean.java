@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.logical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  *
@@ -44,11 +43,11 @@ public class FunctionBean implements Identifiable {
         this.description = description;
     }
 
-    public UUID getTrace() {
+    public String getTrace() {
         return trace;
     }
 
-    public void setTrace(UUID trace) {
+    public void setTrace(String trace) {
         this.trace = trace;
     }
 
@@ -60,11 +59,11 @@ public class FunctionBean implements Identifiable {
         this.external = value;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public void setItem(UUID item) {
+    public void setItem(String item) {
         this.item = item;
     }
 
@@ -73,11 +72,11 @@ public class FunctionBean implements Identifiable {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public UUID getItem() {
+    public String getItem() {
         return item;
     }
 
@@ -85,8 +84,8 @@ public class FunctionBean implements Identifiable {
         return name;
     }
 
-    public FunctionBean(UUID uuid, UUID item, String description, Optional<UUID> trace, boolean external, String name) {
-        this.uuid = uuid;
+    public FunctionBean(String identifier, String item, String description, Optional<String> trace, boolean external, String name) {
+        this.identifier = identifier;
         this.item = item;
         this.description = description;
         this.trace = trace.orElse(null);
@@ -97,10 +96,10 @@ public class FunctionBean implements Identifiable {
     public FunctionBean() {
     }
 
-    private UUID uuid;
-    private UUID item;
+    private String identifier;
+    private String item;
     private String description;
-    private UUID trace;
+    private String trace;
     private boolean external;
     private String name;
 }

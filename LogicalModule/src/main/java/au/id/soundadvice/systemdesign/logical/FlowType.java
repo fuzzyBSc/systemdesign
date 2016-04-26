@@ -54,7 +54,7 @@ public class FlowType implements Relation {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 23 * hash + Objects.hashCode(this.uuid);
+        hash = 23 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -67,7 +67,7 @@ public class FlowType implements Relation {
             return false;
         }
         final FlowType other = (FlowType) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.trace, other.trace)) {
@@ -96,7 +96,7 @@ public class FlowType implements Relation {
     }
 
     public static FlowType create(Optional<FlowType> trace, String name) {
-        return new FlowType(UUID.randomUUID(), trace.map(FlowType::getUuid), name);
+        return new FlowType(UUID.randomUUID().toString(), trace.map(FlowType::getIdentifier), name);
     }
 
     @CheckReturnValue
@@ -129,17 +129,17 @@ public class FlowType implements Relation {
 
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @CheckReturnValue
     public Pair<Relations, FlowType> setTrace(
             Relations baseline, Optional<FlowType> traceobj) {
-        Optional<UUID> traceUUID = traceobj.map(FlowType::getUuid);
-        if (traceUUID.equals(this.trace)) {
+        Optional<String> traceIdentifier = traceobj.map(FlowType::getIdentifier);
+        if (traceIdentifier.equals(this.trace)) {
             return new Pair<>(baseline, this);
         } else {
-            FlowType replacement = new FlowType(uuid, traceUUID, name);
+            FlowType replacement = new FlowType(identifier, traceIdentifier, name);
             return new Pair<>(baseline.add(replacement), replacement);
         }
     }
@@ -149,7 +149,7 @@ public class FlowType implements Relation {
         if (name.equals(this.name)) {
             return new Pair<>(baseline, this);
         } else {
-            FlowType replacement = new FlowType(uuid, trace, name);
+            FlowType replacement = new FlowType(identifier, trace, name);
             return new Pair<>(baseline.add(replacement), replacement);
         }
     }
@@ -163,8 +163,8 @@ public class FlowType implements Relation {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public String getName() {
@@ -172,21 +172,21 @@ public class FlowType implements Relation {
     }
 
     public FlowType(FlowTypeBean bean) {
-        this(bean.getUuid(), Optional.ofNullable(bean.getTrace()), bean.getName());
+        this(bean.getIdentifier(), Optional.ofNullable(bean.getTrace()), bean.getName());
     }
 
-    private FlowType(UUID uuid, Optional<UUID> trace, String name) {
-        this.uuid = uuid;
+    private FlowType(String identifier, Optional<String> trace, String name) {
+        this.identifier = identifier;
         this.trace = trace;
         this.name = name;
     }
 
-    private final UUID uuid;
-    private final Optional<UUID> trace;
+    private final String identifier;
+    private final Optional<String> trace;
     private final String name;
 
     public FlowTypeBean toBean() {
-        return new FlowTypeBean(uuid, trace, name);
+        return new FlowTypeBean(identifier, trace, name);
     }
     private static final ReferenceFinder<FlowType> FINDER
             = new ReferenceFinder<>(FlowType.class);
@@ -197,6 +197,6 @@ public class FlowType implements Relation {
     }
 
     public Stream<Flow> getFlows(Relations baseline) {
-        return baseline.findReverse(uuid, Flow.class);
+        return baseline.findReverse(identifier, Flow.class);
     }
 }

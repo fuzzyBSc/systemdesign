@@ -36,7 +36,6 @@ import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -69,11 +68,11 @@ public class BudgetConsistency {
     public static UnaryOperator<UndoState> flowBudgetKeyUp(Budget budget) {
         return state -> {
             Relations functional = state.getFunctional();
-            Optional<Budget> allocatedCurrent = state.getAllocated().get(budget.getUuid(), Budget.class);
+            Optional<Budget> allocatedCurrent = state.getAllocated().get(budget.getIdentifier(), Budget.class);
             if (!allocatedCurrent.isPresent()) {
                 return state;
             }
-            Optional<Budget> functionalCurrent = functional.get(budget.getUuid(), Budget.class);
+            Optional<Budget> functionalCurrent = functional.get(budget.getIdentifier(), Budget.class);
             if (!functionalCurrent.isPresent()) {
                 return state;
             }
@@ -93,15 +92,15 @@ public class BudgetConsistency {
         Relations functional = state.getFunctional();
         Relations allocated = state.getAllocated();
 
-        Map<UUID, Budget> childBudgets
+        Map<String, Budget> childBudgets
                 = Budget.find(allocated)
-                .collect(Collectors.toMap(Budget::getUuid, Function.identity()));
+                .collect(Collectors.toMap(Budget::getIdentifier, Function.identity()));
 
         return BudgetAllocation.find(functional, system)
                 .map(allocation -> allocation.getBudget(functional))
                 .flatMap(parentBudget -> {
                     Optional<Budget> optionalChildBudget = Optional.ofNullable(
-                            childBudgets.get(parentBudget.getUuid()));
+                            childBudgets.get(parentBudget.getIdentifier()));
                     if (optionalChildBudget.isPresent()) {
                         Budget childBudget = optionalChildBudget.get();
                         if (!childBudget.getKey().equals(parentBudget.getKey())) {
@@ -127,12 +126,12 @@ public class BudgetConsistency {
             }
             Relations functional = state.getFunctional();
             Relations allocated = state.getAllocated();
-            Optional<Budget> sourceCurrent = allocated.get(budget.getUuid(), Budget.class);
+            Optional<Budget> sourceCurrent = allocated.get(budget.getIdentifier(), Budget.class);
             if (!sourceCurrent.isPresent()) {
                 return state;
             }
             Budget parentBudget;
-            Optional<Budget> targetCurrent = functional.get(budget.getUuid(), Budget.class);
+            Optional<Budget> targetCurrent = functional.get(budget.getIdentifier(), Budget.class);
             if (targetCurrent.isPresent()) {
                 parentBudget = targetCurrent.get();
             } else {

@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.physical;
 
 import au.id.soundadvice.systemdesign.moduleapi.RelationPair;
-import au.id.soundadvice.systemdesign.moduleapi.UUIDPair;
+import au.id.soundadvice.systemdesign.moduleapi.IdentifierPair;
 import au.id.soundadvice.systemdesign.physical.beans.InterfaceBean;
 import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
 import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
@@ -54,7 +54,7 @@ public class Interface implements Relation {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.uuid);
+        hash = 67 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -67,7 +67,7 @@ public class Interface implements Relation {
             return false;
         }
         final Interface other = (Interface) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.scope, other.scope)) {
@@ -95,7 +95,7 @@ public class Interface implements Relation {
      * @return
      */
     public static Stream<Interface> find(Relations baseline, Item item) {
-        return baseline.findReverse(item.getUuid(), Interface.class);
+        return baseline.findReverse(item.getIdentifier(), Interface.class);
     }
 
     /**
@@ -114,7 +114,7 @@ public class Interface implements Relation {
             return new Pair<>(baseline, existing.get());
         } else {
             Interface newInterface = new Interface(
-                    UUID.randomUUID(), new UUIDPair(left.getUuid(), right.getUuid()));
+                    UUID.randomUUID().toString(), new IdentifierPair(left.getIdentifier(), right.getIdentifier()));
             return new Pair<>(baseline.add(newInterface), newInterface);
         }
     }
@@ -132,14 +132,14 @@ public class Interface implements Relation {
             Relations baseline, Item left, Item right) {
         Optional<Interface> existing = get(baseline, left, right);
         if (existing.isPresent()) {
-            return baseline.remove(existing.get().getUuid());
+            return baseline.remove(existing.get().getIdentifier());
         } else {
             return baseline;
         }
     }
 
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     /**
@@ -152,11 +152,11 @@ public class Interface implements Relation {
      */
     public static Optional<Interface> get(
             Relations baseline, Item left, Item right) {
-        return get(baseline, left.getUuid(), right.getUuid());
+        return get(baseline, left.getIdentifier(), right.getIdentifier());
     }
 
     private static Optional<Interface> get(
-            Relations baseline, UUID leftItem, UUID rightItem) {
+            Relations baseline, String leftItem, String rightItem) {
         return baseline.findReverse(leftItem, Interface.class)
                 .filter(iface -> iface.scope.otherEnd(leftItem).equals(rightItem))
                 .findAny();
@@ -167,21 +167,21 @@ public class Interface implements Relation {
     }
 
     public Interface(InterfaceBean bean) {
-        this(bean.getUuid(), new UUIDPair(
+        this(bean.getIdentifier(), new IdentifierPair(
                 bean.getLeftItem(),
                 bean.getRightItem()));
     }
 
-    private Interface(UUID uuid, UUIDPair scope) {
-        this.uuid = uuid;
+    private Interface(String identifier, IdentifierPair scope) {
+        this.identifier = identifier;
         this.scope = scope;
         this.left = new Reference<>(this, scope.getLeft(), Item.class);
         this.right = new Reference<>(this, scope.getRight(), Item.class);
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<Interface, Item> getLeft() {
@@ -200,10 +200,10 @@ public class Interface implements Relation {
         return right.getTarget(baseline);
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<Interface, Item> left;
     private final Reference<Interface, Item> right;
-    private final UUIDPair scope;
+    private final IdentifierPair scope;
 
     public String getLongID(Relations baseline) {
         Item leftItem = this.left.getTarget(baseline);
@@ -254,21 +254,21 @@ public class Interface implements Relation {
 
     public InterfaceBean toBean(Relations baseline) {
         return new InterfaceBean(
-                uuid, left.getUuid(), right.getUuid(),
+                identifier, left.getKey(), right.getKey(),
                 getLongDescription(baseline));
     }
 
-    private static final ReferenceFinder<Interface> finder
+    private static final ReferenceFinder<Interface> FINDER
             = new ReferenceFinder<>(Interface.class);
 
     @Override
     public Stream<Reference> getReferences() {
-        return finder.getReferences(this);
+        return FINDER.getReferences(this);
     }
 
     public Item otherEnd(Relations baseline, Item item) {
-        UUID otherEndUUID = scope.otherEnd(item.getUuid());
+        String otherEndIdentifier = scope.otherEnd(item.getIdentifier());
         // Referential integrity should be guaranteed by the store
-        return baseline.get(otherEndUUID, Item.class).get();
+        return baseline.get(otherEndIdentifier, Item.class).get();
     }
 }

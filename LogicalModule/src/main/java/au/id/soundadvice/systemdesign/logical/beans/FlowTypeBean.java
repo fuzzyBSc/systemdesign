@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.logical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  *
@@ -37,19 +36,19 @@ import java.util.UUID;
 public class FlowTypeBean implements Identifiable {
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public UUID getTrace() {
+    public String getTrace() {
         return trace;
     }
 
-    public void setTrace(UUID trace) {
+    public void setTrace(String trace) {
         this.trace = trace;
     }
 
@@ -61,8 +60,8 @@ public class FlowTypeBean implements Identifiable {
         this.name = name;
     }
 
-    public FlowTypeBean(UUID uuid, Optional<UUID> trace, String name) {
-        this.uuid = uuid;
+    public FlowTypeBean(String identifier, Optional<String> trace, String name) {
+        this.identifier = identifier;
         this.trace = trace.orElse(null);
         this.name = name;
     }
@@ -70,7 +69,7 @@ public class FlowTypeBean implements Identifiable {
     public FlowTypeBean() {
     }
 
-    private UUID uuid;
-    private UUID trace;
+    private String identifier;
+    private String trace;
     private String name;
 }

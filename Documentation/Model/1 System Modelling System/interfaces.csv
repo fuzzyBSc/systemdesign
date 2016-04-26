@@ -1,4 +1,4 @@
-"description","leftItem","rightItem","uuid"
+"description","leftItem","rightItem","identifier"
 "1.1:1.3 SystemDesign Software:Desktop Computer","b2a2ea70-4c95-481b-9822-f966af9e0b80","15f2ccf9-e2b8-4966-b85c-e37b24313614","86ac111a-3006-4f79-9362-07049fd90dfd"
 "1.2:3 Configuration Management System:Control Board","1a53ad8d-5a23-4ab9-87a2-e4ca344182b3","61e29bdc-5cf4-45fa-b6af-bec240c87a30","8c191f6c-6257-40b8-89ca-86fdaa0541f8"
 "1.1:2 SystemDesign Software:Engineering Team","d674806d-db60-4c2d-afbf-725f7108a2d3","15f2ccf9-e2b8-4966-b85c-e37b24313614","d83ebdd8-e7e0-4412-bc6f-38dd90aeba29"

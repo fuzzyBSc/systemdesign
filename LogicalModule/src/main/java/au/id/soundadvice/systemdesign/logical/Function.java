@@ -64,7 +64,7 @@ public class Function implements Relation {
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 83 * hash + Objects.hashCode(this.uuid);
+        hash = 83 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -77,7 +77,7 @@ public class Function implements Relation {
             return false;
         }
         final Function other = (Function) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.item, other.item)) {
@@ -96,7 +96,7 @@ public class Function implements Relation {
     }
 
     public boolean isConsistent(Function other) {
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.item, other.item)) {
@@ -111,8 +111,8 @@ public class Function implements Relation {
     @CheckReturnValue
     public Pair<Relations, Function> makeConsistent(Relations baseline, Function other) {
         Function result = new Function(
-                other.getUuid(),
-                other.getItem().getUuid(), trace,
+                other.getIdentifier(),
+                other.getItem().getKey(), trace,
                 other.name, external);
         return new Pair<>(baseline.add(result), result);
     }
@@ -141,7 +141,7 @@ public class Function implements Relation {
      * @return
      */
     public static Stream<Function> findOwnedFunctions(Relations baseline, Item item) {
-        return baseline.findReverse(item.getUuid(), Function.class);
+        return baseline.findReverse(item.getIdentifier(), Function.class);
     }
 
     /**
@@ -159,10 +159,10 @@ public class Function implements Relation {
     @CheckReturnValue
     public static Pair<Relations, Function> create(
             Relations baseline, Item item, Optional<Function> trace, String name, Point2D origin) {
-        Optional<UUID> traceUUID = trace.map(Function::getUuid);
+        Optional<String> traceIdentifier = trace.map(Function::getIdentifier);
         Function function = new Function(
-                UUID.randomUUID(),
-                item.getUuid(), traceUUID,
+                UUID.randomUUID().toString(),
+                item.getIdentifier(), traceIdentifier,
                 name, false);
         baseline = baseline.add(function);
         // Also add the coresponding view
@@ -175,7 +175,7 @@ public class Function implements Relation {
         Relations functional = state.getFunctional();
         Optional<Item> systemOfInterest = Identity.getSystemOfInterest(state);
         if (systemOfInterest.isPresent()
-                && !external.item.getUuid().equals(systemOfInterest.get().getUuid())) {
+                && !external.item.getKey().equals(systemOfInterest.get().getIdentifier())) {
             return external.findFlows(functional)
                     .filter(flow -> flow.hasEnd(functional, systemOfInterest.get()))
                     .map(flow -> flow.otherEnd(functional, external))
@@ -204,7 +204,7 @@ public class Function implements Relation {
              * functional baseline.
              */
             Optional<Item> systemOfInterest = Identity.getSystemOfInterest(state);
-            Optional<Function> functionInstance = functional.get(uuid, Function.class);
+            Optional<Function> functionInstance = functional.get(identifier, Function.class);
             if (systemOfInterest.isPresent() && functionInstance.isPresent()) {
                 result = functionInstance.get().findFlows(functional)
                         .map(flow -> {
@@ -259,8 +259,8 @@ public class Function implements Relation {
         Relations allocated = state.getAllocated();
         Item item = external.getItem().getTarget(functional);
         Function newExternal = new Function(
-                external.uuid,
-                item.getUuid(),
+                external.identifier,
+                item.getIdentifier(),
                 Optional.empty(),
                 external.name, true);
         allocated = allocated.add(newExternal);
@@ -290,20 +290,20 @@ public class Function implements Relation {
      */
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     public Stream<FunctionView> findViews(Relations baseline) {
-        return baseline.findReverse(uuid, FunctionView.class);
+        return baseline.findReverse(identifier, FunctionView.class);
     }
 
     public Stream<Flow> findFlows(Relations baseline) {
-        return baseline.findReverse(uuid, Flow.class);
+        return baseline.findReverse(identifier, Flow.class);
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Reference<Function, Item> getItem() {
@@ -316,7 +316,7 @@ public class Function implements Relation {
 
     public Optional<Function> getTrace(Relations functionalBaseline) {
         if (external) {
-            return functionalBaseline.get(uuid, Function.class);
+            return functionalBaseline.get(identifier, Function.class);
         } else {
             return this.trace.flatMap(
                     traceUUID -> functionalBaseline.get(traceUUID, Function.class));
@@ -341,30 +341,30 @@ public class Function implements Relation {
     }
 
     public Function(FunctionBean bean) {
-        this.uuid = bean.getUuid();
+        this.identifier = bean.getIdentifier();
         this.trace = Optional.ofNullable(bean.getTrace());
         this.external = bean.isExternal();
         this.item = new Reference<>(this, bean.getItem(), Item.class);
         this.name = bean.getName();
     }
 
-    private Function(UUID uuid, UUID item, Optional<UUID> trace, String name, boolean external) {
-        this.uuid = uuid;
+    private Function(String identifier, String item, Optional<String> trace, String name, boolean external) {
+        this.identifier = identifier;
         this.item = new Reference<>(this, item, Item.class);
         this.trace = trace;
         this.external = external;
         this.name = name;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Reference<Function, Item> item;
-    private final Optional<UUID> trace;
+    private final Optional<String> trace;
     private final boolean external;
     private final String name;
 
     public FunctionBean toBean(Relations baseline) {
         return new FunctionBean(
-                uuid, item.getUuid(), getDisplayName(baseline), trace, external, name);
+                identifier, item.getKey(), getDisplayName(baseline), trace, external, name);
     }
 
     public String getDisplayName(Relations baseline) {
@@ -392,7 +392,7 @@ public class Function implements Relation {
         if (this.name.equals(name)) {
             return new Pair<>(baseline, this);
         } else {
-            Function result = new Function(uuid, item.getUuid(), trace, name, external);
+            Function result = new Function(identifier, item.getKey(), trace, name, external);
             return new Pair<>(baseline.add(result), result);
         }
     }
@@ -403,14 +403,14 @@ public class Function implements Relation {
             // External functions don't have traces, just views
             return new Pair<>(baseline, this);
         }
-        if (trace.isPresent() && trace.get().equals(newTraceFunction.getUuid())) {
+        if (trace.isPresent() && trace.get().equals(newTraceFunction.getIdentifier())) {
             // No change
             return new Pair<>(baseline, this);
         }
         // Replace ourselves within the baseline
         Function function = new Function(
-                uuid,
-                item.getUuid(), Optional.of(newTraceFunction.getUuid()),
+                identifier,
+                item.getKey(), Optional.of(newTraceFunction.getIdentifier()),
                 name, external);
         baseline = baseline.add(function);
         /*
@@ -424,6 +424,6 @@ public class Function implements Relation {
     }
 
     public boolean isTracedTo(Function parentFunction) {
-        return trace.isPresent() && trace.get().equals(parentFunction.uuid);
+        return trace.isPresent() && trace.get().equals(parentFunction.identifier);
     }
 }

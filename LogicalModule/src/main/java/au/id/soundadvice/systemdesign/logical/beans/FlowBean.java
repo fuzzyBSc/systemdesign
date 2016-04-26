@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.logical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Direction;
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import java.util.UUID;
 
 /**
  *
@@ -37,35 +36,35 @@ import java.util.UUID;
 public class FlowBean implements Identifiable {
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public UUID getInterface() {
+    public String getInterface() {
         return iface;
     }
 
-    public void setInterface(UUID uuid) {
-        this.iface = uuid;
+    public void setInterface(String identifier) {
+        this.iface = identifier;
     }
 
-    public UUID getLeft() {
+    public String getLeft() {
         return left;
     }
 
-    public void setLeft(UUID left) {
+    public void setLeft(String left) {
         this.left = left;
     }
 
-    public UUID getRight() {
+    public String getRight() {
         return right;
     }
 
-    public void setRight(UUID right) {
+    public void setRight(String right) {
         this.right = right;
     }
 
@@ -77,25 +76,12 @@ public class FlowBean implements Identifiable {
         this.direction = direction;
     }
 
-    public UUID getTypeUUID() {
+    public String getType() {
         return type;
     }
 
-    @Deprecated
-    public String getType() {
-        if (type == null) {
-            return legacyType;
-        } else {
-            return type.toString();
-        }
-    }
-
     public void setType(String type) {
-        try {
-            this.type = UUID.fromString(type);
-        } catch (IllegalArgumentException ex) {
-            this.legacyType = type;
-        }
+        this.type = type;
     }
 
     public String getDescription() {
@@ -106,8 +92,8 @@ public class FlowBean implements Identifiable {
         this.description = description;
     }
 
-    public FlowBean(UUID uuid, UUID iface, Direction direction, UUID left, UUID right, UUID type, String description) {
-        this.uuid = uuid;
+    public FlowBean(String identifier, String iface, Direction direction, String left, String right, String type, String description) {
+        this.identifier = identifier;
         this.iface = iface;
         // Normalise left/right
         if (left.compareTo(right) < 0) {
@@ -126,19 +112,17 @@ public class FlowBean implements Identifiable {
     public FlowBean() {
     }
 
-    private UUID uuid;
-    private UUID iface;
+    private String identifier;
+    private String iface;
     /**
      * Left function or external item.
      */
-    private UUID left;
+    private String left;
     /**
      * Right function or external item.
      */
-    private UUID right;
+    private String right;
     private Direction direction;
-    private UUID type;
-    @Deprecated
-    private String legacyType;
+    private String type;
     private String description;
 }

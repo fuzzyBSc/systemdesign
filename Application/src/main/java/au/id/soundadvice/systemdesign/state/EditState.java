@@ -162,15 +162,15 @@ public class EditState {
             Relations was, Relations is, Relation relation) {
         // Verify that the deleted relation is in the "was" baseline
         Optional<Relation> wasRelation = was.get(
-                relation.getUuid(),
+                relation.getIdentifier(),
                 (Class<Relation>) relation.getClass());
         Optional<Relation> isRelation = is.get(
-                relation.getUuid(),
+                relation.getIdentifier(),
                 (Class<Relation>) relation.getClass());
         if (wasRelation.isPresent() && !isRelation.isPresent()) {
             // Add the old relation back in
             is = is.add(wasRelation.get());
-            Iterator<Relation> it = is.findReverse(relation.getUuid()).iterator();
+            Iterator<Relation> it = is.findReverse(relation.getIdentifier()).iterator();
             while (it.hasNext()) {
                 // Walk the tree
                 is = restoreDeleted(was, is, it.next());
@@ -208,7 +208,7 @@ public class EditState {
             if (!parentDir.isPresent()) {
                 throw new IOException("Parent is not saved yet");
             }
-            Optional<Directory> existing = parentDir.get().getChild(child.getUuid());
+            Optional<Directory> existing = parentDir.get().getChild(child.getIdentifier());
             if (existing.isPresent()) {
                 loadImpl(existing.get());
             } else {
@@ -224,7 +224,7 @@ public class EditState {
                 } while (Files.isDirectory(childDir.getPath()));
                 UndoState state = undo.get();
                 Optional<Item> systemOfInterest = state.getAllocated().get(
-                        child.getUuid(), Item.class);
+                        child.getIdentifier(), Item.class);
                 if (systemOfInterest.isPresent()) {
                     state = state.setFunctional(state.getAllocated());
                     state = state.setAllocated(Baseline.create(child));

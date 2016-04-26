@@ -50,7 +50,7 @@ public class ExternalFunctionConsistency {
         return function -> {
             return function.findFlows(baseline)
                     .anyMatch(flow -> {
-                        return iface.getUuid().equals(flow.getInterface().getUuid());
+                        return iface.getIdentifier().equals(flow.getInterface().getKey());
                     });
         };
     }
@@ -58,8 +58,8 @@ public class ExternalFunctionConsistency {
     private static Stream<Flow> getFlowsOnInterface(
             Relations baseline, Function forFunction, Interface forInterface) {
         return forFunction.findFlows(baseline)
-                .filter(flow -> forInterface.getUuid().equals(
-                        flow.getInterface().getUuid()));
+                .filter(flow -> forInterface.getIdentifier().equals(
+                        flow.getInterface().getKey()));
     }
 
     public static UnaryOperator<UndoState> addExternalFunctionDown(Function parentFunction) {

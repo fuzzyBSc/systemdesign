@@ -75,11 +75,11 @@ public class AllocatedBaselineTest {
         Files.createDirectories(subsystemDirectory.getPath());
         try (SaveTransaction transaction = new SaveTransaction(new NullVersionControl())) {
             BeanFile.saveBean(transaction, modelDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), "", "model"));
+                    UUID.randomUUID().toString(), "", "model"));
             BeanFile.saveBean(transaction, systemDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), "C1234", "system"));
+                    UUID.randomUUID().toString(), "C1234", "system"));
             BeanFile.saveBean(transaction, subsystemDirectory.getIdentityFile(), new IdentityBean(
-                    UUID.randomUUID(), "C1234.1", "subsystem"));
+                    UUID.randomUUID().toString(), "C1234.1", "subsystem"));
             transaction.commit();
         }
 
@@ -116,21 +116,21 @@ public class AllocatedBaselineTest {
         Relations model = Baseline.create(Identity.create());
 
         Item systemOfInterest = new Item(
-                new ItemBean(UUID.randomUUID(), "C1234", "system", false));
+                new ItemBean(UUID.randomUUID().toString(), "C1234", "system", false));
         model = model.add(systemOfInterest);
 
         Relations system = Baseline.create(
                 systemOfInterest.asIdentity(model));
 
         Item subsystemOfInterest = new Item(
-                new ItemBean(UUID.randomUUID(), "1", "subsystem", false));
+                new ItemBean(UUID.randomUUID().toString(), "1", "subsystem", false));
         system = system.add(subsystemOfInterest);
 
         Relations subsystem = Baseline.create(
                 subsystemOfInterest.asIdentity(system));
         for (int ii = 0; ii < 10; ++ii) {
             Item item = new Item(
-                    new ItemBean(UUID.randomUUID(), Integer.toString(ii),
+                    new ItemBean(UUID.randomUUID().toString(), Integer.toString(ii),
                             "subsystem " + ii, false));
             subsystem = subsystem.add(item);
         }

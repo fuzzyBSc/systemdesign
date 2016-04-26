@@ -43,7 +43,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 
 /**
- * An immutable set keyed on class and UUID.
+ * An immutable set keyed on class and identifier.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  * @param <E> The type to store
@@ -58,39 +58,39 @@ public class ByReverse<E extends Relation> {
 
     public static class Loader<E extends Relation> {
 
-        private final Set<UUID> deletedRelations;
+        private final Set<String> deletedRelations;
         private final ByReverse<E> result;
 
-        public Loader(ByUUID<E> relations) {
-            UUID invalidReference = UUID.randomUUID();
-            Map<UUID, Set<E>> reverse = relations.stream()
+        public Loader(ByIdentifier<E> relations) {
+            String invalidReference = UUID.randomUUID().toString();
+            Map<String, Set<E>> reverse = relations.stream()
                     .flatMap(relation -> relation.getReferences()
                             .map(reference -> {
-                                UUID targetUUID = reference.getUuid();
-                                Optional<E> target = relations.get(reference.getUuid());
+                                String targetIdentifier = reference.getKey();
+                                Optional<E> target = relations.get(reference.getKey());
                                 if (!target.isPresent() || !reference.getType().isInstance(target.get())) {
                                     // Target does not exist or is of incorrect type
-                                    targetUUID = invalidReference;
+                                    targetIdentifier = invalidReference;
                                 }
-                                return new Pair<>(targetUUID, relation);
+                                return new Pair<>(targetIdentifier, relation);
                             }))
                     .collect(Collectors.groupingBy(Pair::getKey,
                             Collectors.mapping(Pair::getValue, Collectors.toSet())));
-            Map<UUID, ByClass<E>> tmpResult = reverse.entrySet().parallelStream()
+            Map<String, ByClass<E>> tmpResult = reverse.entrySet().parallelStream()
                     .collect(Collectors.toMap(
                             entry -> entry.getKey(),
                             entry -> ByClass.valueOf(entry.getValue().stream())));
-            Set<UUID> tmpDelete = new HashSet<>();
+            Set<String> tmpDelete = new HashSet<>();
             tmpDelete.add(invalidReference);
             cascade(tmpResult, tmpDelete);
             tmpDelete.remove(invalidReference);
             deletedRelations = tmpDelete;
             result = new ByReverse<>(Collections.unmodifiableMap(tmpResult))
-                    .removeAll(deletedRelations.stream().flatMap(uuid
-                            -> relations.get(uuid).map(Stream::of).orElse(Stream.empty())));
+                    .removeAll(deletedRelations.stream().flatMap(key
+                            -> relations.get(key).map(Stream::of).orElse(Stream.empty())));
         }
 
-        public Stream<UUID> getDeletedRelations() {
+        public Stream<String> getDeletedRelations() {
             return deletedRelations.stream();
         }
 
@@ -100,35 +100,35 @@ public class ByReverse<E extends Relation> {
     }
 
     private static <E extends Relation> void cascade(
-            Map<UUID, ByClass<E>> reverse, Set<UUID> seed) {
-        Deque<UUID> stack = seed.stream()
-                .collect(Collectors.toCollection(ArrayDeque<UUID>::new));
+            Map<String, ByClass<E>> reverse, Set<String> seed) {
+        Deque<String> stack = seed.stream()
+                .collect(Collectors.toCollection(ArrayDeque<String>::new));
         while (!stack.isEmpty()) {
-            UUID current = stack.pop();
+            String current = stack.pop();
             ByClass<E> references = reverse.get(current);
             if (references != null) {
                 references.values()
                         .flatMap(byClass -> byClass.stream())
                         .forEach(dependant -> {
-                            if (seed.add(dependant.getUuid())) {
-                                stack.push(dependant.getUuid());
+                            if (seed.add(dependant.getIdentifier())) {
+                                stack.push(dependant.getIdentifier());
                             }
                         });
             }
         }
     }
 
-    private final Map<UUID, ByClass<E>> relations;
+    private final Map<String, ByClass<E>> relations;
 
-    private ByReverse(Map<UUID, ByClass<E>> unmodifiable) {
+    private ByReverse(Map<String, ByClass<E>> unmodifiable) {
         this.relations = unmodifiable;
     }
 
-    public void cascade(Set<UUID> seed) {
+    public void cascade(Set<String> seed) {
         cascade(relations, seed);
     }
 
-    public <T> Stream<T> find(UUID target, Class<T> fromType) {
+    public <T> Stream<T> find(String target, Class<T> fromType) {
         ByClass<E> byClass = relations.get(target);
         if (byClass == null) {
             return Stream.empty();
@@ -137,7 +137,7 @@ public class ByReverse<E extends Relation> {
         }
     }
 
-    public Stream<Relation> find(UUID target) {
+    public Stream<Relation> find(String target) {
         ByClass<E> byClass = relations.get(target);
         if (byClass == null) {
             return Stream.empty();
@@ -148,16 +148,16 @@ public class ByReverse<E extends Relation> {
 
     @CheckReturnValue
     private ByReverse<E> putImpl(E value) {
-        Map<UUID, ByClass<E>> map = new HashMap<>(relations);
+        Map<String, ByClass<E>> map = new HashMap<>(relations);
         value.getReferences()
                 .forEach(relation -> {
-                    UUID targetUUID = relation.getUuid();
-                    ByClass<E> byClass = map.get(targetUUID);
+                    String targetIdentifier = relation.getKey();
+                    ByClass<E> byClass = map.get(targetIdentifier);
                     if (byClass == null) {
                         byClass = ByClass.empty();
                     }
                     byClass = byClass.put(value);
-                    map.put(targetUUID, byClass);
+                    map.put(targetIdentifier, byClass);
                 });
         return new ByReverse<>(Collections.unmodifiableMap(map));
     }
@@ -179,12 +179,12 @@ public class ByReverse<E extends Relation> {
 
     @CheckReturnValue
     public ByReverse<E> removeAll(Stream<E> toDelete) {
-        Map<UUID, List<UUID>> toDeleteByTarget = toDelete
+        Map<String, List<String>> toDeleteByTarget = toDelete
                 .flatMap(source -> {
                     return source.getReferences()
                             .map(reference -> {
-                                UUID targetUUID = reference.getUuid();
-                                return new Pair<>(targetUUID, source.getUuid());
+                                String targetIdentifier = reference.getKey();
+                                return new Pair<>(targetIdentifier, source.getIdentifier());
                             });
                 })
                 .collect(Collectors.groupingBy(
@@ -193,7 +193,7 @@ public class ByReverse<E extends Relation> {
             // There were no references
             return this;
         }
-        Map<UUID, ByClass<E>> map = new HashMap<>(relations);
+        Map<String, ByClass<E>> map = new HashMap<>(relations);
         toDeleteByTarget.entrySet().stream()
                 .forEach(entry -> {
                     ByClass<E> byClass = map.get(entry.getKey());

@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.physical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import java.util.UUID;
 
 /**
  *
@@ -35,8 +34,8 @@ import java.util.UUID;
  */
 public class ItemBean implements Identifiable {
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public void setId(String id) {
@@ -52,8 +51,8 @@ public class ItemBean implements Identifiable {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public String getId() {
@@ -69,10 +68,10 @@ public class ItemBean implements Identifiable {
     }
 
     public ItemBean(
-            UUID uuid, String id,
+            String identifier, String id,
             String name,
             boolean external) {
-        this.uuid = uuid;
+        this.identifier = identifier;
         this.id = id;
         this.name = name;
         this.external = external;
@@ -81,7 +80,7 @@ public class ItemBean implements Identifiable {
     public ItemBean() {
     }
 
-    private UUID uuid;
+    private String identifier;
     private String id;
     private String name;
     private boolean external;

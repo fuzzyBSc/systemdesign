@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.moduleapi.relation;
 
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
@@ -45,7 +44,7 @@ public interface Relations {
      * @param type The expected relation type
      * @return
      */
-    public <T extends Relation> Optional<T> get(UUID key, Class<T> type);
+    public <T extends Relation> Optional<T> get(String key, Class<T> type);
 
     /**
      * Returns an object matching the lookup. Equivalent to
@@ -72,7 +71,7 @@ public interface Relations {
      * @param key The key type
      * @return
      */
-    public Stream<Relation> findReverse(UUID key);
+    public Stream<Relation> findReverse(String key);
 
     /**
      * Returns a list of objects with references to the given key.
@@ -83,13 +82,13 @@ public interface Relations {
      * @return
      */
     public <F extends Relation> Stream<F> findReverse(
-            UUID key, Class<F> fromType);
+            String key, Class<F> fromType);
 
     @CheckReturnValue
     public <T extends Relation> Relations add(T newRelation);
 
     @CheckReturnValue
-    public Relations remove(UUID uuid);
+    public Relations remove(String uuid);
 
     public int size();
 }

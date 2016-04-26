@@ -31,7 +31,6 @@ import au.id.soundadvice.systemdesign.moduleapi.UndoState;
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import javafx.scene.Node;
@@ -49,23 +48,18 @@ public class DragTarget {
     public interface Drop {
 
         public Map<TransferMode, BooleanSupplier> getActions(
-                UndoState state, UUID sourceUUID, UUID targetUUID);
+                UndoState state, String sourceIdentifier, String targetIdentifier);
     }
 
-    public static Optional<UUID> toUUID(Dragboard dragboard) {
-        Optional<String> optionalURL = Optional.ofNullable(dragboard.getUrl());
-        Optional<String> optionalUUID = optionalURL.map(url -> {
-            if (url.startsWith(UUID_PREFIX)) {
-                return url.substring(UUID_PREFIX.length());
-            } else {
-                return url;
-            }
-        });
-        try {
-            return optionalUUID.map(UUID::fromString);
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
+    public static Optional<String> toIdentifier(Dragboard dragboard) {
+        return Optional.ofNullable(dragboard.getUrl())
+                .map(url -> {
+                    if (url.startsWith(UUID_PREFIX)) {
+                        return url.substring(UUID_PREFIX.length());
+                    } else {
+                        return url;
+                    }
+                });
     }
 
     public static void bind(EditState edit, Node node, Identifiable target, Drop drop) {
@@ -77,13 +71,13 @@ public class DragTarget {
             EditState edit, Node node, Supplier<Optional<? extends Identifiable>> supplier, Drop drop) {
         node.setOnDragOver(event -> {
             // Decide whether or not to accept the drop
-            Optional<UUID> sourceUUID = toUUID(event.getDragboard());
+            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
-            if (sourceUUID.isPresent() && target.isPresent()
-                    && !sourceUUID.get().equals(target.get().getUuid())) {
+            if (sourceIdentifier.isPresent() && target.isPresent()
+                    && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
                 UndoState state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
-                        = drop.getActions(state, sourceUUID.get(), target.get().getUuid());
+                        = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
                     node.getStyleClass().add("dragTarget");
                     event.acceptTransferModes(
@@ -94,13 +88,13 @@ public class DragTarget {
         });
         node.setOnDragEntered(event -> {
             // Show drag acceptance visually
-            Optional<UUID> sourceUUID = toUUID(event.getDragboard());
+            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
-            if (sourceUUID.isPresent() && target.isPresent()
-                    && !sourceUUID.get().equals(target.get().getUuid())) {
+            if (sourceIdentifier.isPresent() && target.isPresent()
+                    && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
                 UndoState state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
-                        = drop.getActions(state, sourceUUID.get(), target.get().getUuid());
+                        = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
                     node.getStyleClass().add("dragTarget");
                     event.consume();
@@ -114,13 +108,13 @@ public class DragTarget {
         });
         node.setOnDragDropped(event -> {
             // Handle drop
-            Optional<UUID> sourceUUID = toUUID(event.getDragboard());
+            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
-            if (sourceUUID.isPresent() && target.isPresent()
-                    && !sourceUUID.get().equals(target.get().getUuid())) {
+            if (sourceIdentifier.isPresent() && target.isPresent()
+                    && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
                 UndoState state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
-                        = drop.getActions(state, sourceUUID.get(), target.get().getUuid());
+                        = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 BooleanSupplier action = actions.get(event.getAcceptedTransferMode());
                 if (action == null) {
                     event.setDropCompleted(false);

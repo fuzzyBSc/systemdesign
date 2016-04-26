@@ -75,7 +75,7 @@ public class Item implements Relation {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.uuid);
+        hash = 67 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -88,7 +88,7 @@ public class Item implements Relation {
             return false;
         }
         final Item other = (Item) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.id, other.id)) {
@@ -104,7 +104,7 @@ public class Item implements Relation {
     }
 
     public boolean isConsistent(Item other) {
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.id, other.id)) {
@@ -149,7 +149,7 @@ public class Item implements Relation {
     public static Pair<Relations, Item> create(
             Relations baseline, String name, Point2D origin, Color color) {
         Item item = new Item(
-                UUID.randomUUID(),
+                UUID.randomUUID().toString(),
                 getNextItemId(baseline), name, false);
         baseline = baseline.add(item);
         // Also add the coresponding view
@@ -171,7 +171,7 @@ public class Item implements Relation {
         Relations functional = state.getFunctional();
         Relations allocated = state.getAllocated();
         Item item = new Item(
-                template.uuid,
+                template.identifier,
                 template.getIdPath(functional), template.name, true);
         allocated = allocated.add(item);
         state = state.setAllocated(allocated);
@@ -204,7 +204,7 @@ public class Item implements Relation {
      */
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     @Override
@@ -213,8 +213,8 @@ public class Item implements Relation {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public IDPath getIdPath(Relations baseline) {
@@ -238,7 +238,7 @@ public class Item implements Relation {
         return external;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     /**
      * Path identifier. If external is true this is a full path. Otherwise it is
      * a single path segment that is relative to the current allocated baseline.
@@ -248,7 +248,7 @@ public class Item implements Relation {
     private final boolean external;
 
     public Item(ItemBean bean) {
-        this.uuid = bean.getUuid();
+        this.identifier = bean.getIdentifier();
         this.id = IDPath.valueOfDotted(bean.getId());
         this.name = bean.getName();
         this.external = bean.isExternal();
@@ -256,7 +256,7 @@ public class Item implements Relation {
 
     public ItemBean toBean() {
         return new ItemBean(
-                uuid, id.toString(),
+                identifier, id.toString(),
                 name,
                 external);
     }
@@ -274,22 +274,22 @@ public class Item implements Relation {
     }
 
     private Item(
-            UUID uuid, IDPath id, String name, boolean external) {
-        this.uuid = uuid;
+            String identifier, IDPath id, String name, boolean external) {
+        this.identifier = identifier;
         this.id = id;
         this.name = name;
         this.external = external;
     }
 
     public Identity asIdentity(Relations baseline) {
-        return new Identity(uuid, getIdPath(baseline), name);
+        return new Identity(identifier, getIdPath(baseline), name);
     }
 
     public Item asExternal(Relations baseline) {
         if (external) {
             return this;
         } else {
-            return new Item(uuid, getIdPath(baseline), name, true);
+            return new Item(identifier, getIdPath(baseline), name, true);
         }
     }
 
@@ -303,7 +303,7 @@ public class Item implements Relation {
             return new Pair<>(baseline, this);
         } else {
             Item result = new Item(
-                    uuid, id, name, external);
+                    identifier, id, name, external);
             return new Pair<>(baseline.add(result), result);
         }
     }
@@ -314,7 +314,7 @@ public class Item implements Relation {
             return new Pair<>(baseline, this);
         } else {
             Item result = new Item(
-                    uuid, id, name, external);
+                    identifier, id, name, external);
             return new Pair<>(baseline.add(result), result);
         }
     }
@@ -322,7 +322,7 @@ public class Item implements Relation {
     @CheckReturnValue
     public Pair<Relations, Item> makeConsistent(Relations baseline, Item other) {
         Item result = new Item(
-                uuid, other.getShortId(), other.getName(), external);
+                identifier, other.getShortId(), other.getName(), external);
         return new Pair<>(baseline.add(result), result);
     }
 
@@ -331,12 +331,12 @@ public class Item implements Relation {
     }
 
     public Stream<ItemView> findViews(Relations baseline) {
-        return baseline.findReverse(uuid, ItemView.class);
+        return baseline.findReverse(identifier, ItemView.class);
     }
 
     public Optional<Item> getTrace(UndoState state) {
         if (external) {
-            return state.getFunctional().get(uuid, Item.class);
+            return state.getFunctional().get(identifier, Item.class);
         } else {
             return Identity.getSystemOfInterest(state);
         }

@@ -116,7 +116,7 @@ public class RelationPair<T extends Relation> {
     }
 
     public static <T extends Relation> Optional<RelationPair<T>> resolve(
-            Relations baseline, UUIDPair scope, Class<T> type) {
+            Relations baseline, IdentifierPair scope, Class<T> type) {
         Optional<T> left = baseline.get(scope.getLeft(), type);
         Optional<T> right = baseline.get(scope.getRight(), type);
         if (left.isPresent() && right.isPresent()) {
@@ -132,7 +132,7 @@ public class RelationPair<T extends Relation> {
 
     public RelationPair(T left, T right, Direction direction) {
         // Normalise ordering
-        if (left.getUuid().compareTo(right.getUuid()) < 0) {
+        if (left.getIdentifier().compareTo(right.getIdentifier()) < 0) {
             this.left = left;
             this.right = right;
             this.direction = direction;

@@ -28,7 +28,6 @@ package au.id.soundadvice.systemdesign.logical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  *
@@ -60,33 +59,33 @@ public class FunctionViewBean implements Identifiable {
         this.originY = originY;
     }
 
-    public UUID getDrawing() {
+    public String getDrawing() {
         return drawing;
     }
 
-    public void setDrawing(UUID drawing) {
+    public void setDrawing(String drawing) {
         this.drawing = drawing;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public void setFunction(UUID function) {
+    public void setFunction(String function) {
         this.function = function;
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public UUID getFunction() {
+    public String getFunction() {
         return function;
     }
 
-    public FunctionViewBean(UUID uuid, UUID function, String description, Optional<UUID> drawing, int originX, int originY) {
-        this.uuid = uuid;
+    public FunctionViewBean(String identifier, String function, String description, Optional<String> drawing, int originX, int originY) {
+        this.identifier = identifier;
         this.function = function;
         this.description = description;
         this.drawing = drawing.orElse(null);
@@ -97,9 +96,9 @@ public class FunctionViewBean implements Identifiable {
     public FunctionViewBean() {
     }
 
-    private UUID uuid;
-    private UUID function;
-    private UUID drawing;
+    private String identifier;
+    private String function;
+    private String drawing;
     private int originX;
     private int originY;
     private String description;

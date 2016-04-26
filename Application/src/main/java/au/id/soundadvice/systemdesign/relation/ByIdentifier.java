@@ -35,19 +35,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
 /**
- * An immutable set keyed on UUID.
+ * An immutable set keyed on identifier.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  * @param <E> The identifiable type to store
  */
-public class ByUUID<E extends Relation> {
+public class ByIdentifier<E extends Relation> {
 
     @Override
     public String toString() {
@@ -69,57 +68,56 @@ public class ByUUID<E extends Relation> {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final ByUUID<?> other = (ByUUID<?>) obj;
+        final ByIdentifier<?> other = (ByIdentifier<?>) obj;
         if (!Objects.equals(this.relations, other.relations)) {
             return false;
         }
         return true;
     }
 
-    private static final ByUUID EMPTY = new ByUUID(Collections.emptyMap());
+    private static final ByIdentifier EMPTY = new ByIdentifier(Collections.emptyMap());
 
-    public static <T extends Relation> ByUUID<T> empty() {
+    public static <T extends Relation> ByIdentifier<T> empty() {
         return EMPTY;
     }
 
-    static <T extends Identifiable> ByUUID valueOf(Stream<T> relations) {
-        return new ByUUID(Collections.unmodifiableMap(
+    static <T extends Identifiable> ByIdentifier valueOf(Stream<T> relations) {
+        return new ByIdentifier(Collections.unmodifiableMap(
                 relations.parallel().collect(
-                        Collectors.toConcurrentMap(
-                                Identifiable::getUuid, Function.identity()))));
+                        Collectors.toConcurrentMap(Identifiable::getIdentifier, Function.identity()))));
     }
 
-    private final Map<UUID, E> relations;
+    private final Map<String, E> relations;
 
-    private ByUUID(Map<UUID, E> unmodifiable) {
+    private ByIdentifier(Map<String, E> unmodifiable) {
         this.relations = unmodifiable;
     }
 
-    public Optional<E> get(UUID key) {
+    public Optional<E> get(String key) {
         return Optional.ofNullable(relations.get(key));
     }
 
     @CheckReturnValue
-    public ByUUID put(E value) {
-        E old = relations.get(value.getUuid());
+    public ByIdentifier put(E value) {
+        E old = relations.get(value.getIdentifier());
         if (value.equals(old)) {
             return this;
         } else {
-            Map<UUID, E> map = new HashMap<>(relations);
-            map.put(value.getUuid(), value);
-            return new ByUUID(Collections.unmodifiableMap(map));
+            Map<String, E> map = new HashMap<>(relations);
+            map.put(value.getIdentifier(), value);
+            return new ByIdentifier(Collections.unmodifiableMap(map));
         }
     }
 
     @CheckReturnValue
-    public ByUUID remove(UUID key) {
+    public ByIdentifier remove(String key) {
         if (relations.containsKey(key)) {
             if (relations.size() == 1) {
                 return EMPTY;
             } else {
-                Map<UUID, E> map = new HashMap<>(relations);
+                Map<String, E> map = new HashMap<>(relations);
                 map.remove(key);
-                return new ByUUID(Collections.unmodifiableMap(map));
+                return new ByIdentifier(Collections.unmodifiableMap(map));
             }
         } else {
             return this;
@@ -127,18 +125,18 @@ public class ByUUID<E extends Relation> {
     }
 
     @CheckReturnValue
-    public ByUUID removeAll(Collection<UUID> keys) {
-        List<UUID> toRemove = keys.parallelStream()
-                .filter(uuid -> relations.containsKey(uuid))
+    public ByIdentifier removeAll(Collection<String> keys) {
+        List<String> toRemove = keys.parallelStream()
+                .filter(key -> relations.containsKey(key))
                 .collect(Collectors.toList());
         if (toRemove.isEmpty()) {
             return this;
         } else if (relations.size() == toRemove.size()) {
             return EMPTY;
         } else {
-            Map<UUID, E> map = new HashMap<>(relations);
+            Map<String, E> map = new HashMap<>(relations);
             map.keySet().removeAll(toRemove);
-            return new ByUUID(Collections.unmodifiableMap(map));
+            return new ByIdentifier(Collections.unmodifiableMap(map));
         }
     }
 
@@ -150,7 +148,7 @@ public class ByUUID<E extends Relation> {
         return relations.values().stream();
     }
 
-    public boolean contains(UUID key) {
+    public boolean contains(String key) {
         return relations.containsKey(key);
     }
 

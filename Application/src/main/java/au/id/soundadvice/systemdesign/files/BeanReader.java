@@ -170,6 +170,10 @@ public class BeanReader<T> implements Closeable {
                 } else {
                     List<StringSetter<T>> tmpHeader = new ArrayList<>(headerNames.length);
                     for (String property : headerNames) {
+                        if ("uuid".equals(property)) {
+                            // For backwards-compatibility to v0.5
+                            property = "identifier";
+                        }
                         tmpHeader.add(new StringSetter<>(
                                 Optional.ofNullable(properties.get(property))));
                     }

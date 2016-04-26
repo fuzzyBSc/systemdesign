@@ -39,7 +39,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import javafx.scene.input.TransferMode;
 
@@ -60,38 +59,38 @@ public class DropHandlers {
 
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
-                UndoState state, UUID sourceUUID, UUID targetUUID) {
+                UndoState state, String sourceIdentifier, String targetIdentifier) {
             Relations allocated = state.getAllocated();
             Optional<FunctionView> sourceView
-                    = allocated.get(sourceUUID, FunctionView.class);
+                    = allocated.get(sourceIdentifier, FunctionView.class);
             if (sourceView.isPresent()) {
-                sourceUUID = sourceView.get().getFunction().getUuid();
+                sourceIdentifier = sourceView.get().getFunction().getKey();
             }
             Optional<FunctionView> targetView
-                    = allocated.get(targetUUID, FunctionView.class);
+                    = allocated.get(targetIdentifier, FunctionView.class);
             if (targetView.isPresent()) {
-                targetUUID = targetView.get().getFunction().getUuid();
+                targetIdentifier = targetView.get().getFunction().getKey();
             }
-            return getActionsImpl(state, sourceUUID, targetUUID);
+            return getActionsImpl(state, sourceIdentifier, targetIdentifier);
         }
 
         private Map<TransferMode, BooleanSupplier> getActionsImpl(
-                UndoState state, UUID sourceUUID, UUID targetUUID) {
+                UndoState state, String sourceIdentifier, String targetIdentifier) {
             Relations functional = state.getFunctional();
             Relations allocated = state.getAllocated();
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
             Optional<Function> sourceChildFunction = allocated.get(
-                    sourceUUID, Function.class);
+                    sourceIdentifier, Function.class);
             Optional<Function> targetChildFunction = allocated.get(
-                    targetUUID, Function.class);
+                    targetIdentifier, Function.class);
             Optional<Function> targetTraceFunction = functional.get(
-                    targetUUID, Function.class)
+                    targetIdentifier, Function.class)
                     .flatMap(candidate -> {
                         // Only use if the candidate is owned by the system of interest
                         Optional<Item> systemOfInterest = Identity.getSystemOfInterest(state);
                         if (systemOfInterest.isPresent()
-                                && !candidate.getItem().getUuid().equals(
-                                        systemOfInterest.get().getUuid())) {
+                                && !candidate.getItem().getKey().equals(
+                                        systemOfInterest.get().getIdentifier())) {
                             return Optional.empty();
                         } else {
                             return Optional.of(candidate);
@@ -140,16 +139,16 @@ public class DropHandlers {
 
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
-                UndoState state, UUID sourceUUID, UUID targetUUID) {
+                UndoState state, String sourceIdentifier, String targetIdentifier) {
             Relations functional = state.getFunctional();
-            Optional<Function> drawing = functional.get(targetUUID, Function.class);
+            Optional<Function> drawing = functional.get(targetIdentifier, Function.class);
             if (drawing.isPresent()) {
                 Relations allocated = state.getAllocated();
                 Optional<FunctionView> sourceView
-                        = allocated.get(sourceUUID, FunctionView.class);
-                sourceUUID = sourceView.map(view -> view.getFunction().getUuid())
-                        .orElse(sourceUUID);
-                Optional<Function> sourceFunction = allocated.get(sourceUUID, Function.class);
+                        = allocated.get(sourceIdentifier, FunctionView.class);
+                sourceIdentifier = sourceView.map(view -> view.getFunction().getKey())
+                        .orElse(sourceIdentifier);
+                Optional<Function> sourceFunction = allocated.get(sourceIdentifier, Function.class);
                 return sourceFunction.map(function -> getActionsImpl(function, drawing.get()))
                         .orElse(Collections.emptyMap());
             } else {
@@ -212,29 +211,29 @@ public class DropHandlers {
 
         @Override
         public Map<TransferMode, BooleanSupplier> getActions(
-                UndoState state, UUID sourceUUID, UUID targetUUID) {
+                UndoState state, String sourceIdentifier, String targetIdentifier) {
             Relations allocated = state.getAllocated();
             Optional<ItemView> sourceView
-                    = allocated.get(sourceUUID, ItemView.class);
+                    = allocated.get(sourceIdentifier, ItemView.class);
             if (sourceView.isPresent()) {
-                sourceUUID = sourceView.get().getItem().getUuid();
+                sourceIdentifier = sourceView.get().getItem().getKey();
             }
             Optional<ItemView> targetView
-                    = allocated.get(targetUUID, ItemView.class);
+                    = allocated.get(targetIdentifier, ItemView.class);
             if (targetView.isPresent()) {
-                targetUUID = targetView.get().getItem().getUuid();
+                targetIdentifier = targetView.get().getItem().getKey();
             }
-            return getActionsImpl(state, sourceUUID, targetUUID);
+            return getActionsImpl(state, sourceIdentifier, targetIdentifier);
         }
 
         public Map<TransferMode, BooleanSupplier> getActionsImpl(
-                UndoState state, UUID sourceUUID, UUID targetUUID) {
+                UndoState state, String sourceIdentifier, String targetIdentifier) {
             Relations allocated = state.getAllocated();
             Map<TransferMode, BooleanSupplier> result = new HashMap<>();
             Optional<Item> sourceItem = allocated.get(
-                    sourceUUID, Item.class);
+                    sourceIdentifier, Item.class);
             Optional<Item> targetItem = allocated.get(
-                    targetUUID, Item.class);
+                    targetIdentifier, Item.class);
 
             if (sourceItem.isPresent() && targetItem.isPresent()) {
                 // Trace the source function to the parent fuction.

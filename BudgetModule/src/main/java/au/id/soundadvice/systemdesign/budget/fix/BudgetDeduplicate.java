@@ -132,8 +132,8 @@ public class BudgetDeduplicate {
                     childBudgets.get(parentBudget.getKey()));
             if (optionalChildBudget.isPresent()) {
                 Budget childBudget = optionalChildBudget.get();
-                if (!childBudget.getUuid().equals(parentBudget.getUuid())) {
-                    allocated = childBudget.setUUID(allocated, parentBudget.getUuid()).getKey();
+                if (!childBudget.getIdentifier().equals(parentBudget.getIdentifier())) {
+                    allocated = childBudget.setIdentifier(allocated, parentBudget.getIdentifier()).getKey();
                 }
             } else {
                 // Flow budget down to child

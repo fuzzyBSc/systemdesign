@@ -1,4 +1,4 @@
-"description","direction","interface","left","right","type","uuid"
+"description","direction","interface","left","right","type","identifier"
 "Approach Trap (2 Mouse) --Weight-> Kill Mouse (1 Mouse Trap)","Normal","e592550b-088d-41ce-800c-5572b0eec031","b687cbe5-a270-4393-98aa-5aed9bae6920","d7da6c83-ca55-4eea-a274-898d14daa09e","67e2fbb3-7006-4d4f-8b5a-65fb32cbcc69","ba75be3a-09d7-4bcb-ac0e-5e5a3ca52270"
 "Set Trap (3 Customer) --Latch State-> Kill Mouse (1 Mouse Trap)","Reverse","6eb503ac-873c-4de0-a334-9b0a1a4e33c7","d7da6c83-ca55-4eea-a274-898d14daa09e","090d3ded-56bc-4fdb-87fd-7096057997d8","363b4df9-8759-40a2-829f-0024bece79f5","c49ba627-51ea-47b2-aa5c-eb6a3dd377ed"
 "Set Trap (3 Customer) --Bait-> Kill Mouse (1 Mouse Trap)","Reverse","6eb503ac-873c-4de0-a334-9b0a1a4e33c7","d7da6c83-ca55-4eea-a274-898d14daa09e","090d3ded-56bc-4fdb-87fd-7096057997d8","0442614f-1a30-48b3-bd7e-58adb5a6e72c","caf3b3d0-fbb6-48b1-bdcd-2510e844245b"

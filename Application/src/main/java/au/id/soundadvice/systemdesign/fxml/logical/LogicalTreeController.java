@@ -47,7 +47,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javafx.scene.control.ContextMenu;
@@ -121,10 +120,10 @@ public class LogicalTreeController {
             Relations functional = state.getFunctional();
             Relations allocated = state.getAllocated();
 
-            Map<UUID, Function> parentFunctions;
+            Map<String, Function> parentFunctions;
             if (systemOfInterest.isPresent()) {
                 parentFunctions = Function.findOwnedFunctions(functional, systemOfInterest.get())
-                        .collect(Collectors.toMap(Identifiable::getUuid, t -> t));
+                        .collect(Collectors.toMap(Identifiable::getIdentifier, t -> t));
             } else {
                 parentFunctions = Collections.emptyMap();
             }

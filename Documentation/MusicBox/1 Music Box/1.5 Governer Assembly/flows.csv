@@ -1,4 +1,4 @@
-"description","direction","interface","left","right","type","uuid"
+"description","direction","interface","left","right","type","identifier"
 "Resist Movement (1 Governer) --Force-> Multiply Speed 24x (5 Worm Gear)","Normal","a3155ad3-c3c9-4735-8928-9c851f362da2","399ac651-4d67-41e7-861b-2cae425fc570","488093f7-01e0-488f-bdda-2d6f1e9aadf9","2ae1095f-e52c-41b5-bbde-fd99ef92df4d","8f41e818-e061-49a8-82a4-274bfefc4cb3"
 "Multiply Speed 24x (5 Worm Gear) --Force-> Multiply Speed 6.34x (4 Cog 3)","Reverse","7b381fc9-3ddc-4fe1-a8ec-61d4a124943b","901fcaef-0529-470f-8e1d-d40fa80fb079","488093f7-01e0-488f-bdda-2d6f1e9aadf9","2ae1095f-e52c-41b5-bbde-fd99ef92df4d","c6fa689e-22a9-41cd-bf36-ff640d0ba74d"
 "Multiply Speed 6.34x (4 Cog 3) --Force-> Multiply Speed 5.75x (3 Cog 2)","Normal","6731ee16-da32-4f8e-97ac-e2eea12f50a4","901fcaef-0529-470f-8e1d-d40fa80fb079","99b57b1e-7905-423e-aa96-e783be5e6c87","2ae1095f-e52c-41b5-bbde-fd99ef92df4d","d3e50ac4-09b5-4722-b36e-f3fd92b56ae8"

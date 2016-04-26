@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
@@ -74,28 +73,28 @@ public class RelationStore implements Relations {
     public static RelationStore valueOf(Stream<Relation> input) {
         // Collect the stream in order to duplicate it
         List<Relation> collectedInput = input.collect(Collectors.toList());
-        ByUUID<Relation> byUUID = ByUUID.valueOf(collectedInput.stream());
+        ByIdentifier<Relation> byIdentifier = ByIdentifier.valueOf(collectedInput.stream());
         ByClass<Relation> byClass = ByClass.valueOf(collectedInput.stream());
-        ByReverse.Loader<Relation> reverseLoader = new ByReverse.Loader<>(byUUID);
+        ByReverse.Loader<Relation> reverseLoader = new ByReverse.Loader<>(byIdentifier);
         ByReverse<Relation> byReverse = reverseLoader.build();
 
         // Delete any items needed to establish referential integrity
-        List<UUID> toDelete = reverseLoader.getDeletedRelations().parallel()
+        List<String> toDelete = reverseLoader.getDeletedRelations().parallel()
                 .collect(Collectors.toList());
         if (!toDelete.isEmpty()) {
-            byUUID = byUUID.removeAll(toDelete);
+            byIdentifier = byIdentifier.removeAll(toDelete);
             byClass = byClass.removeAll(toDelete);
             // byReverse entries have already been removed
         }
 
         return new RelationStore(
-                byUUID,
+                byIdentifier,
                 byClass,
                 byReverse);
     }
 
     private static final RelationStore EMPTY = new RelationStore(
-            ByUUID.empty(),
+            ByIdentifier.empty(),
             ByClass.empty(),
             ByReverse.empty());
 
@@ -103,12 +102,12 @@ public class RelationStore implements Relations {
         return EMPTY;
     }
 
-    private final ByUUID<Relation> relations;
+    private final ByIdentifier<Relation> relations;
     private final ByClass<Relation> byClass;
     private final ByReverse<Relation> reverseReferences;
 
     private RelationStore(
-            ByUUID<Relation> relations,
+            ByIdentifier<Relation> relations,
             ByClass<Relation> byClass,
             ByReverse<Relation> reverseRelations) {
         this.relations = relations;
@@ -117,7 +116,7 @@ public class RelationStore implements Relations {
     }
 
     @Override
-    public <T extends Relation> Optional<T> get(UUID key, Class<T> type) {
+    public <T extends Relation> Optional<T> get(String key, Class<T> type) {
         Optional<Relation> optResult = relations.get(key);
         return optResult.flatMap(result -> {
             if (type.isInstance(result)) {
@@ -130,7 +129,7 @@ public class RelationStore implements Relations {
 
     @Override
     public <T extends Relation> Optional<T> get(T sample) {
-        return this.get(sample.getUuid(), (Class<T>) sample.getClass());
+        return this.get(sample.getIdentifier(), (Class<T>) sample.getClass());
     }
 
     @Override
@@ -139,12 +138,12 @@ public class RelationStore implements Relations {
     }
 
     @Override
-    public <F extends Relation> Stream<F> findReverse(UUID key, Class<F> fromType) {
+    public <F extends Relation> Stream<F> findReverse(String key, Class<F> fromType) {
         return reverseReferences.find(key, fromType);
     }
 
     @Override
-    public Stream<Relation> findReverse(UUID key) {
+    public Stream<Relation> findReverse(String key) {
         return reverseReferences.find(key);
     }
 
@@ -154,7 +153,7 @@ public class RelationStore implements Relations {
         // Check referential integrity
         boolean referencesOK = value.getReferences().parallel()
                 .allMatch(reference -> {
-                    Optional<Relation> target = relations.get(reference.getUuid());
+                    Optional<Relation> target = relations.get(reference.getKey());
                     return target.isPresent() && reference.getType().isInstance(target.get());
                 });
         if (!referencesOK) {
@@ -162,7 +161,7 @@ public class RelationStore implements Relations {
             return this;
         }
 
-        UUID key = value.getUuid();
+        String key = value.getIdentifier();
         Optional<Relation> oldValue = relations.get(key);
         if (value.equals(oldValue.orElse(null))) {
             return this;
@@ -170,11 +169,11 @@ public class RelationStore implements Relations {
             RelationStore tmp;
             if (oldValue.isPresent() && !value.getClass().equals(oldValue.get().getClass())) {
                 // Remove first
-                tmp = this.remove(oldValue.get().getUuid());
+                tmp = this.remove(oldValue.get().getIdentifier());
             } else {
                 tmp = this;
             }
-            ByUUID<Relation> tmpRelations = tmp.relations.put(value);
+            ByIdentifier<Relation> tmpRelations = tmp.relations.put(value);
             ByClass<Relation> tmpByClass = tmp.byClass.put(value);
             ByReverse<Relation> tmpReverseRelations
                     = tmp.reverseReferences.replace(oldValue, value);
@@ -185,31 +184,32 @@ public class RelationStore implements Relations {
 
     @CheckReturnValue
     @Override
-    public RelationStore remove(UUID key) {
+    public RelationStore remove(String key) {
         return removeAll(Stream.of(key));
     }
 
     @CheckReturnValue
-    public RelationStore removeAll(Stream<UUID> seed) {
-        HashSet<UUID> toDelete = seed.parallel()
-                .filter(uuid -> relations.get(uuid).isPresent())
+    public RelationStore removeAll(Stream<String> seed) {
+        HashSet<String> toDelete = seed.parallel()
+                .filter(key -> relations.get(key).isPresent())
                 .collect(Collectors.toCollection(HashSet::new));
         if (toDelete.isEmpty()) {
             return this;
         } else {
             reverseReferences.cascade(toDelete);
 
-            ByUUID<Relation> tmpRelations = relations.removeAll(toDelete);
+            ByIdentifier<Relation> tmpRelations = relations.removeAll(toDelete);
             ByClass<Relation> tmpByClass = byClass.removeAll(toDelete);
             ByReverse<Relation> tmpReverseRelations
                     = reverseReferences.removeAll(
-                            toDelete.stream().flatMap(uuid
-                                    -> relations.get(uuid).map(Stream::of).orElse(Stream.empty())));
+                            toDelete.stream().flatMap(key
+                                    -> relations.get(key).map(Stream::of).orElse(Stream.empty())));
             return new RelationStore(
                     tmpRelations, tmpByClass, tmpReverseRelations);
         }
     }
 
+    @Override
     public int size() {
         return relations.size();
     }

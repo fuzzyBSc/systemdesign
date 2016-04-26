@@ -29,7 +29,6 @@ package au.id.soundadvice.systemdesign.budget.beans;
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import au.id.soundadvice.systemdesign.budget.Range;
 import java.math.BigDecimal;
-import java.util.UUID;
 
 /**
  *
@@ -37,11 +36,11 @@ import java.util.UUID;
  */
 public class BudgetAllocationBean implements Identifiable {
 
-    public UUID getItem() {
+    public String getItem() {
         return item;
     }
 
-    public void setItem(UUID item) {
+    public void setItem(String item) {
         this.item = item;
     }
 
@@ -70,24 +69,24 @@ public class BudgetAllocationBean implements Identifiable {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public UUID getBudget() {
+    public String getBudget() {
         return budget;
     }
 
-    public void setBudget(UUID budget) {
+    public void setBudget(String budget) {
         this.budget = budget;
     }
 
-    public BudgetAllocationBean(UUID uuid, UUID item, UUID budget, Range amount, String description) {
-        this.uuid = uuid;
+    public BudgetAllocationBean(String identifier, String item, String budget, Range amount, String description) {
+        this.identifier = identifier;
         this.item = item;
         this.budget = budget;
         this.minimum = amount.getMinimum();
@@ -98,9 +97,9 @@ public class BudgetAllocationBean implements Identifiable {
     public BudgetAllocationBean() {
     }
 
-    private UUID uuid;
-    private UUID item;
-    private UUID budget;
+    private String identifier;
+    private String item;
+    private String budget;
     private BigDecimal minimum;
     private BigDecimal maximum;
     private String description;

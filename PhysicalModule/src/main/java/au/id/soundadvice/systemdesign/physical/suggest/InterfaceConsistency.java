@@ -182,8 +182,8 @@ public class InterfaceConsistency {
                 .flatMap(allocatedExternalItem -> {
                     Optional<Interface> functionalInterface
                             = Interface.find(problemFunctional, system.get())
-                            .filter(iface -> allocatedExternalItem.getUuid().equals(
-                                    iface.otherEnd(problemFunctional, system.get()).getUuid()))
+                            .filter(iface -> allocatedExternalItem.getIdentifier().equals(
+                                    iface.otherEnd(problemFunctional, system.get()).getIdentifier()))
                             .findAny();
 
                     if (functionalInterface.isPresent()) {

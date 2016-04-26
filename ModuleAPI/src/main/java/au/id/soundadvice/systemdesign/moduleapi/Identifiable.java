@@ -26,8 +26,6 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi;
 
-import java.util.UUID;
-
 /**
  * An object that has a persistent, globally unique identifier. Multiple
  * versions of the object may exist over time with the same unique identifier.
@@ -41,5 +39,5 @@ public interface Identifiable {
      *
      * @return
      */
-    public UUID getUuid();
+    public String getIdentifier();
 }

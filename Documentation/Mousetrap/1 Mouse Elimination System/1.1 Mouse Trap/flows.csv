@@ -1,4 +1,4 @@
-"description","direction","interface","left","right","type","uuid"
+"description","direction","interface","left","right","type","identifier"
 "Set Trap (1.3 Customer) --Bait-> Attract Mouse (5 Bait)","Normal","459871c9-de3d-41b3-93a7-d1674ea75569","090d3ded-56bc-4fdb-87fd-7096057997d8","78b6df52-3bb6-4ab2-8e7e-90c662e5bd31","0442614f-1a30-48b3-bd7e-58adb5a6e72c","853e8101-e6b1-48e5-b874-7a0821659cc1"
 "Contain Energy (3 Spring) --Energy-> Transfer Momentum (2 Striker Arm)","Reverse","8e9c9854-0c31-42a4-ba98-4b85a858a104","d82a1c00-fbc1-4a51-bdbd-c6fbde60d34d","53e0d05c-c14e-4302-bdea-2be28cddda31","0e34e648-d819-4e71-8774-f62a6d80b8c8","d2c71d82-96d1-48b3-9f52-554a08901787"
 "Set Trap (1.3 Customer) --Energy-> Contain Energy (3 Spring)","Normal","5d499e57-87f2-4032-9e8b-69f74e87cf87","090d3ded-56bc-4fdb-87fd-7096057997d8","53e0d05c-c14e-4302-bdea-2be28cddda31","0e34e648-d819-4e71-8774-f62a6d80b8c8","e6c74e7f-c3b7-498b-917c-4779e75d2b1f"

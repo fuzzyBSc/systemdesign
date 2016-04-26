@@ -27,17 +27,16 @@
 package au.id.soundadvice.systemdesign.moduleapi;
 
 import java.util.Objects;
-import java.util.UUID;
 import javax.annotation.CheckReturnValue;
 
 /**
- * An ordered pair of UUID, useful for describing the scope of a connection
- * between other relations. There should be at most one Interface matching any
- * given ConnectionScope.
+ * An ordered pair of unique identifiers, useful for describing the scope of a
+ * connection between other relations. There should be at most one Interface
+ * matching any given ConnectionScope.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class UUIDPair {
+public class IdentifierPair {
 
     @Override
     public String toString() {
@@ -72,7 +71,7 @@ public class UUIDPair {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final UUIDPair other = (UUIDPair) obj;
+        final IdentifierPair other = (IdentifierPair) obj;
         if (!Objects.equals(this.left, other.left)) {
             return false;
         }
@@ -85,11 +84,11 @@ public class UUIDPair {
         return true;
     }
 
-    public UUID getLeft() {
+    public String getLeft() {
         return left;
     }
 
-    public UUID getRight() {
+    public String getRight() {
         return right;
     }
 
@@ -97,7 +96,7 @@ public class UUIDPair {
         return direction;
     }
 
-    public Direction getDirectionFrom(UUID from) {
+    public Direction getDirectionFrom(String from) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return direction;
@@ -109,11 +108,11 @@ public class UUIDPair {
         }
     }
 
-    public UUIDPair(UUID left, UUID right) {
+    public IdentifierPair(String left, String right) {
         this(left, right, Direction.None);
     }
 
-    public UUIDPair(UUID left, UUID right, Direction direction) {
+    public IdentifierPair(String left, String right, Direction direction) {
         if (left.compareTo(right) < 0) {
             this.left = left;
             this.right = right;
@@ -126,21 +125,21 @@ public class UUIDPair {
         }
     }
 
-    private final UUID left;
-    private final UUID right;
+    private final String left;
+    private final String right;
     private final Direction direction;
 
     @CheckReturnValue
-    public UUIDPair setDirection(Direction value) {
+    public IdentifierPair setDirection(Direction value) {
         if (direction == value) {
             return this;
         } else {
-            return new UUIDPair(left, right, value);
+            return new IdentifierPair(left, right, value);
         }
     }
 
     @CheckReturnValue
-    public UUIDPair setDirectionFrom(UUID from, Direction value) {
+    public IdentifierPair setDirectionFrom(String from, Direction value) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return setDirection(value);
@@ -152,17 +151,17 @@ public class UUIDPair {
         }
     }
 
-    public UUID otherEnd(UUID uuid) throws IllegalArgumentException {
-        if (uuid.equals(left)) {
+    public String otherEnd(String identifier) throws IllegalArgumentException {
+        if (identifier.equals(left)) {
             return right;
-        } else if (uuid.equals(right)) {
+        } else if (identifier.equals(right)) {
             return left;
         } else {
-            throw new IllegalArgumentException(uuid + " is not in this scope");
+            throw new IllegalArgumentException(identifier + " is not in this scope");
         }
     }
 
-    public boolean hasEnd(UUID uuid) {
-        return uuid.equals(left) || uuid.equals(right);
+    public boolean hasEnd(String identifier) {
+        return identifier.equals(left) || identifier.equals(right);
     }
 }

@@ -53,7 +53,7 @@ public class Budget implements Relation {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.uuid);
+        hash = 59 * hash + Objects.hashCode(this.identifier);
         return hash;
     }
 
@@ -66,7 +66,7 @@ public class Budget implements Relation {
             return false;
         }
         final Budget other = (Budget) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
+        if (!Objects.equals(this.identifier, other.identifier)) {
             return false;
         }
         if (!Objects.equals(this.key, other.key)) {
@@ -76,7 +76,7 @@ public class Budget implements Relation {
     }
 
     public Optional<Budget> get(Relations baseline) {
-        return baseline.get(uuid, Budget.class);
+        return baseline.get(identifier, Budget.class);
     }
 
     public static final class Key implements Comparable<Key> {
@@ -170,12 +170,12 @@ public class Budget implements Relation {
     }
 
     public Stream<BudgetAllocation> findAllocations(Relations baseline) {
-        return baseline.findReverse(uuid, BudgetAllocation.class);
+        return baseline.findReverse(identifier, BudgetAllocation.class);
     }
 
     public Stream<BudgetAllocation> findAllocations(Relations baseline, Item item) {
         return findAllocations(baseline).filter(
-                allocation -> allocation.getItem().getUuid().equals(item.getUuid()));
+                allocation -> allocation.getItem().getKey().equals(item.getIdentifier()));
     }
 
     @CheckReturnValue
@@ -183,13 +183,13 @@ public class Budget implements Relation {
         if (this.key.equals(key)) {
             return new Pair<>(baseline, this);
         } else {
-            Budget newValue = new Budget(uuid, key);
+            Budget newValue = new Budget(identifier, key);
             return new Pair<>(baseline.add(newValue), newValue);
         }
     }
 
     public static Budget create(Key key) {
-        return new Budget(UUID.randomUUID(), key);
+        return new Budget(UUID.randomUUID().toString(), key);
     }
 
     @CheckReturnValue
@@ -227,7 +227,7 @@ public class Budget implements Relation {
 
     @CheckReturnValue
     public Relations removeFrom(Relations baseline) {
-        return baseline.remove(uuid);
+        return baseline.remove(identifier);
     }
 
     public Pair<Relations, Budget> addTo(Relations baseline) {
@@ -239,12 +239,12 @@ public class Budget implements Relation {
         }
     }
 
-    public Pair<Relations, Budget> setUUID(Relations baseline, UUID uuid) {
-        if (this.uuid.equals(uuid)) {
+    public Pair<Relations, Budget> setIdentifier(Relations baseline, String identifier) {
+        if (this.identifier.equals(identifier)) {
             return new Pair<>(baseline, this);
         } else {
             // Create the new entry
-            Budget newValue = new Budget(uuid, key);
+            Budget newValue = new Budget(identifier, key);
             baseline = baseline.add(newValue);
             // Redirect existing allocations to this budget
             Iterator<BudgetAllocation> it = this.findAllocations(baseline).iterator();
@@ -252,13 +252,13 @@ public class Budget implements Relation {
                 BudgetAllocation allocation = it.next();
                 baseline = allocation.setBudget(baseline, newValue).getKey();
             }
-            return new Pair<>(baseline.remove(this.uuid), newValue);
+            return new Pair<>(baseline.remove(this.identifier), newValue);
         }
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Key getKey() {
@@ -266,20 +266,20 @@ public class Budget implements Relation {
     }
 
     public Budget(BudgetBean bean) {
-        this(bean.getUuid(), new Key(bean.getName(), bean.getUnit()));
+        this(bean.getIdentifier(), new Key(bean.getName(), bean.getUnit()));
     }
 
-    private Budget(UUID uuid, Key key) {
-        this.uuid = uuid;
+    private Budget(String identifier, Key key) {
+        this.identifier = identifier;
         this.key = key;
     }
 
-    private final UUID uuid;
+    private final String identifier;
     private final Key key;
 
     public BudgetBean toBean() {
         String description = key.toString();
-        return new BudgetBean(uuid, key.getName(), key.getUnit(), description);
+        return new BudgetBean(identifier, key.getName(), key.getUnit(), description);
     }
     private static final ReferenceFinder<Budget> FINDER
             = new ReferenceFinder<>(Budget.class);

@@ -45,9 +45,9 @@ public class ExternalColorAutoFix {
         Relations functional = state.getFunctional();
         Relations allocated = state.getAllocated();
 
-        Map<UUID, Color> functionalViews = ItemView.find(functional)
+        Map<String, Color> functionalViews = ItemView.find(functional)
                 .collect(Collectors.toMap(
-                        view -> view.getItem().getUuid(),
+                        view -> view.getItem().getKey(),
                         ItemView::getColor));
 
         /*
@@ -60,7 +60,7 @@ public class ExternalColorAutoFix {
             if (view.getItem().getTarget(allocated).isExternal()) {
                 Color allocatedColor = view.getColor();
                 Color functionalColor = functionalViews.getOrDefault(
-                        view.getItem().getUuid(), allocatedColor);
+                        view.getItem().getKey(), allocatedColor);
                 if (!allocatedColor.equals(functionalColor)) {
                     allocated = view.setColor(allocated, functionalColor).getKey();
                 }

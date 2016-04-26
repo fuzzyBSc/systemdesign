@@ -27,7 +27,6 @@
 package au.id.soundadvice.systemdesign.physical.beans;
 
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import java.util.UUID;
 import javafx.scene.paint.Color;
 
 /**
@@ -63,11 +62,11 @@ public class ItemViewBean implements Identifiable {
         this.originY = originY;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
-    public void setItem(UUID item) {
+    public void setItem(String item) {
         this.item = item;
     }
 
@@ -76,11 +75,11 @@ public class ItemViewBean implements Identifiable {
     }
 
     @Override
-    public UUID getUuid() {
-        return uuid;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public UUID getItem() {
+    public String getItem() {
         return item;
     }
 
@@ -89,10 +88,10 @@ public class ItemViewBean implements Identifiable {
     }
 
     public ItemViewBean(
-            UUID uuid, UUID item, String description,
+            String identifier, String item, String description,
             double originX, double originY,
             Color color) {
-        this.uuid = uuid;
+        this.identifier = identifier;
         this.item = item;
         this.description = description;
         this.originX = originX;
@@ -103,8 +102,8 @@ public class ItemViewBean implements Identifiable {
     public ItemViewBean() {
     }
 
-    private UUID uuid;
-    private UUID item;
+    private String identifier;
+    private String item;
     private String description;
     private double originX;
     private double originY;

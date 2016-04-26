@@ -31,7 +31,6 @@ import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
 import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  *
@@ -100,18 +99,18 @@ public class RelationDiff<T> {
     private final Optional<T> isInstance;
 
     public static <T extends Relation> RelationDiff<T> get(
-            Optional<Relations> was, Relations is, UUID uuid, Class<T> type) {
+            Optional<Relations> was, Relations is, String identifier, Class<T> type) {
         Optional<T> wasInstance = was.flatMap(
-                wasBaseline -> wasBaseline.get(uuid, type));
-        Optional<T> isInstance = is.get(uuid, type);
+                wasBaseline -> wasBaseline.get(identifier, type));
+        Optional<T> isInstance = is.get(identifier, type);
         return new RelationDiff<>(was, wasInstance, is, isInstance);
     }
 
     public static <T extends Relation> RelationDiff<T> get(
             Optional<Relations> was, Relations is, T sample) {
         Optional<T> wasInstance = was.flatMap(
-                wasBaseline -> wasBaseline.get(sample.getUuid(), (Class<T>) sample.getClass()));
-        Optional<T> isInstance = is.get(sample.getUuid(), (Class<T>) sample.getClass());
+                wasBaseline -> wasBaseline.get(sample.getIdentifier(), (Class<T>) sample.getClass()));
+        Optional<T> isInstance = is.get(sample.getIdentifier(), (Class<T>) sample.getClass());
         return new RelationDiff<>(was, wasInstance, is, isInstance);
     }
 

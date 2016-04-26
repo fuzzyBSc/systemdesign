@@ -425,7 +425,7 @@ public class Interactions {
             RelationPair<Function> endpointTraces = new RelationPair<>(
                     leftTrace.get(), rightTrace.get(), endpoints.getDirection());
 
-            Set<UUID> alreadyUsed = Flow.find(allocated).parallel()
+            Set<String> alreadyUsed = Flow.find(allocated).parallel()
                     .filter(flow -> {
                         Optional<Function> existingLeftTrace = flow.getLeft(allocated).getTrace(functional);
                         Optional<Function> existingRightTrace = flow.getRight(allocated).getTrace(functional);
@@ -438,7 +438,7 @@ public class Interactions {
                             return false;
                         }
                     })
-                    .map(flow -> flow.getType().getUuid())
+                    .map(flow -> flow.getType().getKey())
                     .collect(Collectors.toSet());
 
             suggestion = endpointTraces.getLeft().findFlows(functional)
@@ -452,7 +452,7 @@ public class Interactions {
                                 .contains(endpointTraces.getDirection());
                     })
                     .map(flow -> flow.getType(functional))
-                    .filter(type -> !alreadyUsed.contains(type.getUuid()))
+                    .filter(type -> !alreadyUsed.contains(type.getIdentifier()))
                     .findAny();
         } else {
             suggestion = Optional.empty();
