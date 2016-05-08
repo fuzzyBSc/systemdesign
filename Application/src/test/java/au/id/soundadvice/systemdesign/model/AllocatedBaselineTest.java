@@ -36,10 +36,10 @@ import au.id.soundadvice.systemdesign.physical.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.physical.beans.ItemBean;
 import au.id.soundadvice.systemdesign.files.BeanFile;
 import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.files.FileUtils;
-import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
+import au.id.soundadvice.systemdesign.storage.files.FileUtils;
+import au.id.soundadvice.systemdesign.storage.files.SaveTransaction;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
+import au.id.soundadvice.systemdesign.storage.versioning.NullVersionControl;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -84,7 +84,7 @@ public class AllocatedBaselineTest {
         }
 
         System.out.println("Load from nonexistant");
-        Relations baseline = Baseline.load(
+        Baseline baseline = Baseline.load(
                 subsystemDirectory, subsystemDirectory);
         assertFalse(Item.find(baseline).iterator().hasNext());
         assertFalse(Interface.find(baseline).iterator().hasNext());
@@ -113,20 +113,20 @@ public class AllocatedBaselineTest {
         FileUtils.recursiveDelete(modelDirectory.getPath());
         Files.createDirectories(subsystemDirectory.getPath());
 
-        Relations model = Baseline.create(Identity.create());
+        Baseline model = Baseline.create(Identity.create());
 
         Item systemOfInterest = new Item(
                 new ItemBean(UUID.randomUUID().toString(), "C1234", "system", false));
         model = model.add(systemOfInterest);
 
-        Relations system = Baseline.create(
+        Baseline system = Baseline.create(
                 systemOfInterest.asIdentity(model));
 
         Item subsystemOfInterest = new Item(
                 new ItemBean(UUID.randomUUID().toString(), "1", "subsystem", false));
         system = system.add(subsystemOfInterest);
 
-        Relations subsystem = Baseline.create(
+        Baseline subsystem = Baseline.create(
                 subsystemOfInterest.asIdentity(system));
         for (int ii = 0; ii < 10; ++ii) {
             Item item = new Item(

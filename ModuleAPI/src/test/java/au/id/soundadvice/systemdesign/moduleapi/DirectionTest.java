@@ -47,15 +47,15 @@ public class DirectionTest {
         List<Direction> list;
         list = Direction.None.stream().collect(Collectors.toList());
         assertTrue(list.isEmpty());
-        list = Direction.Normal.stream().collect(Collectors.toList());
+        list = Direction.Forward.stream().collect(Collectors.toList());
         assertEquals(1, list.size());
-        assertTrue(list.contains(Direction.Normal));
+        assertTrue(list.contains(Direction.Forward));
         list = Direction.Reverse.stream().collect(Collectors.toList());
         assertEquals(1, list.size());
         assertTrue(list.contains(Direction.Reverse));
         list = Direction.Both.stream().collect(Collectors.toList());
         assertEquals(2, list.size());
-        assertTrue(list.contains(Direction.Normal));
+        assertTrue(list.contains(Direction.Forward));
         assertTrue(list.contains(Direction.Reverse));
     }
 
@@ -65,8 +65,8 @@ public class DirectionTest {
     @Test
     public void testReverse() {
         assertEquals(Direction.None, Direction.None.reverse());
-        assertEquals(Direction.Normal, Direction.Reverse.reverse());
-        assertEquals(Direction.Reverse, Direction.Normal.reverse());
+        assertEquals(Direction.Forward, Direction.Reverse.reverse());
+        assertEquals(Direction.Reverse, Direction.Forward.reverse());
         assertEquals(Direction.Both, Direction.Both.reverse());
     }
 
@@ -76,22 +76,22 @@ public class DirectionTest {
     @Test
     public void testAdd() {
         assertEquals(Direction.None, Direction.None.add(Direction.None));
-        assertEquals(Direction.Normal, Direction.None.add(Direction.Normal));
+        assertEquals(Direction.Forward, Direction.None.add(Direction.Forward));
         assertEquals(Direction.Reverse, Direction.None.add(Direction.Reverse));
         assertEquals(Direction.Both, Direction.None.add(Direction.Both));
 
-        assertEquals(Direction.Normal, Direction.Normal.add(Direction.None));
-        assertEquals(Direction.Normal, Direction.Normal.add(Direction.Normal));
-        assertEquals(Direction.Both, Direction.Normal.add(Direction.Reverse));
-        assertEquals(Direction.Both, Direction.Normal.add(Direction.Both));
+        assertEquals(Direction.Forward, Direction.Forward.add(Direction.None));
+        assertEquals(Direction.Forward, Direction.Forward.add(Direction.Forward));
+        assertEquals(Direction.Both, Direction.Forward.add(Direction.Reverse));
+        assertEquals(Direction.Both, Direction.Forward.add(Direction.Both));
 
         assertEquals(Direction.Reverse, Direction.Reverse.add(Direction.None));
-        assertEquals(Direction.Both, Direction.Reverse.add(Direction.Normal));
+        assertEquals(Direction.Both, Direction.Reverse.add(Direction.Forward));
         assertEquals(Direction.Reverse, Direction.Reverse.add(Direction.Reverse));
         assertEquals(Direction.Both, Direction.Reverse.add(Direction.Both));
 
         assertEquals(Direction.Both, Direction.Both.add(Direction.None));
-        assertEquals(Direction.Both, Direction.Both.add(Direction.Normal));
+        assertEquals(Direction.Both, Direction.Both.add(Direction.Forward));
         assertEquals(Direction.Both, Direction.Both.add(Direction.Reverse));
         assertEquals(Direction.Both, Direction.Both.add(Direction.Both));
     }
@@ -102,23 +102,23 @@ public class DirectionTest {
     @Test
     public void testRemove() {
         assertEquals(Direction.None, Direction.None.remove(Direction.None));
-        assertEquals(Direction.None, Direction.None.remove(Direction.Normal));
+        assertEquals(Direction.None, Direction.None.remove(Direction.Forward));
         assertEquals(Direction.None, Direction.None.remove(Direction.Reverse));
         assertEquals(Direction.None, Direction.None.remove(Direction.Both));
 
-        assertEquals(Direction.Normal, Direction.Normal.remove(Direction.None));
-        assertEquals(Direction.None, Direction.Normal.remove(Direction.Normal));
-        assertEquals(Direction.Normal, Direction.Normal.remove(Direction.Reverse));
-        assertEquals(Direction.None, Direction.Normal.remove(Direction.Both));
+        assertEquals(Direction.Forward, Direction.Forward.remove(Direction.None));
+        assertEquals(Direction.None, Direction.Forward.remove(Direction.Forward));
+        assertEquals(Direction.Forward, Direction.Forward.remove(Direction.Reverse));
+        assertEquals(Direction.None, Direction.Forward.remove(Direction.Both));
 
         assertEquals(Direction.Reverse, Direction.Reverse.remove(Direction.None));
-        assertEquals(Direction.Reverse, Direction.Reverse.remove(Direction.Normal));
+        assertEquals(Direction.Reverse, Direction.Reverse.remove(Direction.Forward));
         assertEquals(Direction.None, Direction.Reverse.remove(Direction.Reverse));
         assertEquals(Direction.None, Direction.Reverse.remove(Direction.Both));
 
         assertEquals(Direction.Both, Direction.Both.remove(Direction.None));
-        assertEquals(Direction.Reverse, Direction.Both.remove(Direction.Normal));
-        assertEquals(Direction.Normal, Direction.Both.remove(Direction.Reverse));
+        assertEquals(Direction.Reverse, Direction.Both.remove(Direction.Forward));
+        assertEquals(Direction.Forward, Direction.Both.remove(Direction.Reverse));
         assertEquals(Direction.None, Direction.Both.remove(Direction.Both));
     }
 
@@ -128,22 +128,22 @@ public class DirectionTest {
     @Test
     public void testContains() {
         assertTrue(Direction.None.contains(Direction.None));
-        assertFalse(Direction.None.contains(Direction.Normal));
+        assertFalse(Direction.None.contains(Direction.Forward));
         assertFalse(Direction.None.contains(Direction.Reverse));
         assertFalse(Direction.None.contains(Direction.Both));
 
-        assertTrue(Direction.Normal.contains(Direction.None));
-        assertTrue(Direction.Normal.contains(Direction.Normal));
-        assertFalse(Direction.Normal.contains(Direction.Reverse));
-        assertFalse(Direction.Normal.contains(Direction.Both));
+        assertTrue(Direction.Forward.contains(Direction.None));
+        assertTrue(Direction.Forward.contains(Direction.Forward));
+        assertFalse(Direction.Forward.contains(Direction.Reverse));
+        assertFalse(Direction.Forward.contains(Direction.Both));
 
         assertTrue(Direction.Reverse.contains(Direction.None));
-        assertFalse(Direction.Reverse.contains(Direction.Normal));
+        assertFalse(Direction.Reverse.contains(Direction.Forward));
         assertTrue(Direction.Reverse.contains(Direction.Reverse));
         assertFalse(Direction.Reverse.contains(Direction.Both));
 
         assertTrue(Direction.Both.contains(Direction.None));
-        assertTrue(Direction.Both.contains(Direction.Normal));
+        assertTrue(Direction.Both.contains(Direction.Forward));
         assertTrue(Direction.Both.contains(Direction.Reverse));
         assertTrue(Direction.Both.contains(Direction.Both));
     }

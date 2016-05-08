@@ -31,7 +31,7 @@ import au.id.soundadvice.systemdesign.logical.Flow;
 import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
 import au.id.soundadvice.systemdesign.physical.Interface;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;
@@ -127,7 +127,7 @@ public class ContextMenus {
     }
 
     public static ContextMenu deletedItemContextMenu(
-            Relations was, Item item, Interactions interactions, EditState edit) {
+            Baseline was, Item item, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem restoreMenuItem = new MenuItem("Restore Item");
         restoreMenuItem.setOnAction(event -> {
@@ -151,7 +151,7 @@ public class ContextMenus {
     }
 
     public static ContextMenu deletedInterfaceContextMenu(
-            Relations was, Interface iface, Interactions interactions, EditState edit) {
+            Baseline was, Interface iface, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem restoreMenuItem = new MenuItem("Restore Interface");
         restoreMenuItem.setOnAction(event -> {
@@ -209,7 +209,7 @@ public class ContextMenus {
     }
 
     public static ContextMenu deletedFunctionContextMenu(
-            Relations was, Function function, Interactions interactions, EditState edit) {
+            Baseline was, Function function, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem restoreMenuItem = new MenuItem("Restore Function");
         restoreMenuItem.setOnAction(event -> {
@@ -231,7 +231,7 @@ public class ContextMenus {
         });
         initPerInstanceSubmenu(
                 typeMenu,
-                () -> FlowType.find(edit.getAllocated())
+                () -> FlowType.find(edit.getChild())
                 .sorted((a, b) -> a.getName().compareTo(b.getName())),
                 type -> new MenuItem(type.getName()),
                 (e, type) -> edit.updateAllocated(allocated -> {
@@ -254,7 +254,7 @@ public class ContextMenus {
     }
 
     public static ContextMenu deletedFlowContextMenu(
-            Relations was, Flow flow, Interactions interactions, EditState edit) {
+            Baseline was, Flow flow, Interactions interactions, EditState edit) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem restoreMenuItem = new MenuItem("Restore Flow");
         restoreMenuItem.setOnAction(event -> {
@@ -309,7 +309,7 @@ public class ContextMenus {
         });
         ContextMenus.initPerInstanceSubmenu(
                 addFunctionMenu,
-                () -> Item.find(edit.getAllocated())
+                () -> Item.find(edit.getChild())
                 .filter(item -> !item.isExternal())
                 .sorted((a, b) -> a.getShortId().compareTo(b.getShortId())),
                 item -> new MenuItem(item.getDisplayName()),

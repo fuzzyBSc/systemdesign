@@ -31,8 +31,8 @@ import au.id.soundadvice.systemdesign.state.Baseline;
 import au.id.soundadvice.systemdesign.physical.IDPath;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
@@ -53,12 +53,12 @@ public class IdentityMismatchAutoFixTest {
     public void testFix() {
         System.out.println("fix");
 
-        UndoState state = Baseline.createUndoState();
+        BaselinePair state = Baseline.createUndoState();
         AtomicReference<Item> systemOfInterest = new AtomicReference<>();
         {
-            Relations functional = state.getFunctional();
-            Relations allocated = state.getAllocated();
-            Pair<Relations, Item> pair = Item.create(
+            Baseline functional = state.getParent();
+            Baseline allocated = state.getChild();
+            Pair<Baseline, Item> pair = Item.create(
                     functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
             functional = pair.getKey();
             Item item = pair.getValue();
@@ -68,11 +68,11 @@ public class IdentityMismatchAutoFixTest {
                     item.asIdentity(functional).setId(
                     IDPath.valueOfDotted("wrong.id")));
 
-            state = new UndoState(functional, allocated);
-            assertEquals("wrong.id", Identity.find(state.getAllocated()).getIdPath().toString());
+            state = new BaselinePair(functional, allocated);
+            assertEquals("wrong.id", Identity.get(state.getChild()).getIdPath().toString());
         }
-        UndoState result = IdentityMismatchAutoFix.fix(state);
-        assertEquals("1", Identity.find(result.getAllocated()).getIdPath().toString());
+        BaselinePair result = IdentityMismatchAutoFix.fix(state);
+        assertEquals("1", Identity.get(result.getChild()).getIdPath().toString());
     }
 
 }

@@ -31,8 +31,8 @@ import au.id.soundadvice.systemdesign.physical.fix.ExternalColorAutoFix;
 import au.id.soundadvice.systemdesign.state.Baseline;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
@@ -46,14 +46,14 @@ import static org.junit.Assert.*;
  */
 public class ExternalColorAutoFixTest {
 
-    private static Pair<UndoState, Item> getStateWithExternalItem() {
+    private static Pair<BaselinePair, Item> getStateWithExternalItem() {
         System.out.println("Create baseline pair with external item flowed down");
-        UndoState state = Baseline.createUndoState();
-        Relations functional = state.getFunctional();
-        Relations allocated = state.getAllocated();
+        BaselinePair state = Baseline.createUndoState();
+        Baseline functional = state.getParent();
+        Baseline allocated = state.getChild();
         Item system;
         {
-            Pair<Relations, Item> result = Item.create(
+            Pair<Baseline, Item> result = Item.create(
                     functional, "System of Interest", Point2D.ZERO, Color.CORAL);
             functional = result.getKey();
             system = result.getValue();
@@ -61,14 +61,14 @@ public class ExternalColorAutoFixTest {
         allocated = Identity.setIdentity(allocated, system.asIdentity(functional));
         Item functionalExternal;
         {
-            Pair<Relations, Item> result = Item.create(
+            Pair<Baseline, Item> result = Item.create(
                     functional, "External", Point2D.ZERO, Color.BEIGE);
             functional = result.getKey();
             functionalExternal = result.getValue();
         }
         state = state
-                .setFunctional(functional)
-                .setAllocated(allocated);
+                .setParent(functional)
+                .setChild(allocated);
         return Item.flowDownExternal(state, functionalExternal);
     }
 
@@ -77,28 +77,28 @@ public class ExternalColorAutoFixTest {
      */
     @Test
     public void testFix() {
-        UndoState state;
+        BaselinePair state;
         Item allocatedExternal;
         {
-            Pair<UndoState, Item> result = getStateWithExternalItem();
+            Pair<BaselinePair, Item> result = getStateWithExternalItem();
             state = result.getKey();
             allocatedExternal = result.getValue();
         }
 
         System.out.println("Allocated item view has color " + Color.BEIGE);
-        assertEquals(Color.BEIGE, allocatedExternal.getView(state.getAllocated()).getColor());
+        assertEquals(Color.BEIGE, allocatedExternal.getView(state.getChild()).getColor());
 
         System.out.println("Set allocated item view color to " + Color.AZURE);
         {
-            ItemView view = allocatedExternal.getView(state.getAllocated());
-            state = state.setAllocated(
-                    view.setColor(state.getAllocated(), Color.AZURE).getKey());
+            ItemView view = allocatedExternal.getView(state.getChild());
+            state = state.setChild(
+                    view.setColor(state.getChild(), Color.AZURE).getKey());
         }
-        assertEquals(Color.AZURE, allocatedExternal.getView(state.getAllocated()).getColor());
+        assertEquals(Color.AZURE, allocatedExternal.getView(state.getChild()).getColor());
 
         System.out.println("Apply fix");
         state = ExternalColorAutoFix.fix(state);
-        assertEquals(Color.BEIGE, allocatedExternal.getView(state.getAllocated()).getColor());
+        assertEquals(Color.BEIGE, allocatedExternal.getView(state.getChild()).getColor());
     }
 
 }

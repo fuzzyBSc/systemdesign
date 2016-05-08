@@ -17,6 +17,5 @@
 		<module>../PhysicalModule</module>
 		<module>../Application</module>
 		<module>../BudgetModule</module>
-		<module>../LogicalModule</module>
 	</modules>
 </project>

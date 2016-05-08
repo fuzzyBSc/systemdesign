@@ -37,9 +37,10 @@ import au.id.soundadvice.systemdesign.consistency.AllSuggestions;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
+import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
-import au.id.soundadvice.systemdesign.versioning.jgit.GitVersionControl;
+import au.id.soundadvice.systemdesign.storage.versioning.jgit.GitVersionControl;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URL;
@@ -194,7 +195,7 @@ public class MainController implements Initializable {
             event.consume();
         });
         revertMenuItem.setOnAction(event -> {
-            Optional<Directory> dir = edit.getCurrentDirectory();
+            Optional<Directory> dir = edit.getStorage();
             if (dir.isPresent()) {
                 if (interactions.checkSave("Save before reloading?")) {
                     try {
@@ -218,7 +219,7 @@ public class MainController implements Initializable {
                 },
                 Optional.empty());
         exploreMenuItem.setOnAction(event -> {
-            Optional<Directory> directory = edit.getCurrentDirectory();
+            Optional<RecordStorage> directory = edit.getStorage();
             if (directory.isPresent()) {
                 try {
                     ProcessBuilder builder = new ProcessBuilder();
@@ -263,7 +264,7 @@ public class MainController implements Initializable {
         });
         Runnable updateExploreMenuItemSensitivity = () -> {
             exploreMenuItem.setDisable(
-                    !edit.getCurrentDirectory().isPresent());
+                    !edit.getStorage().isPresent());
         };
         edit.subscribe(updateExploreMenuItemSensitivity);
         updateExploreMenuItemSensitivity.run();
@@ -314,8 +315,8 @@ public class MainController implements Initializable {
         versionMenuController.start();
 
         initialiseGitMenuItem.setOnAction(event -> {
-            Optional<Directory> dir = edit.getCurrentDirectory();
-            if (edit.getVersionControl().isNull()
+            Optional<Directory> dir = edit.getStorage();
+            if (edit.getStorage().isNull()
                     && dir.isPresent()) {
                 try {
                     GitVersionControl.init(dir.get().getPath());
@@ -328,8 +329,8 @@ public class MainController implements Initializable {
         });
         Runnable updateInitaliseGitMenuItemSensitivity = () -> {
             initialiseGitMenuItem.setDisable(
-                    !edit.getVersionControl().isNull()
-                    || !edit.getCurrentDirectory().isPresent());
+                    !edit.getStorage().isNull()
+                    || !edit.getStorage().isPresent());
         };
         edit.subscribe(updateInitaliseGitMenuItemSensitivity);
         updateInitaliseGitMenuItemSensitivity.run();
@@ -343,7 +344,7 @@ public class MainController implements Initializable {
                 Optional<String> interactionResult = dialog.showAndWait();
                 if (interactionResult.isPresent()) {
                     try {
-                        edit.getVersionControl().commit(interactionResult.get());
+                        edit.getStorage().commit(interactionResult.get());
                     } catch (IOException ex) {
                         LOG.log(Level.SEVERE, null, ex);
                     }
@@ -353,7 +354,7 @@ public class MainController implements Initializable {
         });
         Runnable updateCommitMenuItemSensitivity = () -> {
             commitMenuItem.setDisable(
-                    !edit.getVersionControl().canCommit());
+                    !edit.getStorage().canCommit());
         };
         edit.subscribe(updateCommitMenuItemSensitivity);
         updateCommitMenuItemSensitivity.run();
@@ -368,7 +369,7 @@ public class MainController implements Initializable {
         public void run() {
             undoMenuItem.setDisable(!edit.canUndo());
             redoMenuItem.setDisable(!edit.canRedo());
-            Optional<Directory> dir = edit.getCurrentDirectory();
+            Optional<RecordStorage> dir = edit.getStorage();
             upButton.setDisable(
                     !dir.isPresent()
                     || !dir.get().getParent().getIdentity().isPresent());

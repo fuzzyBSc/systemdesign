@@ -29,9 +29,15 @@ package au.id.soundadvice.systemdesign.consistency;
 import au.id.soundadvice.systemdesign.consistency.suggest.DirectoryNameMismatch;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.preferences.Modules;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -48,8 +54,54 @@ public class AllSuggestions {
         return Stream.concat(result, getUndoProblems(edit.getState()).map(EditProblem::of));
     }
 
-    private static Stream<Problem> getUndoProblems(UndoState state) {
-        return Modules.getModules()
-                .flatMap(module -> module.getProblems(state));
+    private static Stream<Problem> getUndoProblems(BaselinePair baselines) {
+        return getAllTraceProblems(baselines);
+    }
+
+    private static Stream<Problem> getAllTraceProblems(BaselinePair baselines) {
+        // Resolve all of the traces
+        Map<Optional<Record>, List<Record>> childTraceMap = baselines.getChild().stream()
+                .collect(Collectors.groupingBy(
+                        childRecord -> childRecord.getTrace().flatMap(trace -> baselines.getParent().getAnyType(trace))
+                ));
+        return Stream.concat(
+                getUntracedChildProblems(baselines, childTraceMap),
+                Stream.concat(
+                        getUntracedParentProblems(baselines, childTraceMap),
+                        getTraceProblems(baselines, childTraceMap)));
+    }
+
+    private static Stream<Problem> getUntracedChildProblems(
+            BaselinePair baselines, Map<Optional<Record>, List<Record>> childTraceMap) {
+        List<Record> untracedChildren = childTraceMap.getOrDefault(
+                Optional.empty(), Collections.emptyList());
+        Map<RecordType, List<Record>> byType = untracedChildren.stream()
+                .collect(Collectors.groupingBy(Record::getType));
+        return byType.entrySet().stream()
+                .flatMap(entry -> {
+                    return entry.getKey().getUntracedChildProblems(baselines, entry.getValue().stream());
+                });
+    }
+
+    private static Stream<Problem> getUntracedParentProblems(
+            BaselinePair baselines, Map<Optional<Record>, List<Record>> childTraceMap) {
+        Map<RecordType, List<Record>> byType = baselines.getParent().stream()
+                .filter(parentRecord -> !childTraceMap.containsKey(Optional.of(parentRecord)))
+                .collect(Collectors.groupingBy(Record::getType));
+        return byType.entrySet().stream()
+                .flatMap(entry -> {
+                    return entry.getKey().getUntracedParentProblems(baselines, entry.getValue().stream());
+                });
+    }
+
+    private static Stream<Problem> getTraceProblems(
+            BaselinePair baselines, Map<Optional<Record>, List<Record>> childTraceMap) {
+        return childTraceMap.entrySet().stream()
+                .filter(entry -> entry.getKey().isPresent())
+                .flatMap(entry -> {
+                    Record traceParent = entry.getKey().get();
+                    Stream<Record> traceChildren = entry.getValue().stream();
+                    return traceParent.getType().getTraceProblems(baselines, traceParent, traceChildren);
+                });
     }
 }

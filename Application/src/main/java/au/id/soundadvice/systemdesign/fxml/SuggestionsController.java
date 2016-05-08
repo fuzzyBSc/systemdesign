@@ -30,7 +30,13 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.EditProblem;
+import au.id.soundadvice.systemdesign.consistency.EditSolution;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -74,7 +80,20 @@ public class SuggestionsController {
 
         @Override
         public void run() {
-            problems.set(factory.apply(edit).collect(Collectors.toList()));
+            Map<Boolean, List<EditProblem>> newProblems = factory.apply(edit)
+                    .collect(Collectors.groupingBy(EditProblem::isManual));
+            // Apply automatic fixes immediately
+            Iterator<EditSolution> it = newProblems.getOrDefault(false, Collections.emptyList())
+                    .stream()
+                    .flatMap(EditProblem::getSolutions)
+                    .iterator();
+            String now = ISO8601.now();
+            while (it.hasNext()) {
+                EditSolution solution = it.next();
+                solution.solve(edit, now);
+            }
+            List<EditProblem> manualFix = newProblems.getOrDefault(true, Collections.emptyList());
+            problems.set(manualFix);
             updateDisplay.run();
         }
 
@@ -108,7 +127,7 @@ public class SuggestionsController {
                 .map((solution) -> {
                     Button button = new Button(solution.getDescription());
                     button.setOnAction(event -> {
-                        solution.solve(edit);
+                        solution.solve(edit, ISO8601.now());
                         event.consume();
                     });
                     button.setDisable(!solution.isEnabled());

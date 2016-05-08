@@ -26,18 +26,16 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.budget.beans.BudgetAllocationBean;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import java.math.BigDecimal;
-import java.util.Objects;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import au.id.soundadvice.systemdesign.physical.Identity;
+import java.text.ParseException;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
 import javafx.util.Pair;
 
 /**
@@ -46,169 +44,162 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class BudgetAllocation implements Relation {
+public enum BudgetAllocation implements RecordType {
+    budgetAllocation;
 
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.identifier);
-        return hash;
+    public static Stream<Record> find(Baseline baseline) {
+        return baseline.findByType(BudgetAllocation.budgetAllocation);
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final BudgetAllocation other = (BudgetAllocation) obj;
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
-        }
-        if (!Objects.equals(this.item, other.item)) {
-            return false;
-        }
-        if (!Objects.equals(this.budget, other.budget)) {
-            return false;
-        }
-        if (!Objects.equals(this.amount, other.amount)) {
-            return false;
-        }
-        return true;
+    public static Stream<Record> findForItem(Baseline baseline, Record item) {
+        return baseline.findReverse(item.getIdentifier(), BudgetAllocation.budgetAllocation);
     }
 
-    @Override
-    public String toString() {
-        return amount.toString();
+    public static Stream<Record> findForBudget(Baseline baseline, Record budget) {
+        return baseline.findReverse(budget.getIdentifier(), BudgetAllocation.budgetAllocation);
     }
 
-    public static Stream<BudgetAllocation> find(Relations baseline) {
-        return baseline.findByClass(BudgetAllocation.class);
+    public static Optional<Record> getForItemAndBudget(Baseline baseline, Record budget, Record item) {
+        return findForBudget(baseline, budget)
+                .filter(allocation -> allocation.getViewOf().get().equals(item.getIdentifier()))
+                .findAny();
     }
 
-    public static Stream<BudgetAllocation> find(Relations baseline, Item item) {
-        return baseline.findReverse(item.getIdentifier(), BudgetAllocation.class);
-    }
-
-    public static Range sumAmounts(Stream<BudgetAllocation> stream) {
+    public static Range sumAmounts(Stream<Record> stream) {
         return stream
-                .map(BudgetAllocation::getAmount)
+                .map(allocation -> budgetAllocation.getAmount(allocation))
                 .reduce(Range.ZERO, Range::add);
     }
 
-    public static BudgetAllocation create(
-            Item item, Budget budget, Range amount) {
-        return new BudgetAllocation(
-                UUID.randomUUID().toString(),
-                item.getIdentifier(), budget.getIdentifier(),
-                amount);
-    }
-
     @CheckReturnValue
-    public static Pair<Relations, BudgetAllocation> setAmount(
-            Relations baseline, Item item, Budget budget, Range amount) {
-        Optional<BudgetAllocation> existing = budget.findAllocations(baseline, item).findAny();
-        BudgetAllocation newValue;
+    public static Pair<BaselinePair, Record> setAmount(
+            BaselinePair baselines, String now, Record item, Record budget, Range amount) {
+        Optional<Record> existing = getForItemAndBudget(baselines.getChild(), item, budget);
         if (existing.isPresent()) {
-            newValue = existing.get().setAmount(amount);
+            Record newValue = existing.get().asBuilder()
+                    .setDescription(amount.toString())
+                    .build(now);
+            return baselines
+                    .setChild(baselines.getChild().add(newValue))
+                    .and(newValue);
         } else {
-            newValue = create(item, budget, amount);
+            Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+            Optional<Record> parentBudget = budget.getTrace().flatMap(
+                    trace -> baselines.getParent().get(trace, Budget.budget));
+            Optional<Record> parentAllocation;
+            if (systemOfInterest.isPresent() && parentBudget.isPresent()) {
+                parentAllocation = getForItemAndBudget(
+                        baselines.getParent(), systemOfInterest.get(), parentBudget.get());
+            } else {
+                parentAllocation = Optional.empty();
+            }
+            Record newValue = Record.create(BudgetAllocation.budgetAllocation)
+                    .setTrace(parentAllocation)
+                    .setContainer(budget)
+                    .setViewOf(item)
+                    .setDescription(amount.toString())
+                    .build(now);
+            return baselines
+                    .setChild(baselines.getChild().add(newValue))
+                    .and(newValue);
         }
-        return new Pair<>(baseline.add(newValue), newValue);
+    }
+
+    public Record getBudget(Baseline baseline, Record allocation) {
+        return baseline.get(allocation.getContainer().get(), Budget.budget).get();
+    }
+
+    public Record getItem(Baseline baseline, Record allocation) {
+        return baseline.get(allocation.getViewOf().get(), Budget.budget).get();
+    }
+
+    public Range getAmount(Record allocation) {
+        try {
+            return Range.valueOf(allocation.getDescription());
+        } catch (ParseException ex) {
+            return Range.ZERO;
+        }
     }
 
     @CheckReturnValue
-    public Relations removeFrom(Relations baseline) {
-        return baseline.remove(identifier);
+    private Record setAmount(Record allocation, String now, Range amount) {
+        return allocation.asBuilder()
+                .setDescription(amount.toString())
+                .build(now);
     }
 
     @Override
-    public String getIdentifier() {
-        return identifier;
+    public String getTypeName() {
+        return name();
     }
-
-    public Reference<BudgetAllocation, Budget> getBudget() {
-        return budget;
-    }
-
-    public Budget getBudget(Relations baseline) {
-        return budget.getTarget(baseline);
-    }
-
-    public Reference<BudgetAllocation, Item> getItem() {
-        return item;
-    }
-
-    public Item getItem(Relations baseline) {
-        return item.getTarget(baseline);
-    }
-
-    public Range getAmount() {
-        return amount;
-    }
-
-    @CheckReturnValue
-    private BudgetAllocation setAmount(Range amount) {
-        if (this.amount.equals(amount)) {
-            return this;
-        } else {
-            return new BudgetAllocation(
-                    identifier, item.getKey(), budget.getKey(), amount);
-        }
-    }
-
-    @CheckReturnValue
-    public Pair<Relations, BudgetAllocation> setBudget(Relations baseline, Budget budget) {
-        if (this.budget.getKey().equals(budget.getIdentifier())) {
-            return new Pair<>(baseline, this);
-        } else {
-            BudgetAllocation newValue = new BudgetAllocation(
-                    identifier, item.getKey(), budget.getIdentifier(), amount);
-            return new Pair<>(baseline.add(newValue), newValue);
-        }
-    }
-
-    public BudgetAllocation(BudgetAllocationBean bean) {
-        this(bean.getIdentifier(),
-                bean.getItem(),
-                bean.getBudget(),
-                Range.fromRange(bean.getMinimum(), bean.getMaximum()));
-    }
-
-    private BudgetAllocation(
-            String uuid,
-            String item, String budget,
-            Range amount) {
-        this.identifier = uuid;
-        this.item = new Reference<>(this, item, Item.class);
-        this.budget = new Reference<>(this, budget, Budget.class);
-        this.amount = amount;
-    }
-
-    private final String identifier;
-    private final Reference<BudgetAllocation, Item> item;
-    private final Reference<BudgetAllocation, Budget> budget;
-    private final Range amount;
-
-    public BudgetAllocationBean toBean(Relations baseline) {
-        Item itemTarget = item.getTarget(baseline);
-        Budget budgetTarget = budget.getTarget(baseline);
-        String description;
-        BigDecimal value = amount.getValue();
-        if (value.compareTo(BigDecimal.ZERO) < 0) {
-            description = itemTarget.getDisplayName() + " consumes " + amount.negate() + " " + budgetTarget.getKey();
-        } else {
-            description = itemTarget.getDisplayName() + " provides " + amount + " " + budgetTarget.getKey();
-        }
-        return new BudgetAllocationBean(identifier, item.getKey(), budget.getKey(), amount, description);
-    }
-    private static final ReferenceFinder<BudgetAllocation> FINDER
-            = new ReferenceFinder<>(BudgetAllocation.class);
 
     @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
+    public Object getUniqueConstraint(Record record) {
+        return new Object[]{record.getContainer(), record.getViewOf()};
+    }
+
+    @Override
+    public Record merge(BaselinePair context, String now, Record left, Record right) {
+        return setAmount(Record.newerOf(left, right), now, getAmount(left).add(getAmount(right)));
+    }
+
+    @Override
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChildren) {
+        return Stream.empty();
+    }
+
+    BaselinePair setParentAmount(BaselinePair baselines, String now, Record childBudget, Range amount) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+        if (!systemOfInterest.isPresent()) {
+            return baselines;
+        }
+        Optional<Record> parentBudget = childBudget.getTrace().flatMap(
+                trace -> baselines.getParent().get(trace, Budget.budget));
+        BaselinePair result = baselines;
+        if (!parentBudget.isPresent()) {
+            // We need to create the parent budget
+            BaselinePair fakePair = new BaselinePair(baselines.getParent(), baselines.getParent());
+            Pair<BaselinePair, Record> tmp = Budget.add(fakePair, now, Budget.budget.getKey(childBudget));
+            result = new BaselinePair(fakePair.getChild(), result.getChild());
+            parentBudget = Optional.of(tmp.getValue());
+        }
+        return setAmount(
+                result, now,
+                systemOfInterest.get(),
+                parentBudget.get(),
+                amount)
+                .getKey();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        // Amount mismatches are already handled by Budget
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        return untracedChildren
+                .map(childAllocation -> Problem.onLoadAutofixProblem(
+                        (baselines, now) -> fixChildTrace(baselines, now, childAllocation)));
+    }
+
+    private BaselinePair fixChildTrace(BaselinePair baselines, String now, Record record) {
+        Optional<Record> allocation = baselines.getChild().get(record);
+        if (allocation.isPresent()) {
+            Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+            Record childBudget = getBudget(baselines.getChild(), allocation.get());
+            Optional<Record> parentBudget = childBudget.getTrace()
+                    .flatMap(trace -> baselines.getParent().get(trace, Budget.budget));
+            if (systemOfInterest.isPresent() && parentBudget.isPresent()) {
+                Optional<Record> parentAllocation = getForItemAndBudget(
+                        baselines.getParent(), systemOfInterest.get(), parentBudget.get());
+                Record updated = allocation.get().asBuilder()
+                        .setTrace(parentAllocation)
+                        .build(now);
+                return baselines.setChild(baselines.getChild().add(updated));
+            }
+        }
+        return baselines;
     }
 }

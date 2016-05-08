@@ -28,10 +28,12 @@ package au.id.soundadvice.systemdesign;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
-import au.id.soundadvice.systemdesign.files.Merge;
+import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.MainController;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -97,23 +99,30 @@ public class SystemDesign extends Application {
         if (args.length > 0 && args[0].endsWith("-merge")) {
             if (args.length == 4) {
                 try {
+                    Path ancestorFile = Paths.get(args[1]);
                     Path leftFile = Paths.get(args[2]);
+                    Path rightFile = Paths.get(args[3]);
                     Path tmpFile = Files.createTempFile("merge", "");
                     Path outputFile = leftFile;
+                    RecordType dummyType = new RecordType.Default("");
                     try (
-                            BufferedReader ancestor = Files.newBufferedReader(Paths.get(args[1]));
+                            BufferedReader ancestor = Files.newBufferedReader(ancestorFile);
                             BufferedReader left = Files.newBufferedReader(leftFile);
-                            BufferedReader right = Files.newBufferedReader(Paths.get(args[3]));
-                            CSVReader ancestorReader = new CSVReader(ancestor);
-                            CSVReader leftReader = new CSVReader(left);
-                            CSVReader rightReader = new CSVReader(right);
+                            BufferedReader right = Files.newBufferedReader(rightFile);
+                            CSVReader ancestorCSVReader = new CSVReader(ancestor);
+                            CSVReader leftCSVReader = new CSVReader(left);
+                            CSVReader rightCSVReader = new CSVReader(right);
+                            RecordReader ancestorReader = new RecordReader(dummyType, ancestorCSVReader);
+                            RecordReader leftReader = new RecordReader(dummyType, leftCSVReader);
+                            RecordReader rightReader = new RecordReader(dummyType, rightCSVReader);
                             CSVWriter out = new CSVWriter(Files.newBufferedWriter(
                                     tmpFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
                         Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out);
                         // Close to flush
                         out.close();
-                        Files.move(tmpFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
                         // Now we are supposed to overwrite left with the result of our merge
+                        Files.move(tmpFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
+                        // All done
                         System.exit(0);
                     }
                 } catch (IOException ex) {

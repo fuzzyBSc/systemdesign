@@ -26,23 +26,19 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
+import au.id.soundadvice.systemdesign.physical.drawing.PhysicalSchematic;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
+import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import java.util.Optional;
 import java.util.stream.Stream;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
-import au.id.soundadvice.systemdesign.physical.beans.IdentityBean;
-import au.id.soundadvice.systemdesign.physical.beans.InterfaceBean;
-import au.id.soundadvice.systemdesign.physical.beans.ItemBean;
-import au.id.soundadvice.systemdesign.physical.beans.ItemViewBean;
-import au.id.soundadvice.systemdesign.physical.fix.ExternalColorAutoFix;
-import au.id.soundadvice.systemdesign.physical.fix.IdentityMismatchAutoFix;
-import au.id.soundadvice.systemdesign.physical.fix.ItemViewAutoFix;
-import au.id.soundadvice.systemdesign.physical.suggest.InterfaceConsistency;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 
 /**
  *
@@ -50,68 +46,55 @@ import java.io.UncheckedIOException;
  */
 public class PhysicalModule implements Module {
 
+    private static BaselinePair flowDownExternalItemView(BaselinePair baselines, String now, Record item) {
+        Optional<String> trace = item.getTrace();
+        if (trace.isPresent()) {
+            Record parentItem = baselines.getParent().get(trace.get(), Item.item).get();
+            Record parentView = Item.item.findViews(baselines.getParent(), parentItem).findAny().get();
+            Record childView = parentView.asBuilder()
+                    .newIdentifier()
+                    .setViewOf(item)
+                    .build(now);
+            return baselines.setChild(baselines.getChild().add(childView));
+        }
+        return baselines;
+    }
+
     @Override
     public void init() {
+        EventDispatcher.INSTANCE.addFlowDownListener(
+                Item.item,
+                (baselines, item) -> flowDownExternalItemView(baselines, ISO8601.now(), item));
+
+        EventDispatcher.INSTANCE.setLinkOperation(Item.item, Item.item, (baseline, items) -> {
+            RecordConnectionScope scope = RecordConnectionScope.resolve(items.getKey(), items.getValue());
+            return Interface.connect(baseline, ISO8601.now(), scope).getKey();
+        });
     }
 
     @Override
-    public Stream<Identifiable> saveMementos(Relations baseline) {
-        Stream<Identifiable> result;
-        result = baseline.findByClass(Identity.class).map(Identity::toBean);
-        result = Stream.concat(result,
-                baseline.findByClass(Item.class).map(Item::toBean));
-        result = Stream.concat(result,
-                baseline.findByClass(ItemView.class).map(view -> view.toBean(baseline)));
-        result = Stream.concat(result,
-                baseline.findByClass(Interface.class).map(iface -> iface.toBean(baseline)));
-        return result;
+    public BaselinePair onLoadAutoFix(BaselinePair baselines, String now) {
+        baselines = ItemView.itemView.createNeededViews(baselines, now);
+        return baselines;
     }
 
     @Override
-    public UndoState onLoadAutoFix(UndoState state) {
-        state = ExternalColorAutoFix.fix(state);
-        state = IdentityMismatchAutoFix.fix(state);
-        state = ItemViewAutoFix.fix(state);
-        return state;
+    public BaselinePair onChangeAutoFix(BaselinePair baselines, String now) {
+        baselines = ItemView.itemView.createNeededViews(baselines, now);
+        return baselines;
     }
 
     @Override
-    public UndoState onChangeAutoFix(UndoState state) {
-        // Do nothing
-        return state;
-    }
-
-    @Override
-    public Stream<Problem> getProblems(UndoState state) {
-        return InterfaceConsistency.getProblems(state);
-    }
-
-    @Override
-    public Stream<Class<? extends Identifiable>> getMementoTypes() {
+    public Stream<RecordType> getRecordTypes() {
         return Stream.of(
-                IdentityBean.class,
-                ItemBean.class,
-                ItemViewBean.class,
-                InterfaceBean.class);
+                Identity.identity,
+                Item.item,
+                ItemView.itemView,
+                Interface.iface);
     }
 
     @Override
-    public Stream<Relation> restoreMementos(Stream<Identifiable> beans) {
-        return beans.
-                map(bean -> {
-                    if (IdentityBean.class.equals(bean.getClass())) {
-                        return new Identity((IdentityBean) bean);
-                    } else if (ItemBean.class.equals(bean.getClass())) {
-                        return new Item((ItemBean) bean);
-                    } else if (ItemViewBean.class.equals(bean.getClass())) {
-                        return new ItemView((ItemViewBean) bean);
-                    } else if (InterfaceBean.class.equals(bean.getClass())) {
-                        return new Interface((InterfaceBean) bean);
-                    } else {
-                        throw new UncheckedIOException(
-                                new IOException(bean.getClass().getName()));
-                    }
-                });
+    public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
+        return Stream.of(new PhysicalSchematic(baselines));
     }
-
 }

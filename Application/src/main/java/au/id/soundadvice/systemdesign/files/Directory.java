@@ -26,11 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.physical.beans.IdentityBean;
 import au.id.soundadvice.systemdesign.physical.Identity;
-import au.id.soundadvice.systemdesign.versioning.IdentityValidator;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import au.id.soundadvice.systemdesign.storage.versioning.IdentityValidator;
+import au.id.soundadvice.systemdesign.storage.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
+import au.id.soundadvice.systemdesign.storage.files.FileOpener;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -93,7 +95,7 @@ public class Directory implements IdentityValidator, FileOpener {
         return identityFile;
     }
 
-    public static Optional<Identity> getIdentity(Path path) {
+    public static Optional<Record> getIdentity(Path path) {
         if (Files.isDirectory(path)) {
             path = path.resolve(IDENTITY_CSV);
         }
@@ -196,7 +198,7 @@ public class Directory implements IdentityValidator, FileOpener {
     }
 
     @Override
-    public String getIdentityFileName() {
+    public String getIdentityFilename() {
         return IDENTITY_CSV;
     }
 
@@ -244,8 +246,13 @@ public class Directory implements IdentityValidator, FileOpener {
         if (version.isPresent()) {
             return clazz -> {
                 String name = getFileNameForClass(clazz);
-                return versionControl.getBufferedReader(
-                        Directory.this, name, version);
+                if (versionControl.exists(
+                        Directory.this, name, version.map(VersionInfo::getId))) {
+                    return Optional.of(versionControl.getBufferedReader(
+                            Directory.this, name, version.map(VersionInfo::getId)));
+                } else {
+                    return Optional.empty();
+                }
             };
         } else {
             return this;

@@ -29,8 +29,9 @@ package au.id.soundadvice.systemdesign.consistency.suggest;
 import au.id.soundadvice.systemdesign.consistency.EditProblem;
 import au.id.soundadvice.systemdesign.consistency.EditSolution;
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.files.Directory;
+import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.physical.Identity;
+import au.id.soundadvice.systemdesign.storage.FileStorage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -63,7 +64,7 @@ public class DirectoryNameMismatch {
         }
 
         @Override
-        public void solve(EditState edit) {
+        public void solve(EditState edit, String now) {
             try {
                 edit.renameDirectory(from, to);
             } catch (IOException ex) {
@@ -79,16 +80,17 @@ public class DirectoryNameMismatch {
     }
 
     public static Stream<EditProblem> getProblems(EditState edit) {
-        Optional<Directory> dir = edit.getCurrentDirectory();
-        if (dir.isPresent()) {
-            Path path = dir.get().getPath();
+        Optional<RecordStorage> dir = edit.getStorage();
+        if (dir.isPresent() && dir.get() instanceof FileStorage) {
+            FileStorage storage = (FileStorage) dir.get();
+            Path path = storage.getDirectoryPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
-                String identity = Identity.find(edit.getAllocated()).toString();
+                String identity = Identity.get(edit.getChild()).toString();
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
                     Path renameTo = path.getParent().resolve(identity);
                     if (!Files.exists(renameTo)) {
-                        return Stream.of(new EditProblem("Directory name mismatch",
+                        return Stream.of(new EditProblem("Directory name mismatch", true,
                                 Stream.of(new RenameDir(path, renameTo))));
                     }
                 }

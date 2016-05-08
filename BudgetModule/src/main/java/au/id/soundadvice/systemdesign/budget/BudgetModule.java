@@ -5,18 +5,12 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.budget.beans.BudgetAllocationBean;
-import au.id.soundadvice.systemdesign.budget.beans.BudgetBean;
-import au.id.soundadvice.systemdesign.budget.fix.BudgetDeduplicate;
-import au.id.soundadvice.systemdesign.budget.suggest.BudgetConsistency;
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.util.stream.Stream;
 
 /**
@@ -30,49 +24,24 @@ public class BudgetModule implements Module {
     }
 
     @Override
-    public UndoState onLoadAutoFix(UndoState state) {
-        state = BudgetDeduplicate.fix(state);
+    public BaselinePair onLoadAutoFix(BaselinePair state, String now) {
         return state;
     }
 
     @Override
-    public UndoState onChangeAutoFix(UndoState state) {
+    public BaselinePair onChangeAutoFix(BaselinePair state, String now) {
         return state;
     }
 
     @Override
-    public Stream<Identifiable> saveMementos(Relations context) {
-        Stream<Identifiable> result;
-        result = context.findByClass(Budget.class).map(Budget::toBean);
-        result = Stream.concat(result,
-                context.findByClass(BudgetAllocation.class).map(allocation -> allocation.toBean(context)));
-        return result;
-    }
-
-    @Override
-    public Stream<Problem> getProblems(UndoState state) {
-        return BudgetConsistency.getProblems(state);
-    }
-
-    @Override
-    public Stream<Class<? extends Identifiable>> getMementoTypes() {
+    public Stream<RecordType> getRecordTypes() {
         return Stream.of(
-                BudgetBean.class,
-                BudgetAllocationBean.class);
+                Budget.budget,
+                BudgetAllocation.budgetAllocation);
     }
 
     @Override
-    public Stream<Relation> restoreMementos(Stream<Identifiable> beans) {
-        return beans.
-                map(bean -> {
-                    if (BudgetBean.class.equals(bean.getClass())) {
-                        return new Budget((BudgetBean) bean);
-                    } else if (BudgetAllocationBean.class.equals(bean.getClass())) {
-                        return new BudgetAllocation((BudgetAllocationBean) bean);
-                    } else {
-                        throw new UncheckedIOException(
-                                new IOException(bean.getClass().getName()));
-                    }
-                });
+    public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
+        return Stream.empty();
     }
 }

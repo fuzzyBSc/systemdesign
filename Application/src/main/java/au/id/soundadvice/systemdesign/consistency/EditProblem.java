@@ -39,9 +39,15 @@ import java.util.stream.Stream;
 public class EditProblem {
 
     public static EditProblem of(Problem problem) {
-        return new EditProblem(problem.getDescription(), Stream.of(
-                EditSolution.of(SolutionFlow.Down.getDescription(), problem.getFlowDownSolution()),
-                EditSolution.of(SolutionFlow.Up.getDescription(), problem.getFlowUpSolution())));
+        // On load autofix is handled by AutoFix
+        if (problem.getOnChangeAutofixSolution().isPresent()) {
+            return new EditProblem(problem.getDescription(), false, Stream.of(
+                    EditSolution.of("autofix", problem.getOnChangeAutofixSolution())));
+        } else {
+            return new EditProblem(problem.getDescription(), true, Stream.of(
+                    EditSolution.of(SolutionFlow.Down.getDescription(), problem.getFlowDownSolution()),
+                    EditSolution.of(SolutionFlow.Up.getDescription(), problem.getFlowUpSolution())));
+        }
     }
 
     @Override
@@ -53,15 +59,21 @@ public class EditProblem {
         return description;
     }
 
+    public boolean isManual() {
+        return manual;
+    }
+
     public Stream<EditSolution> getSolutions() {
         return solutions.stream();
     }
 
     private final String description;
+    private final boolean manual;
     private final List<EditSolution> solutions;
 
-    public EditProblem(String description, Stream<EditSolution> solutions) {
+    public EditProblem(String description, boolean manual, Stream<EditSolution> solutions) {
         this.description = description;
+        this.manual = manual;
         this.solutions = Collections.unmodifiableList(
                 solutions.collect(Collectors.toList()));
     }

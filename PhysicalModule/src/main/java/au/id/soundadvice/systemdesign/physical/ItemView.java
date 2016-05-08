@@ -26,16 +26,18 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.physical.beans.ItemViewBean;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import static au.id.soundadvice.systemdesign.physical.Interface.findForItem;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javafx.geometry.Point2D;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Stream;
-import javafx.scene.paint.Color;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 
@@ -54,11 +56,10 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ItemView implements Relation {
+public enum ItemView implements RecordType {
+    itemView;
 
-    public Color getColor() {
-        return color;
-    }
+    public static Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
 
     /**
      * Return all views of items within the baseline.
@@ -66,146 +67,93 @@ public class ItemView implements Relation {
      * @param baseline The baseline to search
      * @return
      */
-    public static Stream<ItemView> find(Relations baseline) {
-        return baseline.findByClass(ItemView.class);
-    }
-
-    public static final Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
-    public static final Color DEFAULT_COLOR = Color.LIGHTYELLOW;
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.identifier);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final ItemView other = (ItemView) obj;
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
-        }
-        if (!Objects.equals(this.item, other.item)) {
-            return false;
-        }
-        if (!Objects.equals(this.origin, other.origin)) {
-            return false;
-        }
-        if (!Objects.equals(this.color, other.color)) {
-            return false;
-        }
-        return true;
+    public static Stream<Record> find(Baseline baseline) {
+        return baseline.findByType(itemView);
     }
 
     /**
      * Create a new item view.
      *
      * @param baseline The baseline to update
+     * @param now The current time in ISO8601 format
      * @param item The item this view refers to
      * @param origin The location for the item on the screen
-     * @param color The color for this item
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static Pair<Relations, ItemView> create(
-            Relations baseline,
-            Item item,
-            Point2D origin,
-            Color color) {
-        ItemView view = new ItemView(UUID.randomUUID().toString(), item.getIdentifier(), origin, color);
-        return new Pair<>(baseline.add(view), view);
-    }
-
-    @CheckReturnValue
-    public Relations removeFrom(Relations baseline) {
-        return baseline.remove(identifier);
-    }
-
-    @Override
-    public String toString() {
-        return origin.toString();
-    }
-
-    @Override
-    public String getIdentifier() {
-        return identifier;
-    }
-
-    public Reference<ItemView, Item> getItem() {
-        return item;
-    }
-
-    private final String identifier;
-    private final Reference<ItemView, Item> item;
-    private final Point2D origin;
-    private final Color color;
-
-    public ItemView(ItemViewBean bean) {
-        this.identifier = bean.getIdentifier();
-        this.item = new Reference(this, bean.getItem(), Item.class);
-        this.origin = new Point2D(bean.getOriginX(), bean.getOriginY());
-        this.color = bean.getColor();
-    }
-
-    public ItemViewBean toBean(Relations baseline) {
-        return new ItemViewBean(
-                identifier,
-                item.getKey(), item.getTarget(baseline).getDisplayName(),
-                origin.getX(), origin.getY(),
-                color);
-    }
-
-    public String getDisplayName() {
-        return this.toString();
-    }
-
-    private static final ReferenceFinder<ItemView> FINDER
-            = new ReferenceFinder<>(ItemView.class);
-
-    @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
-    }
-
-    private ItemView(
-            String identifier,
-            String item,
-            Point2D origin,
-            Color color) {
-        this.identifier = identifier;
-        this.item = new Reference(this, item, Item.class);
-        this.origin = origin;
-        this.color = color;
-    }
-
-    @CheckReturnValue
-    public Pair<Relations, ItemView> setOrigin(Relations baseline, Point2D origin) {
-        if (this.origin.equals(origin)) {
-            return new Pair<>(baseline, this);
+    public static Pair<Baseline, Record> create(
+            Baseline baseline, String now, Record item, Point2D origin) {
+        Optional<Record> existingView = findForItem(baseline, item)
+                .findAny();
+        if (existingView.isPresent()) {
+            return new Pair<>(baseline, existingView.get());
         } else {
-            ItemView result = new ItemView(identifier, item.getKey(), origin, color);
-            return new Pair<>(baseline.add(result), result);
+            Record view = Record.create(itemView)
+                    .setViewOf(item)
+                    .setOrigin(origin)
+                    .build(now);
+            baseline = baseline.add(view);
+            return new Pair<>(baseline, view);
         }
     }
 
     @CheckReturnValue
-    public Pair<Relations, ItemView> setColor(Relations baseline, Color color) {
-        if (this.color.equals(color)) {
-            return new Pair<>(baseline, this);
-        } else {
-            ItemView result = new ItemView(identifier, item.getKey(), origin, color);
-            return new Pair<>(baseline.add(result), result);
+    public BaselinePair createNeededViews(BaselinePair baselines, String now) {
+        BaselinePair result = baselines;
+        Map<String, Record> itemsWithExistingViews
+                = ItemView.find(baselines.getChild())
+                .map(view -> ItemView.itemView.getItem(baselines.getChild(), view))
+                .collect(Collectors.toMap(Record::getIdentifier, o -> o));
+        // All child items should be on the context diagram
+        Stream<Record> itemsForDrawing = Item.find(baselines.getChild());
+
+        Iterator<Record> itemsToAdd = itemsForDrawing
+                .filter(function -> !itemsWithExistingViews.containsKey(function.getIdentifier()))
+                .iterator();
+        while (itemsToAdd.hasNext()) {
+            Record itemToAdd = itemsToAdd.next();
+            result = result.setChild(
+                    ItemView.create(result.getChild(), now, itemToAdd, ItemView.DEFAULT_ORIGIN)
+                    .getKey());
         }
+        return result;
     }
 
-    public Point2D getOrigin() {
-        return origin;
+    public Record getItem(Baseline baseline, Record view) {
+        return baseline.get(view.getViewOf().get(), Item.item).get();
+    }
+
+    @Override
+    public String getTypeName() {
+        return name();
+    }
+
+    @Override
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChild) {
+        // Views don't trace
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        // Views don't trace
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        // Views don't trace
+        return Stream.empty();
+    }
+
+    @Override
+    public Object getUniqueConstraint(Record record) {
+        // Only one item view is allowed for each item, presently
+        return record.getViewOf();
+    }
+
+    @Override
+    public Record merge(BaselinePair baselines, String now, Record left, Record right) {
+        return Record.newerOf(left, right);
     }
 }

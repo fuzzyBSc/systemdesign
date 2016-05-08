@@ -33,7 +33,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.logical.FlowType;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
 import java.util.Optional;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
@@ -77,7 +77,7 @@ public class TypeTreeController {
 
         @Override
         public void run() {
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             TreeItem root = new TreeItem();
             root.setExpanded(true);
             root.getChildren().addAll(
@@ -158,7 +158,7 @@ public class TypeTreeController {
             edit.updateAllocated(allocated -> {
                 Optional<FlowType> current = allocated.get(function);
                 if (current.isPresent()) {
-                    Pair<Relations, FlowType> result = current.get().setName(
+                    Pair<Baseline, FlowType> result = current.get().setName(
                             allocated, textField.get().getText());
                     super.commitEdit(result.getValue());
                     return result.getKey();
@@ -190,7 +190,7 @@ public class TypeTreeController {
 
         @CheckReturnValue
         private TextField createTextField(FlowType function) {
-            TextField node = new TextField(function.getName());
+            TextField node = new TextField(function.getTypeName());
             node.setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(getItem());

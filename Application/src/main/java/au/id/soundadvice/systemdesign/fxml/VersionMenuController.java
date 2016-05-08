@@ -27,9 +27,9 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.function.Function;
@@ -67,10 +67,10 @@ public class VersionMenuController {
 
     private static void startMenu(
             EditState edit, Menu menu,
-            Function<VersionControl, Stream<VersionInfo>> getter) {
+            Function<RecordStorage, Stream<VersionInfo>> getter) {
         ContextMenus.initPerInstanceSubmenu(
                 menu,
-                () -> getter.apply(edit.getVersionControl())
+                () -> edit.getStorage().map(getter).orElse(Stream.empty())
                 .sorted((a, b) -> {
                     int tscompare = -a.getTimestamp().compareTo(b.getTimestamp());
                     if (tscompare != 0) {
@@ -94,17 +94,17 @@ public class VersionMenuController {
     }
 
     public void start() {
-        startMenu(edit, diffBranchMenu, versionControl -> {
+        startMenu(edit, diffBranchMenu, storage -> {
             try {
-                return versionControl.getBranches();
+                return storage.getBranches();
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
                 return Stream.empty();
             }
         });
-        startMenu(edit, diffVersionMenu, versionControl -> {
+        startMenu(edit, diffVersionMenu, storage -> {
             try {
-                return versionControl.getVersions();
+                return storage.getVersions();
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
                 return Stream.empty();

@@ -29,8 +29,8 @@ package au.id.soundadvice.systemdesign.consistency.autofix;
 import au.id.soundadvice.systemdesign.physical.fix.ItemViewAutoFix;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import au.id.soundadvice.systemdesign.state.Baseline;
 import java.util.concurrent.atomic.AtomicReference;
 import javafx.geometry.Point2D;
@@ -51,10 +51,10 @@ public class ItemViewAutoFixTest {
     @Test
     public void testFix() {
         System.out.println("fix");
-        UndoState state = Baseline.createUndoState();
+        BaselinePair state = Baseline.createUndoState();
         AtomicReference<Item> missingViewItem = new AtomicReference<>();
         state = state.updateAllocated(allocated -> {
-            Pair<Relations, Item> pair = Item.create(
+            Pair<Baseline, Item> pair = Item.create(
                     allocated, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
             allocated = pair.getKey();
             Item item = pair.getValue();
@@ -65,7 +65,7 @@ public class ItemViewAutoFixTest {
         });
         AtomicReference<Item> extraViewItem = new AtomicReference<>();
         state = state.updateAllocated(allocated -> {
-            Pair<Relations, Item> pair = Item.create(
+            Pair<Baseline, Item> pair = Item.create(
                     allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
             allocated = pair.getKey();
             Item item = pair.getValue();
@@ -75,9 +75,9 @@ public class ItemViewAutoFixTest {
             assertEquals(2, item.findViews(allocated).count());
             return allocated;
         });
-        UndoState result = ItemViewAutoFix.fix(state);
-        assertEquals(1, missingViewItem.get().findViews(result.getAllocated()).count());
-        assertEquals(1, extraViewItem.get().findViews(result.getAllocated()).count());
+        BaselinePair result = ItemViewAutoFix.fix(state);
+        assertEquals(1, missingViewItem.get().findViews(result.getChild()).count());
+        assertEquals(1, extraViewItem.get().findViews(result.getChild()).count());
     }
 
 }

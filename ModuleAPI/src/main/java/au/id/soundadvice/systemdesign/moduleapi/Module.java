@@ -26,10 +26,12 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi;
 
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.util.stream.Stream;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
 
 /**
  *
@@ -45,55 +47,30 @@ public interface Module {
     /**
      * Perform all automated consistency repair activities.
      *
-     * @param state The state before fixing
+     * @param baselines The state before fixing
      * @return The state after fixing
      */
-    public UndoState onLoadAutoFix(UndoState state);
+    public BaselinePair onLoadAutoFix(BaselinePair baselines, String now);
 
     /**
      * Perform quick automated consistency repair activities that can't
      * reasonably be kept consistent everywhere in the code that might break
      * this consistency.
      *
-     * @param state The state before fixing
+     * @param baselines The state before fixing
      * @return The state after fixing
      */
-    public UndoState onChangeAutoFix(UndoState state);
+    public BaselinePair onChangeAutoFix(BaselinePair baselines, String now);
 
     /**
-     * Save all mementos for relations owned by this module from the Relations
-     * set.
-     *
-     * @param context The Relations set to search for relations owned by this
-     * module.
-     * @return A stream of beans equivalent to the relations in a form suitable
-     * for long term storage and version control.
-     */
-    public Stream<Identifiable> saveMementos(Relations context);
-
-    /**
-     * Return a stream of all memento types that can be returned from
-     * saveMementos and restored into restoreMementos.
+     * Return a stream of all record types that are owned by this module.
      *
      * @return
      */
-    public Stream<Class<? extends Identifiable>> getMementoTypes();
+    public Stream<RecordType> getRecordTypes();
 
     /**
-     * Transform a stream of memento beans into relations.
-     *
-     * @param beans A stream of memento beans to restore
-     * @return The relations corresponding to these beans
+     * Return the drawings for this module within the nominated baseline.
      */
-    public Stream<Relation> restoreMementos(Stream<Identifiable> beans);
-
-    /**
-     * Return a stream of problems and related suggestions for the current
-     * state.
-     *
-     * @param state The state before fixing
-     * @return A stream of identified problems, including related proposed
-     * solutions.
-     */
-    public Stream<Problem> getProblems(UndoState state);
+    public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines);
 }

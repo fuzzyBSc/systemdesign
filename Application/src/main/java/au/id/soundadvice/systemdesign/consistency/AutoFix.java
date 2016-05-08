@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.Iterator;
 
@@ -37,18 +37,18 @@ import java.util.Iterator;
  */
 public class AutoFix {
 
-    public static UndoState onLoad(UndoState state) {
+    public static BaselinePair onLoad(BaselinePair state, String now) {
         Iterator<Module> it = Modules.getModules().iterator();
         while (it.hasNext()) {
-            state = it.next().onLoadAutoFix(state);
+            state = it.next().onLoadAutoFix(state, now);
         }
         return state;
     }
 
-    public static UndoState onChange(UndoState state) {
+    public static BaselinePair onChange(BaselinePair state, String now) {
         Iterator<Module> it = Modules.getModules().iterator();
         while (it.hasNext()) {
-            state = it.next().onChangeAutoFix(state);
+            state = it.next().onChangeAutoFix(state, now);
         }
         return state;
     }

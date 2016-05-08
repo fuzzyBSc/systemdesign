@@ -27,8 +27,8 @@
 package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
 import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
@@ -48,7 +48,7 @@ public class DragTarget {
     public interface Drop {
 
         public Map<TransferMode, BooleanSupplier> getActions(
-                UndoState state, String sourceIdentifier, String targetIdentifier);
+                BaselinePair baselines, String sourceIdentifier, String targetIdentifier);
     }
 
     public static Optional<String> toIdentifier(Dragboard dragboard) {
@@ -75,7 +75,7 @@ public class DragTarget {
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                UndoState state = edit.getState();
+                BaselinePair state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -92,7 +92,7 @@ public class DragTarget {
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                UndoState state = edit.getState();
+                BaselinePair state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -112,7 +112,7 @@ public class DragTarget {
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                UndoState state = edit.getState();
+                BaselinePair state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 BooleanSupplier action = actions.get(event.getAcceptedTransferMode());

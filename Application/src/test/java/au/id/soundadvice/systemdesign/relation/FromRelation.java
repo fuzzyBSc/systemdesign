@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FromRelation implements Relation {
+public class FromRelation implements RecordType {
 
     public FromRelation(String to) {
         this.identifier = UUID.randomUUID().toString();

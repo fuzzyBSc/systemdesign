@@ -26,9 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
 /**
@@ -39,7 +40,7 @@ public interface EditSolution {
 
     public static EditSolution of(
             String description,
-            Optional<UnaryOperator<UndoState>> solution) {
+            Optional<BiFunction<BaselinePair, String, BaselinePair>> solution) {
         return new EditSolution() {
             @Override
             public String getDescription() {
@@ -52,8 +53,10 @@ public interface EditSolution {
             }
 
             @Override
-            public void solve(EditState edit) {
-                edit.updateState(solution.get());
+            public void solve(EditState edit, String now) {
+                UnaryOperator<BaselinePair> boundSolution
+                        = baselines -> solution.get().apply(baselines, now);
+                edit.updateState(boundSolution);
             }
         };
     }
@@ -62,5 +65,5 @@ public interface EditSolution {
 
     public boolean isEnabled();
 
-    public void solve(EditState edit);
+    public void solve(EditState edit, String now);
 }

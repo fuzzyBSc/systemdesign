@@ -27,6 +27,7 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
+import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 import java.io.StringReader;

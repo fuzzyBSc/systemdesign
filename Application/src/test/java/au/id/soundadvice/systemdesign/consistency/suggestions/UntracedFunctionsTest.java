@@ -30,8 +30,8 @@ import au.id.soundadvice.systemdesign.logical.suggest.UntracedFunctions;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.state.Baseline;
 import java.util.Optional;
@@ -54,11 +54,11 @@ public class UntracedFunctionsTest {
     @Test
     public void testGetProblems() {
         System.out.println("getProblems");
-        UndoState state = Baseline.createUndoState();
+        BaselinePair state = Baseline.createUndoState();
 
-        Relations functional = state.getFunctional();
-        Relations allocated = state.getAllocated();
-        Pair<Relations, Item> itemTuple = Item.create(
+        Baseline functional = state.getParent();
+        Baseline allocated = state.getChild();
+        Pair<Baseline, Item> itemTuple = Item.create(
                 functional, "New Item", Point2D.ZERO, Color.LIGHTYELLOW);
         functional = itemTuple.getKey();
         allocated = Identity.setIdentity(allocated, itemTuple.getValue().asIdentity(functional));
@@ -66,10 +66,10 @@ public class UntracedFunctionsTest {
         System.out.println("Create an item with unallocated function");
         itemTuple = Item.create(allocated, "New Item 2", Point2D.ZERO, Color.LIGHTYELLOW);
         allocated = itemTuple.getKey();
-        Pair<Relations, Function> functionTuple = Function.create(allocated, itemTuple.getValue(), Optional.empty(), "Function", Point2D.ZERO);
+        Pair<Baseline, Function> functionTuple = Function.create(allocated, itemTuple.getValue(), Optional.empty(), "Function", Point2D.ZERO);
         allocated = functionTuple.getKey();
 
-        state = state.setFunctional(functional).setAllocated(allocated);
+        state = state.setParent(functional).setChild(allocated);
         Stream<Problem> problems = UntracedFunctions.getProblems(state);
         assertEquals(1, problems.count());
     }

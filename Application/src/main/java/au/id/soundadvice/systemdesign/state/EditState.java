@@ -27,18 +27,21 @@
 package au.id.soundadvice.systemdesign.state;
 
 import au.id.soundadvice.systemdesign.consistency.AutoFix;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.concurrent.Changed.Inhibit;
 import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.files.SaveTransaction;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import au.id.soundadvice.systemdesign.storage.files.SaveTransaction;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.versioning.NullVersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionControl;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import au.id.soundadvice.systemdesign.storage.FileStorage;
+import au.id.soundadvice.systemdesign.storage.versioning.NullVersionControl;
+import au.id.soundadvice.systemdesign.storage.versioning.VersionControl;
+import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -60,7 +63,7 @@ import javax.annotation.CheckReturnValue;
  */
 public class EditState {
 
-    public Optional<Relations> getDiffBaseline() {
+    public Optional<Baseline> getDiffBaseline() {
         return diffBaseline.get().map(Pair::getValue);
     }
 
@@ -68,14 +71,10 @@ public class EditState {
         return diffBaseline.get().map(Pair::getKey);
     }
 
-    public VersionControl getVersionControl() {
-        return versionControl.get();
-    }
-
     private static final Logger LOG = Logger.getLogger(EditState.class.getName());
 
-    public Optional<Directory> getCurrentDirectory() {
-        return currentDirectory.get();
+    public Optional<RecordStorage> getStorage() {
+        return storage.get();
     }
 
     public Executor getExecutor() {
@@ -88,23 +87,17 @@ public class EditState {
                 Optional.empty(), new NullVersionControl(),
                 Baseline.createUndoState(),
                 true);
-        result.subscribe(() -> result.updateState(AutoFix::onChange));
+        result.subscribe(() -> result.updateState(
+                baselines -> AutoFix.onChange(baselines, ISO8601.now())));
         return result;
-    }
-
-    private static void saveTo(SaveTransaction transaction, Directory directory, UndoState state) throws IOException {
-        if (Identity.getSystemOfInterest(state).isPresent()) {
-            Baseline.save(transaction, directory, state.getFunctional());
-        }
-        Baseline.save(transaction, directory, state.getAllocated());
     }
 
     public void clear() {
         try (Inhibit xact = this.changed.inhibit()) {
-            UndoState state = Baseline.createUndoState();
-            this.currentDirectory.set(Optional.empty());
+            BaselinePair state = Baseline.createUndoState();
+            this.storage.set(Optional.empty());
             loadVersionControl(Optional.empty());
-            this.lastChild.clear();
+            this.lastChildIdentity.clear();
             this.undo.reset(state);
             this.savedState.set(state);
             xact.changed();
@@ -113,12 +106,10 @@ public class EditState {
 
     private EditState(
             Executor executor,
-            Optional<Directory> currentDirectory,
-            VersionControl versionControl,
-            UndoState undo,
+            Optional<RecordStorage> currentDirectory,
+            BaselinePair undo,
             boolean alreadySaved) {
-        this.currentDirectory = new AtomicReference<>(currentDirectory);
-        this.versionControl = new AtomicReference<>(versionControl);
+        this.storage = new AtomicReference<>(currentDirectory);
         this.undo = new UndoBuffer<>(undo);
         this.executor = executor;
         this.changed = new Changed(executor);
@@ -131,21 +122,21 @@ public class EditState {
 
     public void loadParent() throws IOException {
 
-        Optional<Directory> parentDir = currentDirectory.get()
-                .map(Directory::getParent);
+        Optional<RecordStorage> parentDir = storage.get()
+                .flatMap(RecordStorage::getParent);
         if (parentDir.isPresent()
-                && Files.exists(parentDir.get().getIdentityFile())) {
+                && parentDir.get().identityFileExists()) {
             try (Inhibit xact = this.changed.inhibit()) {
-                UndoState state = undo.get();
+                BaselinePair state = undo.get();
                 loadImpl(parentDir.get());
-                lastChild.push(Identity.find(state.getAllocated()));
+                lastChildIdentity.push(Identity.get(state.getChild()));
                 xact.changed();
             }
         }
     }
 
     public boolean hasLastChild() {
-        return !lastChild.isEmpty();
+        return !lastChildIdentity.isEmpty();
     }
 
     /**
@@ -154,23 +145,19 @@ public class EditState {
      *
      * @param was The baseline in which deleted relation is still present
      * @param is The baseline to restore the deleted relation into
-     * @param relation The deleted relation to restore into the "is" baseline.
+     * @param record The deleted record to restore into the "is" baseline.
      * @return The updated "is" baseline.
      */
     @CheckReturnValue
-    private static Relations restoreDeleted(
-            Relations was, Relations is, Relation relation) {
+    private static Baseline restoreDeleted(
+            Baseline was, Baseline is, Record record) {
         // Verify that the deleted relation is in the "was" baseline
-        Optional<Relation> wasRelation = was.get(
-                relation.getIdentifier(),
-                (Class<Relation>) relation.getClass());
-        Optional<Relation> isRelation = is.get(
-                relation.getIdentifier(),
-                (Class<Relation>) relation.getClass());
-        if (wasRelation.isPresent() && !isRelation.isPresent()) {
+        Optional<Record> wasRecord = was.get(record);
+        Optional<Record> isRecord = is.get(record);
+        if (wasRecord.isPresent() && !isRecord.isPresent()) {
             // Add the old relation back in
-            is = is.add(wasRelation.get());
-            Iterator<Relation> it = is.findReverse(relation.getIdentifier()).iterator();
+            is = is.add(wasRecord.get());
+            Iterator<Record> it = is.findReverse(record.getIdentifier()).iterator();
             while (it.hasNext()) {
                 // Walk the tree
                 is = restoreDeleted(was, is, it.next());
@@ -180,40 +167,41 @@ public class EditState {
     }
 
     /**
-     * Attempt to restore a relation, plus all recursive references to that
+     * Attempt to restore a record, plus all recursive references to that
      * relation
      *
-     * @param deletedRelations The deleted relation to restore into the current
+     * @param deletedRecords The deleted record to restore into the current
      * baseline.
      */
-    public void restoreDeleted(Relation... deletedRelations) {
+    public void restoreDeleted(Record... deletedRecords) {
         updateState(state -> {
             // Restore the entire deleted tree of relations
-            Optional<Pair<VersionInfo, Relations>> was = diffBaseline.get();
+            Optional<Pair<VersionInfo, Baseline>> was = diffBaseline.get();
             if (was.isPresent()) {
-                for (Relation relation : deletedRelations) {
-                    state = state.setAllocated(
-                            restoreDeleted(was.get().getValue(), state.getAllocated(), relation));
+                String now = ISO8601.now();
+                for (Record relation : deletedRecords) {
+                    state = state.setChild(
+                            restoreDeleted(was.get().getValue(), state.getChild(), relation));
                 }
                 // Rely on autofix behaviours to resolve any conflicts that arose
-                state = AutoFix.onLoad(state);
+                state = AutoFix.onLoad(state, now);
             }
             return state;
         });
     }
 
-    public void loadChild(Identity child) throws IOException {
+    public void loadChild(Record childIdentity) throws IOException {
         try (Inhibit xact = this.changed.inhibit()) {
-            Optional<Directory> parentDir = currentDirectory.get();
+            Optional<RecordStorage> parentDir = storage.get();
             if (!parentDir.isPresent()) {
                 throw new IOException("Parent is not saved yet");
             }
-            Optional<Directory> existing = parentDir.get().getChild(child.getIdentifier());
+            Optional<RecordStorage> existing = parentDir.get().getChild(childIdentity.getIdentifier());
             if (existing.isPresent()) {
                 loadImpl(existing.get());
             } else {
                 // Synthesise a child baseline, since none has been saved yet
-                String prefix = child.toString();
+                String prefix = childIdentity.toString();
                 int count = 0;
                 Directory childDir;
                 do {
@@ -222,14 +210,14 @@ public class EditState {
                     childDir = parentDir.get().resolve(name);
                     ++count;
                 } while (Files.isDirectory(childDir.getPath()));
-                UndoState state = undo.get();
-                Optional<Item> systemOfInterest = state.getAllocated().get(
-                        child.getIdentifier(), Item.class);
+                BaselinePair state = undo.get();
+                Optional<Record> systemOfInterest = state.getChild().get(
+                        childIdentity.getIdentifier(), Item.item);
                 if (systemOfInterest.isPresent()) {
-                    state = state.setFunctional(state.getAllocated());
-                    state = state.setAllocated(Baseline.create(child));
+                    state = state.setParent(state.getChild());
+                    state = state.setChild(Baseline.create(childIdentity));
                     Optional<Directory> newDir = Optional.of(childDir);
-                    currentDirectory.set(newDir);
+                    storage.set(newDir);
                     undo.reset(state);
                     savedState.set(state);
                     loadVersionControl(newDir);
@@ -237,19 +225,19 @@ public class EditState {
                     throw new IOException("No such child");
                 }
             }
-            if (!lastChild.isEmpty()) {
-                if (child.equals(lastChild.peek())) {
-                    lastChild.pop();
+            if (!lastChildIdentity.isEmpty()) {
+                if (childIdentity.equals(lastChildIdentity.peek())) {
+                    lastChildIdentity.pop();
                 } else {
-                    lastChild.clear();
+                    lastChildIdentity.clear();
                 }
             }
             xact.changed();
         }
     }
 
-    public Identity getLastChild() throws EmptyStackException {
-        return lastChild.peek();
+    public Record getLastChild() throws EmptyStackException {
+        return lastChildIdentity.peek();
     }
 
     public void load(Directory dir) throws IOException {
@@ -258,21 +246,21 @@ public class EditState {
         }
         try (Inhibit xact = this.changed.inhibit()) {
             loadImpl(dir);
-            lastChild.clear();
+            lastChildIdentity.clear();
             xact.changed();
         }
     }
 
-    private void loadImpl(Directory dir) throws IOException {
-        UndoState state = Baseline.loadUndoState(dir);
-        Optional<Directory> newDir = Optional.of(dir);
-        currentDirectory.set(newDir);
+    private void loadImpl(RecordStorage dir) throws IOException {
+        BaselinePair state = Baseline.loadUndoState(dir);
+        Optional<RecordStorage> newDir = Optional.of(dir);
+        storage.set(newDir);
         undo.reset(state);
         savedState.set(state);
         loadVersionControl(newDir);
 
         // Set undo again here to allow automatic changes to be undone
-        undo.update(AutoFix::onLoad);
+        undo.update(baselines -> AutoFix.onLoad(baselines, ISO8601.now()));
     }
 
     public boolean saveNeeded() {
@@ -280,10 +268,10 @@ public class EditState {
     }
 
     public void reloadVersionControl() {
-        loadVersionControl(currentDirectory.get());
+        loadVersionControl(storage.get());
     }
 
-    private void loadVersionControl(Optional<Directory> dir) {
+    private void loadVersionControl(Optional<RecordStorage> dir) {
         VersionControl newVersionControl = dir
                 .map(d -> VersionControl.forPath(d.getPath()))
                 .orElseGet(NullVersionControl::new);
@@ -298,9 +286,9 @@ public class EditState {
 
     public void save() throws IOException {
         try (Inhibit xact = this.changed.inhibit()) {
-            Optional<Directory> dir = currentDirectory.get();
+            Optional<RecordStorage> dir = storage.get();
             if (dir.isPresent()) {
-                saveTo(dir.get(), versionControl.get());
+                saveToImpl(dir.get());
             } else {
                 throw new IOException("Model has not been saved yet");
             }
@@ -308,21 +296,21 @@ public class EditState {
         }
     }
 
-    private void saveTo(Directory dir, VersionControl newVersionControl) throws IOException {
-        UndoState state = undo.get();
+    private void saveToImpl(RecordStorage dir) throws IOException {
+        BaselinePair state = undo.get();
         try (SaveTransaction transaction = new SaveTransaction(newVersionControl)) {
             Baseline.saveUndoState(transaction, dir, state);
             transaction.commit();
         }
-        Optional<Directory> newDir = Optional.of(dir);
-        currentDirectory.set(newDir);
+        Optional<RecordStorage> newDir = Optional.of(dir);
+        storage.set(newDir);
         savedState.set(state);
         loadVersionControl(newDir);
     }
 
-    public void saveTo(Directory dir) throws IOException {
+    public void saveTo(RecordStorage dir) throws IOException {
         try (Inhibit xact = this.changed.inhibit()) {
-            saveTo(dir, VersionControl.forPath(dir.getPath()));
+            saveToImpl(dir);
             xact.changed();
         }
     }
@@ -330,18 +318,18 @@ public class EditState {
     public void setDiffVersion(Optional<VersionInfo> version) {
         try (Inhibit xact = this.changed.inhibit()) {
             this.diffVersion.set(version);
-            loadDiffBaseline(currentDirectory.get(), versionControl.get(), version);
+            loadDiffBaseline(storage.get(), version);
             xact.changed();
         }
     }
 
     private void loadDiffBaseline(
-            Optional<Directory> path, VersionControl versioning, Optional<VersionInfo> version) {
-        if (path.isPresent() && version.isPresent()) {
+            Optional<RecordStorage> storage, Optional<VersionInfo> version) {
+        if (storage.isPresent() && version.isPresent()) {
             try {
-                Relations was = Baseline.load(
-                        path.get(),
-                        path.get().getOpenerForVersion(versioning, version));
+                Baseline was = Baseline.load(
+                        storage.get(),
+                        storage.get().getOpenerForVersion(version));
                 diffBaseline.set(Optional.of(new Pair<>(version.get(), was)));
             } catch (IOException ex) {
                 LOG.log(Level.WARNING, null, ex);
@@ -352,16 +340,15 @@ public class EditState {
         }
     }
 
-    private final AtomicReference<Optional<Directory>> currentDirectory;
-    private final AtomicReference<VersionControl> versionControl;
+    private final AtomicReference<Optional<RecordStorage>> storage;
     private final AtomicReference<Optional<VersionInfo>> diffVersion
             = new AtomicReference<>(Optional.empty());
-    private final AtomicReference<Optional<Pair<VersionInfo, Relations>>> diffBaseline
+    private final AtomicReference<Optional<Pair<VersionInfo, Baseline>>> diffBaseline
             = new AtomicReference<>(Optional.empty());
-    private final Stack<Identity> lastChild = new Stack<>();
-    private final UndoBuffer<UndoState> undo;
+    private final Stack<Record> lastChildIdentity = new Stack<>();
+    private final UndoBuffer<BaselinePair> undo;
     private final Executor executor;
-    private final AtomicReference<UndoState> savedState;
+    private final AtomicReference<BaselinePair> savedState;
     private final Changed changed;
 
     public void subscribe(Runnable subscriber) {
@@ -380,14 +367,11 @@ public class EditState {
      * @throws java.io.IOException
      */
     public void renameDirectory(Path from, Path to) throws IOException {
-        Optional<Directory> current = currentDirectory.get();
-        if (current.isPresent() && current.get().getPath().equals(from)) {
+        Optional<RecordStorage> current = storage.get();
+        if (current.isPresent() && current.get() instanceof FileStorage) {
+            FileStorage currentStorage = (FileStorage) current.get();
             try (Inhibit xact = this.changed.inhibit()) {
-                VersionControl versioning = versionControl.get();
-                versioning.renameDirectory(from, to);
-                Optional<Directory> newDir = Optional.of(Directory.forPath(to));
-                currentDirectory.set(newDir);
-                loadVersionControl(newDir);
+                this.loadVersionControl(Optional.of(currentStorage.renameDirectory(from, to)));
                 xact.changed();
             }
         }
@@ -399,10 +383,10 @@ public class EditState {
      *
      * @param update A function to update the baseline.
      */
-    public void updateFunctional(UnaryOperator<Relations> update) {
+    public void updateFunctional(UnaryOperator<Baseline> update) {
         try (Inhibit xact = this.changed.inhibit()) {
-            if (undo.update(state -> state.setFunctional(
-                    update.apply(state.getFunctional())))) {
+            if (undo.update(state -> state.setParent(
+                    update.apply(state.getParent())))) {
                 xact.changed();
             }
         }
@@ -413,10 +397,10 @@ public class EditState {
      *
      * @param update A function to update the baseline.
      */
-    public void updateAllocated(UnaryOperator<Relations> update) {
+    public void updateAllocated(UnaryOperator<Baseline> update) {
         try (Inhibit xact = this.changed.inhibit()) {
-            if (undo.update(state -> state.setAllocated(
-                    update.apply(state.getAllocated())))) {
+            if (undo.update(state -> state.setChild(
+                    update.apply(state.getChild())))) {
                 xact.changed();
             }
         }
@@ -428,7 +412,7 @@ public class EditState {
      * @param update A function to update the functional and allocated baselines
      * simultaneously.
      */
-    public void updateState(UnaryOperator<UndoState> update) {
+    public void updateState(UnaryOperator<BaselinePair> update) {
         try (Inhibit xact = this.changed.inhibit()) {
             if (undo.update(update)) {
                 xact.changed();
@@ -441,7 +425,7 @@ public class EditState {
      *
      * @return
      */
-    public UndoState getState() {
+    public BaselinePair getState() {
         return undo.get();
     }
 
@@ -450,8 +434,8 @@ public class EditState {
      *
      * @return
      */
-    public Relations getFunctional() {
-        return undo.get().getFunctional();
+    public Baseline getParent() {
+        return undo.get().getParent();
     }
 
     /**
@@ -459,11 +443,11 @@ public class EditState {
      *
      * @return
      */
-    public Relations getAllocated() {
-        return undo.get().getAllocated();
+    public Baseline getChild() {
+        return undo.get().getChild();
     }
 
-    public Optional<Item> getSystemOfInterest() {
+    public Optional<Record> getSystemOfInterest() {
         return Identity.getSystemOfInterest(undo.get());
     }
 

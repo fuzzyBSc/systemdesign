@@ -35,9 +35,9 @@ import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.RelationPair;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import java.util.Optional;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
@@ -54,32 +54,32 @@ public class FlowTypeAutoFixTest {
     @Test
     public void testRemoveUnused() {
         System.out.println("Build baselines with unused types");
-        UndoState state = Baseline.createUndoState();
-        state = state.setFunctional(FlowType.add(
-                state.getFunctional(), Optional.empty(), "Functional Type"
+        BaselinePair state = Baseline.createUndoState();
+        state = state.setParent(FlowType.add(
+                state.getParent(), Optional.empty(), "Functional Type"
         ).getKey());
-        state = state.setAllocated(FlowType.add(
-                state.getAllocated(), Optional.empty(), "Allocated Type"
+        state = state.setChild(FlowType.add(
+                state.getChild(), Optional.empty(), "Allocated Type"
         ).getKey());
-        assertEquals("Functional Type", FlowType.find(
-                state.getFunctional(), "Functional Type").get().getName());
-        assertEquals("Allocated Type", FlowType.find(
-                state.getAllocated(), "Allocated Type").get().getName());
+        assertEquals("Functional Type", FlowType.get(
+                state.getParent(), "Functional Type").get().getName());
+        assertEquals("Allocated Type", FlowType.get(
+                state.getChild(), "Allocated Type").get().getName());
 
         System.out.println("Unused Types are deleted during fix");
         state = FlowTypeAutoFix.fix(state);
-        assertEquals(Optional.empty(), FlowType.find(
-                state.getFunctional(), "Functional Type"));
-        assertEquals(Optional.empty(), FlowType.find(
-                state.getAllocated(), "Allocated Type"));
+        assertEquals(Optional.empty(), FlowType.get(
+                state.getParent(), "Functional Type"));
+        assertEquals(Optional.empty(), FlowType.get(
+                state.getChild(), "Allocated Type"));
     }
 
-    private static Pair<Relations, Flow> addFlowForType(Relations baseline, FlowType type) {
-        Pair<Relations, Item> baselineAndItem = Item.create(baseline, "Item", Point2D.ZERO, Color.CORAL);
+    private static Pair<Baseline, Flow> addFlowForType(Baseline baseline, FlowType type) {
+        Pair<Baseline, Item> baselineAndItem = Item.create(baseline, "Item", Point2D.ZERO, Color.CORAL);
         baseline = baselineAndItem.getKey();
         Item item = baselineAndItem.getValue();
 
-        Pair<Relations, Function> baselineAndFunction;
+        Pair<Baseline, Function> baselineAndFunction;
         baselineAndFunction = Function.create(
                 baseline, item, Optional.empty(), "Left", FunctionView.DEFAULT_ORIGIN);
         baseline = baselineAndFunction.getKey();
@@ -89,31 +89,31 @@ public class FlowTypeAutoFixTest {
         baseline = baselineAndFunction.getKey();
         Function right = baselineAndFunction.getValue();
 
-        RelationPair<Function> flowScope = new RelationPair<>(left, right, Direction.Normal);
-        Pair<Relations, Flow> baselineAndFlow = Flow.add(baseline, flowScope, type);
+        RecordConnectionScope<Function> flowScope = new RecordConnectionScope<>(left, right, Direction.Forward);
+        Pair<Baseline, Flow> baselineAndFlow = Flow.add(baseline, flowScope, type);
         return baselineAndFlow;
     }
 
     @Test
     public void testCompressDuplicates() {
         System.out.println("Build baselines with duplicate type entries");
-        UndoState state = Baseline.createUndoState();
+        BaselinePair state = Baseline.createUndoState();
         for (int ii = 0; ii < 3; ++ii) {
-            Pair<Relations, FlowType> stateAndType;
+            Pair<Baseline, FlowType> stateAndType;
             stateAndType = FlowType.addUnchecked(
-                    state.getFunctional(), Optional.empty(), "Functional Type");
-            state = state.setFunctional(stateAndType.getKey());
-            state = state.setFunctional(addFlowForType(
-                    state.getFunctional(), stateAndType.getValue()).getKey());
+                    state.getParent(), Optional.empty(), "Functional Type");
+            state = state.setParent(stateAndType.getKey());
+            state = state.setParent(addFlowForType(
+                    state.getParent(), stateAndType.getValue()).getKey());
 
             stateAndType = FlowType.addUnchecked(
-                    state.getAllocated(), Optional.empty(), "Allocated Type");
-            state = state.setAllocated(stateAndType.getKey());
-            state = state.setAllocated(addFlowForType(
-                    state.getAllocated(), stateAndType.getValue()).getKey());
+                    state.getChild(), Optional.empty(), "Allocated Type");
+            state = state.setChild(stateAndType.getKey());
+            state = state.setChild(addFlowForType(
+                    state.getChild(), stateAndType.getValue()).getKey());
         }
-        final Relations notfixedFunctional = state.getFunctional();
-        final Relations notfixedAllocated = state.getAllocated();
+        final Baseline notfixedFunctional = state.getParent();
+        final Baseline notfixedAllocated = state.getChild();
         assertEquals(3, Flow.find(notfixedFunctional)
                 .filter(flow -> flow.getType(notfixedFunctional).getName().equals("Functional Type"))
                 .map(flow -> flow.getType(notfixedFunctional).getIdentifier())
@@ -125,12 +125,12 @@ public class FlowTypeAutoFixTest {
 
         System.out.println("Fix removes duplicates");
         state = FlowTypeAutoFix.fix(state);
-        final Relations fixedFunctional = state.getFunctional();
-        final Relations fixedAllocated = state.getAllocated();
-        assertEquals(1, FlowType.find(state.getFunctional())
+        final Baseline fixedFunctional = state.getParent();
+        final Baseline fixedAllocated = state.getChild();
+        assertEquals(1, FlowType.find(state.getParent())
                 .filter(flowType -> flowType.getName().equals("Functional Type"))
                 .count());
-        assertEquals(1, FlowType.find(state.getAllocated())
+        assertEquals(1, FlowType.find(state.getChild())
                 .filter(flowType -> flowType.getName().equals("Allocated Type"))
                 .count());
 
@@ -148,63 +148,63 @@ public class FlowTypeAutoFixTest {
     @Test
     public void testInvalidTraces() {
         System.out.println("Build baselines with good trace");
-        UndoState state = Baseline.createUndoState();
-        Pair<Relations, FlowType> stateAndType;
+        BaselinePair state = Baseline.createUndoState();
+        Pair<Baseline, FlowType> stateAndType;
         stateAndType = FlowType.addUnchecked(
-                state.getFunctional(), Optional.empty(), "Functional Type");
+                state.getParent(), Optional.empty(), "Functional Type");
         FlowType functionalType = stateAndType.getValue();
-        state = state.setFunctional(stateAndType.getKey());
-        state = state.setFunctional(addFlowForType(
-                state.getFunctional(), stateAndType.getValue()).getKey());
+        state = state.setParent(stateAndType.getKey());
+        state = state.setParent(addFlowForType(
+                state.getParent(), stateAndType.getValue()).getKey());
 
         stateAndType = FlowType.addUnchecked(
-                state.getAllocated(), Optional.of(functionalType), "Allocated Type");
+                state.getChild(), Optional.of(functionalType), "Allocated Type");
         FlowType allocatedType = stateAndType.getValue();
-        state = state.setAllocated(stateAndType.getKey());
-        state = state.setAllocated(addFlowForType(
-                state.getAllocated(), stateAndType.getValue()).getKey());
+        state = state.setChild(stateAndType.getKey());
+        state = state.setChild(addFlowForType(
+                state.getChild(), stateAndType.getValue()).getKey());
         assertTrue(allocatedType.isTraced());
-        assertEquals(Optional.of(functionalType), allocatedType.getTrace(state.getFunctional()));
+        assertEquals(Optional.of(functionalType), allocatedType.getTrace(state.getParent()));
 
         System.out.println("Break the trace");
-        state = state.setFunctional(
-                functionalType.removeFrom(state.getFunctional()));
+        state = state.setParent(
+                functionalType.removeFrom(state.getParent()));
         assertTrue(allocatedType.isTraced());
-        assertEquals(Optional.empty(), allocatedType.getTrace(state.getFunctional()));
+        assertEquals(Optional.empty(), allocatedType.getTrace(state.getParent()));
 
         System.out.println("Fixing now removes the broken trace");
         state = FlowTypeAutoFix.fix(state);
-        allocatedType = state.getAllocated().get(allocatedType).get();
+        allocatedType = state.getChild().get(allocatedType).get();
         assertFalse(allocatedType.isTraced());
-        assertEquals(Optional.empty(), allocatedType.getTrace(state.getFunctional()));
+        assertEquals(Optional.empty(), allocatedType.getTrace(state.getParent()));
     }
 
     @Test
     public void testUntraced() {
         System.out.println("Build baselines with same type in both, but no trace");
-        UndoState state = Baseline.createUndoState();
-        Pair<Relations, FlowType> stateAndType;
+        BaselinePair state = Baseline.createUndoState();
+        Pair<Baseline, FlowType> stateAndType;
         stateAndType = FlowType.addUnchecked(
-                state.getFunctional(), Optional.empty(), "Common Type");
+                state.getParent(), Optional.empty(), "Common Type");
         FlowType functionalType = stateAndType.getValue();
-        state = state.setFunctional(stateAndType.getKey());
-        state = state.setFunctional(addFlowForType(
-                state.getFunctional(), stateAndType.getValue()).getKey());
+        state = state.setParent(stateAndType.getKey());
+        state = state.setParent(addFlowForType(
+                state.getParent(), stateAndType.getValue()).getKey());
 
         stateAndType = FlowType.addUnchecked(
-                state.getAllocated(), Optional.empty(), "Common Type");
+                state.getChild(), Optional.empty(), "Common Type");
         FlowType allocatedType = stateAndType.getValue();
-        state = state.setAllocated(stateAndType.getKey());
-        state = state.setAllocated(addFlowForType(
-                state.getAllocated(), stateAndType.getValue()).getKey());
+        state = state.setChild(stateAndType.getKey());
+        state = state.setChild(addFlowForType(
+                state.getChild(), stateAndType.getValue()).getKey());
         assertFalse(allocatedType.isTraced());
-        assertEquals(Optional.empty(), allocatedType.getTrace(state.getFunctional()));
+        assertEquals(Optional.empty(), allocatedType.getTrace(state.getParent()));
 
         System.out.println("Fixing now creates the trace");
         state = FlowTypeAutoFix.fix(state);
-        allocatedType = state.getAllocated().get(allocatedType).get();
+        allocatedType = state.getChild().get(allocatedType).get();
         assertTrue(allocatedType.isTraced());
-        assertEquals(Optional.of(functionalType), allocatedType.getTrace(state.getFunctional()));
+        assertEquals(Optional.of(functionalType), allocatedType.getTrace(state.getParent()));
     }
 
 }

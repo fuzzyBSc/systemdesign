@@ -249,4 +249,12 @@ public class IDPath implements Comparable<IDPath> {
             }
         }
     }
+
+    public IDPath getLastSegment() {
+        if (segments.isEmpty()) {
+            return this;
+        } else {
+            return valueOfSegment(segments.get(segments.size() - 1));
+        }
+    }
 }

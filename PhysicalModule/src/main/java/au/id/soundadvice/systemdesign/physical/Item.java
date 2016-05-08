@@ -26,23 +26,20 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.physical.beans.ItemBean;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import java.util.Objects;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
 import javax.annotation.CheckReturnValue;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.BiFunction;
+import java.util.HashMap;
+import java.util.Map;
 import javafx.util.Pair;
 
 /**
@@ -60,7 +57,13 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Item implements Relation {
+public enum Item implements RecordType {
+    item;
+
+    @Override
+    public String getTypeName() {
+        return name();
+    }
 
     /**
      * Return all items for the baseline.
@@ -68,60 +71,94 @@ public class Item implements Relation {
      * @param baseline The baseline to search
      * @return
      */
-    public static Stream<Item> find(Relations baseline) {
-        return baseline.findByClass(Item.class);
+    public static Stream<Record> find(Baseline baseline) {
+        return baseline.findByType(item);
     }
 
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.identifier);
-        return hash;
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChildren) {
+        // Internal child items trace to parent items which indicates that the parent
+        // is composed of the children, but there is nothing in particular that
+        // should be consistent between the two
+        // However, external items should be consistent.
+        return traceChildren.flatMap(childItem -> {
+            if (childItem.isExternal()) {
+                HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
+                HashMap<String, String> childFields = new HashMap<>(childItem.getFields());
+                for (Fields field : new Fields[]{Fields.identifier, Fields.trace}) {
+                    parentFields.remove(field.name());
+                    childFields.remove(field.name());
+                }
+                if (!traceParent.isExternal()) {
+                    parentFields.remove(Fields.shortName.name());
+                    childFields.remove(Fields.shortName.name());
+                }
+                if (!parentFields.equals(childFields)) // Refresh child external item fields from parent
+                {
+                    return Stream.of(Problem.flowProblem(childItem.getLongName() + " does not match parent",
+                            Optional.of((baselines, now) -> flowDownExternal(baselines, now, traceParent)),
+                            Optional.of((baselines, now) -> flowUpExternal(baselines, now, childItem))));
+                }
+            } else {
+                // Make sure internal items trace to the system of interest
+                return Stream.of(Problem.onLoadAutofixProblem(
+                        (baselines, now) -> setInternalItemTrace(baselines, now, childItem)));
+            }
+            return Stream.empty();
+        });
+    }
+
+    public Optional<Record> getTrace(BaselinePair context, Record childItem) {
+        return childItem.getTrace().flatMap(trace -> context.getParent().get(trace, this));
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Item other = (Item) obj;
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
-        }
-        if (!Objects.equals(this.id, other.id)) {
-            return false;
-        }
-        if (!Objects.equals(this.name, other.name)) {
-            return false;
-        }
-        if (this.external != other.external) {
-            return false;
-        }
-        return true;
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        // It is correct for items to exist in the parent baseline that do not
+        // exist in the child baseline.
+        return Stream.empty();
     }
 
-    public boolean isConsistent(Item other) {
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
+    private BaselinePair setInternalItemTrace(BaselinePair baselines, String now, Record record) {
+        Optional<Record> parentItem = Identity.getSystemOfInterest(baselines);
+        Optional<Record> childItem = baselines.getChild().get(record);
+        if (parentItem.isPresent() && childItem.isPresent()) {
+            return baselines.setChild(
+                    baselines.getChild().add(
+                            childItem.get().asBuilder()
+                            .setTrace(parentItem.get())
+                            .build(now)));
+        } else {
+            return baselines;
         }
-        if (!Objects.equals(this.id, other.id)) {
-            return false;
-        }
-        if (!Objects.equals(this.name, other.name)) {
-            return false;
-        }
-        return true;
     }
 
-    public static IDPath getNextItemId(Relations baseline) {
+    private BaselinePair removeItemFromChild(BaselinePair baselines, Record record) {
+        return baselines.setChild(baselines.getChild().remove(record.getIdentifier()));
+    }
+
+    @Override
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        return untracedChildren.map(childItem -> {
+            if (childItem.isExternal()) {
+                return Problem.flowProblem(
+                        childItem.getLongName() + " is missing from parent",
+                        Optional.of((baselines, now) -> removeItemFromChild(baselines, childItem)),
+                        Optional.empty()
+                );
+            } else {
+                return Problem.onLoadAutofixProblem(
+                        (baselines, now) -> setInternalItemTrace(baselines, now, childItem));
+            }
+        });
+    }
+
+    public static IDPath getNextItemId(Baseline baseline) {
         Optional<Integer> currentMax = find(baseline).parallel()
                 .filter(item -> !item.isExternal())
                 .map(item -> {
                     try {
-                        return Integer.parseInt(item.getShortId().toString());
+                        return Integer.parseInt(Item.item.getShortId(item).toString());
                     } catch (NumberFormatException ex) {
                         return 0;
                     }
@@ -136,209 +173,190 @@ public class Item implements Relation {
         return IDPath.valueOfSegment(Integer.toString(nextId));
     }
 
+    public static Color shiftColor(Color color) {
+        // Shift color
+        // Adjust hue by +/- 128 out of the 256 range
+        double hueShift = Math.random() * 128 - 64;
+        // Adjust saturation by +/- 30%
+        double saturationMultiplier = Math.random() * .6 + .7;
+        // Adjust brightness by +/- 20%
+        double brightnessMultiplier = Math.random() * .4 + .8;
+        double opacityMultiplier = 1;
+        return color.deriveColor(
+                hueShift,
+                saturationMultiplier,
+                brightnessMultiplier,
+                opacityMultiplier);
+    }
+
     /**
      * Create a new item.
      *
-     * @param baseline The baseline to update
+     * @param baselines The context of the creation
+     * @param now The current time in 8601 format
      * @param name The name of the item
-     * @param origin The location for the item on the screen
-     * @param color The item's color
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static Pair<Relations, Item> create(
-            Relations baseline, String name, Point2D origin, Color color) {
-        Item item = new Item(
-                UUID.randomUUID().toString(),
-                getNextItemId(baseline), name, false);
-        baseline = baseline.add(item);
-        // Also add the coresponding view
-        baseline = ItemView.create(baseline, item, origin, color).getKey();
-        return new Pair<>(baseline, item);
+    public static Pair<BaselinePair, Record> create(
+            BaselinePair baselines, String now, String name) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+        Color traceColor = systemOfInterest.map(Record::getColor).orElse(Color.LIGHTYELLOW);
+        Color itemColor = shiftColor(traceColor);
+        Record record = Record.create(item)
+                .setLongName(name)
+                .setExternal(false)
+                .setTrace(systemOfInterest)
+                .setColor(itemColor)
+                .build(now);
+        baselines = baselines.setChild(baselines.getChild().add(record));
+        baselines = EventDispatcher.INSTANCE.dispatchCreateEvent(baselines, now, record);
+        return new Pair<>(baselines, record);
     }
 
     /**
      * Flow an external item down from the functional baseline to the allocated
      * baseline.
      *
-     * @param state The state to update
-     * @param template The item to flow down from the state's functional
-     * baseline
+     * @param baselines The state to update
+     * @param now The current time in ISO8610 format
+     * @param record The item to flow down from the state's functional baseline
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static Pair<UndoState, Item> flowDownExternal(UndoState state, Item template) {
-        Relations functional = state.getFunctional();
-        Relations allocated = state.getAllocated();
-        Item item = new Item(
-                template.identifier,
-                template.getIdPath(functional), template.name, true);
-        allocated = allocated.add(item);
-        state = state.setAllocated(allocated);
-        // Also add the coresponding view
-        Optional<ItemView> viewTemplate = template.findViews(functional).findAny();
-        allocated = ItemView.create(
-                allocated, item,
-                viewTemplate.map(ItemView::getOrigin).orElse(ItemView.DEFAULT_ORIGIN),
-                viewTemplate.map(ItemView::getColor).orElse(ItemView.DEFAULT_COLOR))
-                .getKey();
+    public BaselinePair flowDownExternal(BaselinePair baselines, String now, Record record) {
+        Optional<Record> parentItem = baselines.getParent().get(record);
+        Optional<Record> childItem = baselines.getChild().findByTrace(Optional.of(record.getIdentifier())).findAny();
+        if (parentItem.isPresent()) {
+            Map<String, String> fields = new HashMap<>(parentItem.get().getFields());
+            // The identifier is not inherited, but instead becomes the trace
+            fields.remove(Fields.identifier.name());
+            fields.put(Fields.trace.name(), parentItem.get().getIdentifier());
+            // The short name needs to be translated if the parent is not external
+            fields.put(Fields.shortName.name(),
+                    this.getIdPath(Identity.get(baselines.getParent()), parentItem.get()).toString());
+            // Otherwise all fields should be the same
 
-        for (BiFunction<UndoState, Item, UndoState> action : FLOW_DOWN_ACTIONS) {
-            state = action.apply(state, item);
+            if (childItem.isPresent()) {
+                Record updatedChildItem = childItem.get().asBuilder()
+                        .putAll(fields)
+                        .setExternal(true)
+                        .build(now);
+                // This is an update, not a genuine flow down
+                return baselines.setChild(baselines.getChild().add(updatedChildItem));
+            } else {
+                Record newChildItem = Record.create(item)
+                        .putAll(fields)
+                        .setExternal(true)
+                        .build(now);
+                baselines = baselines.setChild(baselines.getChild().add(newChildItem));
+                // Give other types the opportunity to perform their flow down
+                // operations
+                return EventDispatcher.INSTANCE.dispatchFlowDownEvent(baselines, now, newChildItem);
+            }
+        } else {
+            return baselines;
         }
-        return state.setAllocated(allocated).and(item);
-    }
-
-    private static final List<BiFunction<UndoState, Item, UndoState>> FLOW_DOWN_ACTIONS
-            = new CopyOnWriteArrayList<>();
-
-    public static void addFlowDownAction(BiFunction<UndoState, Item, UndoState> action) {
-        FLOW_DOWN_ACTIONS.add(action);
     }
 
     /**
-     * Remove an item from a baseline.
+     * Flow an external item down from the functional baseline to the allocated
+     * baseline.
      *
-     * @param baseline The baseline to update
+     * @param baselines The state to update
+     * @param now The current time in ISO8610 format
+     * @param record The item to flow down from the state's functional baseline
      * @return The updated baseline
      */
     @CheckReturnValue
-    public Relations removeFrom(Relations baseline) {
-        return baseline.remove(identifier);
-    }
+    public BaselinePair flowUpExternal(BaselinePair baselines, String now, Record record) {
+        Optional<Record> childItem = baselines.getChild().get(record);
+        Optional<Record> parentItem = childItem
+                .flatMap(Record::getTrace)
+                .flatMap(trace -> baselines.getParent().get(trace, item));
+        if (childItem.isPresent() && parentItem.isPresent()) {
+            Map<String, String> fields = new HashMap<>(childItem.get().getFields());
+            // The identifier is not inherited
+            fields.remove(Fields.identifier.name());
+            fields.remove(Fields.trace.name());
+            fields.remove(Fields.external.name());
+            // The short name needs to be translated if the parent is not external
+            if (!parentItem.get().isExternal()) {
+                fields.put(Fields.shortName.name(),
+                        item.getIdPath(baselines.getChild(), childItem.get())
+                        .getLastSegment().toString());
+            }
 
-    @Override
-    public String toString() {
-        return id + " " + name;
-    }
-
-    @Override
-    public String getIdentifier() {
-        return identifier;
-    }
-
-    public IDPath getIdPath(Relations baseline) {
-        if (external) {
-            return id;
+            Record updatedParentItem = parentItem.get().asBuilder()
+                    .putAll(fields)
+                    .build(now);
+            return baselines.setParent(baselines.getParent().add(updatedParentItem));
         } else {
-            IDPath baselineIdPath = baseline.findByClass(Identity.class)
+            return baselines;
+        }
+    }
+
+    public IDPath getIdPath(Record identity, Record item) {
+        if (item.isExternal()) {
+            return IDPath.valueOfDotted(item.getShortName());
+        } else {
+            IDPath baselineIdPath = Identity.getIdPath(identity);
+            return baselineIdPath.resolveSegment(item.getShortName());
+        }
+    }
+
+    public IDPath getIdPath(Baseline baseline, Record item) {
+        if (item.isExternal()) {
+            return IDPath.valueOfDotted(item.getShortName());
+        } else {
+            IDPath baselineIdPath = Identity.findAll(baseline)
                     .findAny()
                     .map(Identity::getIdPath)
                     .orElse(IDPath.empty());
 
-            return baselineIdPath.resolve(id);
+            return baselineIdPath.resolveSegment(item.getShortName());
         }
     }
 
-    public String getName() {
-        return name;
+    public IDPath getShortId(Record item) {
+        return IDPath.valueOfDotted(item.getShortName());
     }
 
-    public boolean isExternal() {
-        return external;
+    @CheckReturnValue
+    public Record setShortId(Record item, String now, IDPath id) {
+        return item.asBuilder()
+                .setShortName(id.toString())
+                .build(now);
     }
 
-    private final String identifier;
-    /**
-     * Path identifier. If external is true this is a full path. Otherwise it is
-     * a single path segment that is relative to the current allocated baseline.
-     */
-    private final IDPath id;
-    private final String name;
-    private final boolean external;
-
-    public Item(ItemBean bean) {
-        this.identifier = bean.getIdentifier();
-        this.id = IDPath.valueOfDotted(bean.getId());
-        this.name = bean.getName();
-        this.external = bean.isExternal();
+    public Record getView(Baseline baseline, Record item) {
+        return findViews(baseline, item).findAny().get();
     }
 
-    public ItemBean toBean() {
-        return new ItemBean(
-                identifier, id.toString(),
-                name,
-                external);
+    public Stream<Record> findViews(Baseline baseline, Record item) {
+        return baseline.findReverse(item.getIdentifier(), ItemView.itemView);
     }
-
-    public String getDisplayName() {
-        return this.toString();
-    }
-
-    private static final ReferenceFinder<Item> FINDER
-            = new ReferenceFinder<>(Item.class);
 
     @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
-    }
-
-    private Item(
-            String identifier, IDPath id, String name, boolean external) {
-        this.identifier = identifier;
-        this.id = id;
-        this.name = name;
-        this.external = external;
-    }
-
-    public Identity asIdentity(Relations baseline) {
-        return new Identity(identifier, getIdPath(baseline), name);
-    }
-
-    public Item asExternal(Relations baseline) {
-        if (external) {
-            return this;
+    public Object getUniqueConstraint(Record record) {
+        if (record.isExternal()) {
+            return record.getTrace();
         } else {
-            return new Item(identifier, getIdPath(baseline), name, true);
+            return record.getIdentifier();
         }
     }
 
-    public IDPath getShortId() {
-        return id;
+    public Record mergeDuplicates(Record left, Record right) {
+        // Preserve newest
+        return Record.newerOf(left, right);
     }
 
-    @CheckReturnValue
-    public Pair<Relations, Item> setName(Relations baseline, String name) {
-        if (this.name.equals(name)) {
-            return new Pair<>(baseline, this);
-        } else {
-            Item result = new Item(
-                    identifier, id, name, external);
-            return new Pair<>(baseline.add(result), result);
-        }
+    public String getDisplayName(Record item) {
+        return item.getLongName();
     }
 
-    @CheckReturnValue
-    public Pair<Relations, Item> setShortId(Relations baseline, IDPath id) {
-        if (this.id.equals(id)) {
-            return new Pair<>(baseline, this);
-        } else {
-            Item result = new Item(
-                    identifier, id, name, external);
-            return new Pair<>(baseline.add(result), result);
-        }
-    }
-
-    @CheckReturnValue
-    public Pair<Relations, Item> makeConsistent(Relations baseline, Item other) {
-        Item result = new Item(
-                identifier, other.getShortId(), other.getName(), external);
-        return new Pair<>(baseline.add(result), result);
-    }
-
-    public ItemView getView(Relations baseline) {
-        return findViews(baseline).findAny().get();
-    }
-
-    public Stream<ItemView> findViews(Relations baseline) {
-        return baseline.findReverse(identifier, ItemView.class);
-    }
-
-    public Optional<Item> getTrace(UndoState state) {
-        if (external) {
-            return state.getFunctional().get(identifier, Item.class);
-        } else {
-            return Identity.getSystemOfInterest(state);
-        }
+    @Override
+    public Record merge(BaselinePair baselines, String now, Record left, Record right) {
+        return Record.newerOf(left, right);
     }
 }

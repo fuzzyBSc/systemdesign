@@ -45,7 +45,7 @@ public enum Direction {
     /**
      * From left to right across the interface.
      */
-    Normal(1),
+    Forward(1),
     /**
      * From right to left across the interface.
      */
@@ -65,11 +65,11 @@ public enum Direction {
         switch (this) {
             case None:
                 return Stream.empty();
-            case Normal:
+            case Forward:
             case Reverse:
                 return Stream.of(this);
             case Both:
-                return Stream.of(Normal, Reverse);
+                return Stream.of(Forward, Reverse);
             default:
                 throw new AssertionError(this.name());
 
@@ -81,7 +81,7 @@ public enum Direction {
             case 0:
                 return None;
             case 1:
-                return Normal;
+                return Forward;
             case 2:
                 return Reverse;
             case 3:
@@ -94,10 +94,10 @@ public enum Direction {
     @CheckReturnValue
     public Direction reverse() {
         switch (this) {
-            case Normal:
+            case Forward:
                 return Reverse;
             case Reverse:
-                return Normal;
+                return Forward;
             case None:
             case Both:
                 return this;

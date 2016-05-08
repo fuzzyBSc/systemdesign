@@ -35,7 +35,7 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ToRelation implements Relation {
+public class ToRelation implements RecordType {
 
     @Override
     public String getIdentifier() {

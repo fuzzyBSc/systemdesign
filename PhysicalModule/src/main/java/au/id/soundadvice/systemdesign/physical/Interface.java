@@ -26,16 +26,16 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.RelationPair;
-import au.id.soundadvice.systemdesign.moduleapi.IdentifierPair;
-import au.id.soundadvice.systemdesign.physical.beans.InterfaceBean;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import java.util.Objects;
+import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
@@ -49,31 +49,12 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Interface implements Relation {
+public enum Interface implements RecordType {
+    iface;
 
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.identifier);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Interface other = (Interface) obj;
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
-        }
-        if (!Objects.equals(this.scope, other.scope)) {
-            return false;
-        }
-        return true;
+    public String getTypeName() {
+        return "interface";
     }
 
     /**
@@ -83,192 +64,295 @@ public class Interface implements Relation {
      * @param baseline The baseline to search
      * @return
      */
-    public static Stream<Interface> find(Relations baseline) {
-        return baseline.findByClass(Interface.class);
+    public static Stream<Record> find(Baseline baseline) {
+        return baseline.findByType(iface);
     }
 
     /**
-     * Return the interfaces related to this time within the specified baseline.
+     * Return the interfaces related to this item within the specified baseline.
      *
      * @param baseline The level of the system to search within
      * @param item The item to search
      * @return
      */
-    public static Stream<Interface> find(Relations baseline, Item item) {
-        return baseline.findReverse(item.getIdentifier(), Interface.class);
+    public static Stream<Record> findForItem(Baseline baseline, Record item) {
+        return baseline.findReverse(item.getIdentifier(), iface);
+    }
+
+    /**
+     * Return the interface specified by the connection scope (if any).
+     *
+     * @param baseline The level of the system to search within
+     * @param scope The scope to search for
+     * @return
+     */
+    public static Optional<Record> get(Baseline baseline, RecordConnectionScope scope) {
+        return baseline.findByScope(scope.getScope())
+                .filter(record -> Interface.iface.equals(record.getType()))
+                .findAny();
+    }
+
+    public RecordConnectionScope getItems(Baseline baseline, Record iface) {
+        return RecordConnectionScope.resolve(baseline, iface.getConnectionScope(), Item.item).get();
     }
 
     /**
      * Create a new Interface.
      *
-     * @param baseline The baseline to update
-     * @param left An item for this interface to connect to
-     * @param right An item for this interface to connect to
+     * @param baselines The baselines to update
+     * @param now The current time in ISO8601 format
+     * @param scope The item pairing to create
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static Pair<Relations, Interface> create(
-            Relations baseline, Item left, Item right) {
-        Optional<Interface> existing = get(baseline, left, right);
-        if (existing.isPresent()) {
-            return new Pair<>(baseline, existing.get());
-        } else {
-            Interface newInterface = new Interface(
-                    UUID.randomUUID().toString(), new IdentifierPair(left.getIdentifier(), right.getIdentifier()));
-            return new Pair<>(baseline.add(newInterface), newInterface);
-        }
+    public static Pair<BaselinePair, Record> connect(BaselinePair baselines, String now, RecordConnectionScope scope) {
+        Baseline childBaseline = baselines.getChild();
+        Optional<Record> existing = get(childBaseline, scope);
+        return existing
+                .map(record -> new Pair<>(baselines, record))
+                .orElseGet(() -> {
+                    // Note that self-interfaces are allowed to support flows
+                    // between functions of the same item, but are not rendered
+                    Record leftItem = scope.getLeft();
+                    Record rightItem = scope.getRight();
+                    boolean leftIsExternal = leftItem.isExternal();
+                    boolean rightIsExternal = rightItem.isExternal();
+                    if (leftIsExternal && rightIsExternal) {
+                        // Connection disallowed
+                        return new Pair<>(baselines, null);
+                    } else {
+                        boolean external = leftIsExternal || rightIsExternal;
+                        Record.Builder builder = Record.create(iface)
+                                .setConnectionScope(scope)
+                                .setExternal(external);
+                        if (external) {
+                            Optional<Record> leftTrace = leftItem.getTrace()
+                                    .flatMap(trace -> baselines.getParent().get(trace, Item.item));
+                            Optional<Record> rightTrace = rightItem.getTrace()
+                                    .flatMap(trace -> baselines.getParent().get(trace, Item.item));
+                            Optional<Record> parentInterface
+                                    = (leftTrace.isPresent() && rightTrace.isPresent())
+                                            ? get(baselines.getParent(), RecordConnectionScope.resolve(leftTrace.get(), rightTrace.get(), Direction.None))
+                                            : Optional.empty();
+                            if (parentInterface.isPresent()) {
+                                builder = builder
+                                        .setTrace(parentInterface);
+                            } else {
+                                // Missing trace information, let check code clean it up
+                            }
+                        } else {
+                            Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+                            builder = builder.setTrace(systemOfInterest);
+                        }
+                        builder = builder
+                                .setShortName(iface.getShortName(childBaseline, scope))
+                                .setLongName(iface.getLongName(childBaseline, scope));
+                        Record record = builder.build(now);
+                        BaselinePair updatedBaselines = baselines.setChild(childBaseline.add(record));
+                        updatedBaselines = EventDispatcher.INSTANCE.dispatchCreateEvent(updatedBaselines, now, record);
+                        return new Pair<>(updatedBaselines, record);
+                    }
+                });
     }
 
     /**
      * Remove an interface.
      *
      * @param baseline The baseline to update
-     * @param left An item the interface is connected to
-     * @param right An item the interface is connected to
+     * @param scope The item pairing to remove
      * @return The updated baseline
      */
     @CheckReturnValue
-    public static Relations remove(
-            Relations baseline, Item left, Item right) {
-        Optional<Interface> existing = get(baseline, left, right);
-        if (existing.isPresent()) {
-            return baseline.remove(existing.get().getIdentifier());
+    public static Baseline disconnect(
+            Baseline baseline, RecordConnectionScope scope) {
+
+        Optional<Record> existing = get(baseline, scope);
+        return existing
+                .map(record -> baseline.remove(record.getIdentifier()))
+                .orElse(baseline);
+    }
+
+    private String getShortName(Baseline baseline, RecordConnectionScope scope) {
+        String leftShortName = scope.getLeft().getShortName();
+        String rightShortName = scope.getRight().getShortName();
+        if (leftShortName.compareTo(rightShortName) > 0) {
+            // Reverse
+            {
+                String tmp = leftShortName;
+                leftShortName = rightShortName;
+                rightShortName = tmp;
+            }
+        }
+
+        return leftShortName + ":" + rightShortName;
+    }
+
+    public String getLongName(Baseline baseline, RecordConnectionScope scope) {
+        String leftShortName = scope.getLeft().getShortName();
+        String rightShortName = scope.getRight().getShortName();
+        String leftLongName = scope.getLeft().getLongName();
+        String rightLongName = scope.getRight().getLongName();
+        if (leftShortName.compareTo(rightShortName) > 0) {
+            // Reverse
+            {
+                String tmp = leftShortName;
+                leftShortName = rightShortName;
+                rightShortName = tmp;
+            }
+            {
+                String tmp = leftLongName;
+                leftLongName = rightLongName;
+                rightLongName = tmp;
+            }
+        }
+
+        return leftShortName + ':' + rightShortName + ' '
+                + leftLongName + ':' + rightLongName;
+    }
+
+    @Override
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChildren) {
+        return traceChildren
+                .flatMap(traceChild -> {
+                    ConnectionScope childScope = traceChild.getConnectionScope();
+                    String expectedTrace = getExpectedTrace(context, childScope)
+                            .map(Record::getIdentifier).orElse("");
+                    if (!expectedTrace.equals(traceParent.getIdentifier())) {
+                        return Stream.of(Problem.onLoadAutofixProblem(
+                                (baselines, now) -> fixInterfaceTrace(baselines, now, traceChild)));
+                    }
+                    return Stream.empty();
+                });
+    }
+
+    @Override
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(context);
+        if (systemOfInterest.isPresent()) {
+            // The child is not the top level baseline
+            return untracedParents
+                    .flatMap(untracedParent -> {
+                        RecordConnectionScope scope = iface.getItems(context.getParent(), untracedParent);
+                        if (scope.hasEnd(systemOfInterest.get())) {
+                            // The untraced parent is connected to the system of interest
+                            Record otherEndItem = scope.otherEnd(systemOfInterest.get());
+                            Optional<Record> otherEndChildItem
+                                    = context.getChild().findByTrace(Optional.of(otherEndItem.getIdentifier()))
+                                    .findAny();
+                            if (!otherEndChildItem.isPresent()) {
+                                // The other end does not exist in the child baseline as an external item
+                                return Stream.of(Problem.flowProblem(
+                                        otherEndItem.getLongName() + "is missing",
+                                        Optional.of((baselines, now) -> Item.item.flowDownExternal(baselines, now, otherEndItem)),
+                                        Optional.of((baselines, now) -> baselines.setParent(disconnect(baselines.getChild(), scope)))));
+                            }
+                        }
+                        return Stream.empty();
+                    });
         } else {
-            return baseline;
+            return Stream.empty();
         }
     }
 
-    public Relations removeFrom(Relations baseline) {
-        return baseline.remove(identifier);
+    private Optional<Record> getExpectedTrace(BaselinePair baselines, ConnectionScope childScope) {
+        Optional<Record> leftTrace = baselines.getParent().get(childScope.getLeft(), Item.item);
+        Optional<Record> rightTrace = baselines.getParent().get(childScope.getRight(), Item.item);
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
+        if (leftTrace.isPresent() && rightTrace.isPresent()) {
+            if (leftTrace.equals(rightTrace)) {
+                // Internal interface (includes top-level interfaces)
+                if (systemOfInterest.isPresent()) {
+                    return systemOfInterest;
+                }
+            } else {
+                // External interface
+                RecordConnectionScope parentScope = RecordConnectionScope.resolve(
+                        leftTrace.get(), rightTrace.get(), Direction.None);
+                Optional<Record> parent = get(baselines.getParent(), parentScope);
+                if (parent.isPresent()) {
+                    return parent;
+                }
+            }
+
+        }
+        // No parent interface could be found
+        return Optional.empty();
     }
 
-    /**
-     * Find the interface (if any) between the nominated items.
-     *
-     * @param baseline The baseline to query
-     * @param left One of the items for the interface
-     * @param right One of the items for the interface
-     * @return The interface, or Optional.empty() if no such interface exists.
-     */
-    public static Optional<Interface> get(
-            Relations baseline, Item left, Item right) {
-        return get(baseline, left.getIdentifier(), right.getIdentifier());
+    private BaselinePair fixInterfaceTrace(BaselinePair baselines, String now, Record record) {
+        Optional<Record> iface = baselines.getChild().get(record);
+        if (iface.isPresent()) {
+            ConnectionScope scope = iface.get().getConnectionScope();
+            Optional<Record> trace = getExpectedTrace(baselines, scope);
+            return baselines.setChild(baselines.getChild().add(
+                    iface.get().asBuilder()
+                    .setTrace(trace)
+                    .build(now)));
+        }
+        return baselines;
     }
 
-    private static Optional<Interface> get(
-            Relations baseline, String leftItem, String rightItem) {
-        return baseline.findReverse(leftItem, Interface.class)
-                .filter(iface -> iface.scope.otherEnd(leftItem).equals(rightItem))
-                .findAny();
-    }
-
-    public RelationPair<Item> getEndpoints(Relations baseline) {
-        return RelationPair.resolve(baseline, scope, Item.class).get();
-    }
-
-    public Interface(InterfaceBean bean) {
-        this(bean.getIdentifier(), new IdentifierPair(
-                bean.getLeftItem(),
-                bean.getRightItem()));
-    }
-
-    private Interface(String identifier, IdentifierPair scope) {
-        this.identifier = identifier;
-        this.scope = scope;
-        this.left = new Reference<>(this, scope.getLeft(), Item.class);
-        this.right = new Reference<>(this, scope.getRight(), Item.class);
+    private BaselinePair flowExternalInterfaceUp(BaselinePair baselines, String now, Record record) {
+        Optional<Record> iface = baselines.getChild().get(record);
+        Optional<String> trace = iface.flatMap(Record::getTrace);
+        Optional<ConnectionScope> childScope = iface.map(Record::getConnectionScope);
+        Optional<Record> leftTrace = childScope.flatMap(
+                scope -> baselines.getParent().get(scope.getLeft(), Item.item));
+        Optional<Record> rightTrace = childScope.flatMap(
+                scope -> baselines.getParent().get(scope.getRight(), Item.item));
+        BaselinePair result = baselines;
+        if (leftTrace.isPresent() && rightTrace.isPresent() && !leftTrace.equals(rightTrace)) {
+            RecordConnectionScope parentScope = RecordConnectionScope.resolve(
+                    leftTrace.get(), rightTrace.get(), Direction.None);
+            Optional<Record> existing = this.get(baselines.getParent(), parentScope);
+            if (!existing.isPresent()) {
+                // Flow the interface up in its simplest form. We'll have to 
+                // rely on the next level up being opened and corrective code executed
+                // to fully populate it.
+                Record.Builder builder = iface.get().asBuilder()
+                        .removeTrace();
+                if (trace.isPresent()) {
+                    // Preserve the previously known identifier
+                    builder = builder.setIdentifier(trace.get());
+                } else {
+                    builder = builder.newIdentifier();
+                }
+                builder = builder.setShortName(getShortName(baselines.getParent(), parentScope));
+                builder = builder.setLongName(getLongName(baselines.getParent(), parentScope));
+                result = baselines.setParent(baselines.getParent().add(builder.build(now)));
+            }
+        }
+        return result;
     }
 
     @Override
-    public String getIdentifier() {
-        return identifier;
-    }
-
-    public Reference<Interface, Item> getLeft() {
-        return left;
-    }
-
-    public Item getLeft(Relations baseline) {
-        return left.getTarget(baseline);
-    }
-
-    public Reference<Interface, Item> getRight() {
-        return right;
-    }
-
-    public Item getRight(Relations baseline) {
-        return right.getTarget(baseline);
-    }
-
-    private final String identifier;
-    private final Reference<Interface, Item> left;
-    private final Reference<Interface, Item> right;
-    private final IdentifierPair scope;
-
-    public String getLongID(Relations baseline) {
-        Item leftItem = this.left.getTarget(baseline);
-        Item rightItem = this.right.getTarget(baseline);
-        IDPath leftPath = leftItem.getIdPath(baseline);
-        IDPath rightPath = rightItem.getIdPath(baseline);
-        if (leftPath.compareTo(rightPath) > 0) {
-            // Invert
-            {
-                IDPath tmp = leftPath;
-                leftPath = rightPath;
-                rightPath = tmp;
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(context);
+        return untracedChildren.flatMap(record -> {
+            if (record.isExternal()) {
+                // External interfaces should be traced to their corresponding parent
+                return Stream.of(Problem.flowProblem(
+                        record.getLongName() + " is missing from parent",
+                        Optional.of((baselines, now) -> baselines.setChild(disconnect(baselines.getChild(), iface.getItems(baselines.getChild(), record)))),
+                        Optional.of((baselines, now) -> flowExternalInterfaceUp(baselines, now, record))));
+            } else if (systemOfInterest.isPresent()) {
+                // internal interfaces should trace to the system of interest
+                return Stream.of(Problem.onLoadAutofixProblem(
+                        (baselines, now) -> fixInterfaceTrace(baselines, now, record)));
+            } else {
+                // Top-level interfaces don't trace anywhere
+                return Stream.empty();
             }
-        }
-
-        return leftPath + ":" + rightPath;
+        });
     }
-
-    public String getLongDescription(Relations baseline) {
-        Item leftItem = this.left.getTarget(baseline);
-        Item rightItem = this.right.getTarget(baseline);
-        IDPath leftPath = leftItem.getIdPath(baseline);
-        IDPath rightPath = rightItem.getIdPath(baseline);
-        if (leftPath.compareTo(rightPath) > 0) {
-            // Invert
-            {
-                Item tmp = leftItem;
-                leftItem = rightItem;
-                rightItem = tmp;
-            }
-            {
-                IDPath tmp = leftPath;
-                leftPath = rightPath;
-                rightPath = tmp;
-            }
-        }
-
-        StringBuilder builder = new StringBuilder();
-        builder.append(leftPath);
-        builder.append(':');
-        builder.append(rightPath);
-        builder.append(' ');
-        builder.append(leftItem.getName());
-        builder.append(':');
-        builder.append(rightItem.getName());
-        return builder.toString();
-    }
-
-    public InterfaceBean toBean(Relations baseline) {
-        return new InterfaceBean(
-                identifier, left.getKey(), right.getKey(),
-                getLongDescription(baseline));
-    }
-
-    private static final ReferenceFinder<Interface> FINDER
-            = new ReferenceFinder<>(Interface.class);
 
     @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
+    public Object getUniqueConstraint(Record record) {
+        return record.getConnectionScope();
     }
 
-    public Item otherEnd(Relations baseline, Item item) {
-        String otherEndIdentifier = scope.otherEnd(item.getIdentifier());
-        // Referential integrity should be guaranteed by the store
-        return baseline.get(otherEndIdentifier, Item.class).get();
+    @Override
+    public Record merge(BaselinePair baselines, String now, Record left, Record right) {
+        return Record.newerOf(left, right);
     }
 }

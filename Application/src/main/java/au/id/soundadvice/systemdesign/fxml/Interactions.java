@@ -30,7 +30,6 @@ import au.id.soundadvice.systemdesign.budget.Budget;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.logical.Flow;
@@ -39,10 +38,11 @@ import au.id.soundadvice.systemdesign.physical.IDPath;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Interface;
 import au.id.soundadvice.systemdesign.physical.ItemView;
-import au.id.soundadvice.systemdesign.moduleapi.RelationPair;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
-import au.id.soundadvice.systemdesign.versioning.VersionInfo;
+import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -50,7 +50,6 @@ import java.util.EmptyStackException;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -83,16 +82,16 @@ public class Interactions {
 
     public Optional<Item> createItem(Point2D origin) {
         AtomicReference<Item> result = new AtomicReference<>();
-        String defaultName = Item.find(edit.getAllocated()).parallel()
+        String defaultName = Item.find(edit.getChild()).parallel()
                 .filter(item -> !item.isExternal())
-                .map(Item::getName)
+                .map(Item::name)
                 .collect(new UniqueName("New Item"));
         Optional<String> name = textInput("New Item", "Enter name for item", defaultName);
         if (name.isPresent()) {
             edit.updateState(state -> {
-                Relations allocated = state.getAllocated();
+                Baseline allocated = state.getChild();
                 Color color = Identity.getSystemOfInterest(state)
-                        .map(item -> item.getView(state.getFunctional()).getColor())
+                        .map(item -> item.getView(state.getParent()).getColor())
                         .orElse(Color.LIGHTYELLOW);
                 // Shift color
                 // Adjust hue by +/- 128 out of the 256 range
@@ -108,12 +107,12 @@ public class Interactions {
                         brightnessMultiplier,
                         opacityMultiplier);
 
-                Pair<Relations, Item> createResult = Item.create(
+                Pair<Baseline, Item> createResult = Item.create(
                         allocated, name.get(), origin, color);
                 allocated = createResult.getKey();
                 result.set(createResult.getValue());
-                return state.setAllocated(allocated);
-            });
+                return state.setChild(allocated);
+            }, 1234);
         }
         return Optional.ofNullable(result.get());
     }
@@ -130,7 +129,7 @@ public class Interactions {
         String unit;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
 
             Optional<String> optionalName = textInput(
                     "Create Budget",
@@ -163,13 +162,13 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             if (item.isExternal() || !allocated.get(item).isPresent()) {
                 return;
             }
 
             String name = Function.find(allocated).parallel()
-                    .map(Function::getName)
+                    .map(Function::getTypeName)
                     .collect(new UniqueName("New Function"));
 
             TextInputDialog dialog = new TextInputDialog(name);
@@ -190,7 +189,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            if (item.isExternal() || !edit.getAllocated().get(item).isPresent()) {
+            if (item.isExternal() || !edit.getChild().get(item).isPresent()) {
                 return;
             }
 
@@ -220,11 +219,11 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            if (item.isExternal() || !edit.getAllocated().get(item).isPresent()) {
+            if (item.isExternal() || !edit.getChild().get(item).isPresent()) {
                 return;
             }
 
-            TextInputDialog dialog = new TextInputDialog(item.getName());
+            TextInputDialog dialog = new TextInputDialog(item.name());
             dialog.setTitle("Enter name for item");
             dialog.setHeaderText("Enter name for " + item.getDisplayName());
 
@@ -234,7 +233,7 @@ public class Interactions {
             String name = result.get();
             edit.updateAllocated(allocated -> {
                 boolean isUnique = Item.find(allocated).parallel()
-                        .map(Item::getName)
+                        .map(Item::name)
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
                     return item.setName(allocated, name).getKey();
@@ -249,12 +248,12 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             if (function.isExternal() || !allocated.get(function).isPresent()) {
                 return;
             }
 
-            TextInputDialog dialog = new TextInputDialog(function.getName());
+            TextInputDialog dialog = new TextInputDialog(function.getTypeName());
             dialog.setTitle("Enter number for function");
             dialog.setHeaderText("Enter number for "
                     + function.getDisplayName(allocated));
@@ -265,7 +264,7 @@ public class Interactions {
             String name = result.get();
             edit.updateAllocated(allocated -> {
                 boolean isUnique = Function.find(allocated).parallel()
-                        .map(Function::getName)
+                        .map(Function::getTypeName)
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
                     return function.setName(allocated, name).getKey();
@@ -280,7 +279,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             Optional<Budget> budget = Budget.find(allocated, key).findAny();
             if (!budget.isPresent()) {
                 return;
@@ -294,25 +293,25 @@ public class Interactions {
             edit.updateState(state -> {
                 Budget.Key newKey = key.setName(result.get());
                 {
-                    Relations functional = state.getFunctional();
+                    Baseline functional = state.getParent();
                     Iterator<Budget> it = Budget.find(functional, key).iterator();
                     while (it.hasNext()) {
                         Budget budget = it.next();
                         functional = budget.setKey(functional, newKey).getKey();
                     }
-                    state = state.setFunctional(functional);
+                    state = state.setParent(functional);
                 }
                 {
-                    Relations allocated = state.getAllocated();
+                    Baseline allocated = state.getChild();
                     Iterator<Budget> it = Budget.find(allocated, key).iterator();
                     while (it.hasNext()) {
                         Budget budget = it.next();
                         allocated = budget.setKey(allocated, newKey).getKey();
                     }
-                    state = state.setAllocated(allocated);
+                    state = state.setChild(allocated);
                 }
                 return state;
-            });
+            }, 1234);
         }
     }
 
@@ -320,7 +319,7 @@ public class Interactions {
         Optional<String> result;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             Optional<Budget> budget = Budget.find(allocated, key).findAny();
             if (!budget.isPresent()) {
                 return;
@@ -335,25 +334,25 @@ public class Interactions {
             edit.updateState(state -> {
                 Budget.Key newKey = key.setUnit(result.get());
                 {
-                    Relations functional = state.getFunctional();
+                    Baseline functional = state.getParent();
                     Iterator<Budget> it = Budget.find(functional, key).iterator();
                     while (it.hasNext()) {
                         Budget budget = it.next();
                         functional = budget.setKey(functional, newKey).getKey();
                     }
-                    state = state.setFunctional(functional);
+                    state = state.setParent(functional);
                 }
                 {
-                    Relations allocated = state.getAllocated();
+                    Baseline allocated = state.getChild();
                     Iterator<Budget> it = Budget.find(allocated, key).iterator();
                     while (it.hasNext()) {
                         Budget budget = it.next();
                         allocated = budget.setKey(allocated, newKey).getKey();
                     }
-                    state = state.setAllocated(allocated);
+                    state = state.setChild(allocated);
                 }
                 return state;
-            });
+            }, 1234);
         }
     }
 
@@ -361,7 +360,7 @@ public class Interactions {
         Optional<Color> result;
         {
             // User interaction - read only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             if (item.isExternal() || !allocated.get(item).isPresent()) {
                 return;
             }
@@ -408,10 +407,10 @@ public class Interactions {
         }
     }
 
-    private Pair<UndoState, FlowType> getTypeForNewFlow(
-            UndoState state, RelationPair<Function> endpoints) {
-        final Relations functional = state.getFunctional();
-        final Relations allocated = state.getAllocated();
+    private Pair<BaselinePair, FlowType> getTypeForNewFlow(
+            BaselinePair state, RecordConnectionScope<Function> endpoints) {
+        final Baseline functional = state.getParent();
+        final Baseline allocated = state.getChild();
         /*
          * A stream of functional baseline types that have flows in the required
          * direction
@@ -422,7 +421,7 @@ public class Interactions {
         Optional<FlowType> suggestion;
         if (leftTrace.isPresent() && rightTrace.isPresent()
                 && !leftTrace.equals(rightTrace)) {
-            RelationPair<Function> endpointTraces = new RelationPair<>(
+            RecordConnectionScope<Function> endpointTraces = new RecordConnectionScope<>(
                     leftTrace.get(), rightTrace.get(), endpoints.getDirection());
 
             Set<String> alreadyUsed = Flow.find(allocated).parallel()
@@ -431,7 +430,7 @@ public class Interactions {
                         Optional<Function> existingRightTrace = flow.getRight(allocated).getTrace(functional);
                         if (existingLeftTrace.isPresent() && existingRightTrace.isPresent()
                                 && !existingLeftTrace.equals(existingRightTrace)) {
-                            RelationPair<Function> existingEndpointTraces = new RelationPair<>(
+                            RecordConnectionScope<Function> existingEndpointTraces = new RecordConnectionScope<>(
                                     existingLeftTrace.get(), existingRightTrace.get(), flow.getDirection());
                             return existingEndpointTraces.contains(endpointTraces);
                         } else {
@@ -460,57 +459,57 @@ public class Interactions {
 
         if (suggestion.isPresent()) {
             // Flow down to the allocated baseline if needed
-            Optional<FlowType> allocatedType = FlowType.find(
-                    allocated, suggestion.get().getName());
+            Optional<FlowType> allocatedType = FlowType.get(
+                    allocated, suggestion.get().getTypeName());
             if (allocatedType.isPresent()) {
                 return state.and(allocatedType.get());
             } else {
-                return state.setAllocated(allocated.add(suggestion.get()))
+                return state.setChild(allocated.add(suggestion.get()))
                         .and(suggestion.get());
             }
         }
         String name = FlowType.find(allocated).parallel()
-                .map(FlowType::getName)
+                .map(FlowType::getTypeName)
                 .collect(new UniqueName("New Flow"));
-        Optional<FlowType> trace = FlowType.find(functional, name);
-        Pair<Relations, FlowType> result = FlowType.add(allocated, trace, name);
-        return state.setAllocated(result.getKey()).and(result.getValue());
+        Optional<FlowType> trace = FlowType.get(functional, name);
+        Pair<Baseline, FlowType> result = FlowType.add(allocated, trace, name);
+        return state.setChild(result.getKey()).and(result.getValue());
     }
 
     public void addFlow(Function source, Function target) {
         edit.updateState(state -> {
-            Relations allocated = state.getAllocated();
+            Baseline allocated = state.getChild();
             Optional<Function> left = allocated.get(source);
             Optional<Function> right = allocated.get(target);
             if (left.isPresent() && right.isPresent()
                     // One end has to be internal
                     && (!left.get().isExternal() || !right.get().isExternal())) {
-                RelationPair<Function> endpoints = new RelationPair<>(
-                        source, target, Direction.Normal);
-                Pair<UndoState, FlowType> result = getTypeForNewFlow(state, endpoints);
+                RecordConnectionScope<Function> endpoints = new RecordConnectionScope<>(
+                        source, target, Direction.Forward);
+                Pair<BaselinePair, FlowType> result = getTypeForNewFlow(state, endpoints);
                 state = result.getKey();
-                allocated = state.getAllocated();
+                allocated = state.getChild();
                 FlowType flowType = result.getValue();
                 allocated = Flow.add(allocated, endpoints, flowType).getKey();
-                return state.setAllocated(allocated);
+                return state.setChild(allocated);
             } else {
                 return state;
             }
-        });
+        }, 1234);
     }
 
     void setFlowType(Flow flow) {
         Optional<String> interactionResult;
         {
             // User interaction, read-only
-            Relations allocated = edit.getAllocated();
+            Baseline allocated = edit.getChild();
             Optional<Flow> current = allocated.get(flow);
             if (!current.isPresent()) {
                 return;
             }
             FlowType type = current.get().getType().getTarget(allocated);
 
-            TextInputDialog dialog = new TextInputDialog(type.getName());
+            TextInputDialog dialog = new TextInputDialog(type.getTypeName());
             dialog.setTitle("New Flow Type");
             dialog.setHeaderText("Enter Flow Type");
 
@@ -519,27 +518,27 @@ public class Interactions {
         if (interactionResult.isPresent()) {
             String typeName = interactionResult.get();
             edit.updateState(state -> {
-                Relations allocated = state.getAllocated();
+                Baseline allocated = state.getChild();
                 Optional<Flow> current = allocated.get(flow);
                 if (!current.isPresent()) {
                     return state;
                 }
                 FlowType currentType = current.get().getType().getTarget(allocated);
-                if (currentType.getName().equals(typeName)) {
+                if (currentType.getTypeName().equals(typeName)) {
                     return state;
                 }
-                Optional<FlowType> newType = FlowType.find(allocated, typeName);
+                Optional<FlowType> newType = FlowType.get(allocated, typeName);
                 if (!newType.isPresent()) {
                     // See if we can flow the type down
-                    Relations functional = state.getFunctional();
-                    Optional<FlowType> trace = FlowType.find(functional, typeName);
-                    Pair<Relations, FlowType> result = FlowType.add(allocated, trace, typeName);
+                    Baseline functional = state.getParent();
+                    Optional<FlowType> trace = FlowType.get(functional, typeName);
+                    Pair<Baseline, FlowType> result = FlowType.add(allocated, trace, typeName);
                     allocated = result.getKey();
                     newType = Optional.of(result.getValue());
                 }
                 allocated = current.get().setType(allocated, newType.get()).getKey();
-                return state.setAllocated(allocated);
-            });
+                return state.setChild(allocated);
+            }, 1234);
         }
     }
 
@@ -562,7 +561,7 @@ public class Interactions {
     }
 
     public void navigateDown(Item item) {
-        this.navigateDown(item.asIdentity(edit.getAllocated()));
+        this.navigateDown(item.asIdentity(edit.getChild()));
     }
 
     public void navigateDown(Identity identity) {
@@ -610,7 +609,7 @@ public class Interactions {
 
     public boolean trySave() {
         try {
-            if (edit.getCurrentDirectory().isPresent()) {
+            if (edit.getStorage().isPresent()) {
                 edit.save();
             } else {
                 return trySaveAs();
@@ -653,7 +652,7 @@ public class Interactions {
         try {
             edit.load(dir);
             RecentFiles.addRecentFile(dir.getPath());
-            Optional<VersionInfo> baseline = edit.getVersionControl().getDefaultBaseline();
+            Optional<VersionInfo> baseline = edit.getStorage().getDefaultBaseline();
             if (baseline.isPresent()) {
                 // Open default diff baseline
                 edit.setDiffVersion(baseline);
@@ -673,7 +672,7 @@ public class Interactions {
     public boolean tryLoadChooser(Window window, EditState edit) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("System Designs");
-        Optional<Directory> current = edit.getCurrentDirectory();
+        Optional<Directory> current = edit.getStorage();
         if (current.isPresent()) {
             chooser.setInitialDirectory(current.get().getPath().toFile());
         }

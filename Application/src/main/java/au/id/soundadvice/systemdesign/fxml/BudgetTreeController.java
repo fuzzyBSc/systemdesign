@@ -33,8 +33,8 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.text.ParseException;
 import java.util.Collections;
@@ -107,9 +107,9 @@ public class BudgetTreeController {
 
         @Override
         public void run() {
-            UndoState state = edit.getState();
-            Relations functional = state.getFunctional();
-            Relations allocated = state.getAllocated();
+            BaselinePair state = edit.getState();
+            Baseline functional = state.getParent();
+            Baseline allocated = state.getChild();
             Optional<Item> system = Identity.getSystemOfInterest(state);
 
             List<Budget> allBudgets = Budget.find(allocated)
@@ -271,7 +271,7 @@ public class BudgetTreeController {
             contextMenu.getItems().add(deleteMenuItem);
             deleteMenuItem.setOnAction(event -> {
                 BudgetSummary summary = getItem();
-                edit.updateState(state -> Budget.removeFromAllocated(state, summary.getKey()));
+                edit.updateState(state -> Budget.remove(state, summary.getKey()), 1234);
                 event.consume();
             });
             this.editableProperty().bind(this.itemProperty().isNotNull());
@@ -320,14 +320,14 @@ public class BudgetTreeController {
             AtomicReference<BudgetSummary> result = new AtomicReference<>();
             edit.updateState(state -> {
                 Optional<Item> optionalItem = summary.getItem();
-                Relations baseline;
+                Baseline baseline;
                 boolean allocatedBaseline = optionalItem.isPresent();
                 if (allocatedBaseline) {
-                    Relations allocated = state.getAllocated();
+                    Baseline allocated = state.getChild();
                     baseline = allocated;
                     optionalItem = optionalItem.flatMap(item -> allocated.get(item));
                 } else {
-                    baseline = state.getFunctional();
+                    baseline = state.getParent();
                     optionalItem = Identity.getSystemOfInterest(state);
                 }
                 if (!optionalItem.isPresent()) {
@@ -347,17 +347,17 @@ public class BudgetTreeController {
                     LOG.log(Level.SEVERE, null, ex);
                     return state;
                 }
-                Pair<Relations, BudgetAllocation> tmp
+                Pair<Baseline, BudgetAllocation> tmp
                         = BudgetAllocation.setAmount(baseline, item, budget, amount);
                 baseline = tmp.getKey();
                 BudgetAllocation allocation = tmp.getValue();
                 result.set(summary.setAmount(allocation.getAmount()));
                 if (allocatedBaseline) {
-                    return state.setAllocated(baseline);
+                    return state.setChild(baseline);
                 } else {
-                    return state.setFunctional(baseline);
+                    return state.setParent(baseline);
                 }
-            });
+            }, 1234);
             super.commitEdit(summary);
         }
 

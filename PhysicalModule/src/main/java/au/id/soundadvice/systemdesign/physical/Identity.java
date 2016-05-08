@@ -26,16 +26,16 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
-import au.id.soundadvice.systemdesign.physical.beans.IdentityBean;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
@@ -43,41 +43,20 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Identity implements Relation {
+public enum Identity implements RecordType {
+    identity;
 
     @Override
-    public int hashCode() {
-        int hash = 3;
-        hash = 43 * hash + Objects.hashCode(this.identity);
-        return hash;
+    public String getTypeName() {
+        return name();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Identity other = (Identity) obj;
-        if (!Objects.equals(this.identity, other.identity)) {
-            return false;
-        }
-        if (!Objects.equals(this.idPath, other.idPath)) {
-            return false;
-        }
-        if (!Objects.equals(this.name, other.name)) {
-            return false;
-        }
-        return true;
-    }
-
-    public static Optional<Item> getSystemOfInterest(UndoState state) {
-        Optional<Identity> optionalIdentity
-                = Identity.findAll(state.getAllocated()).findAny();
-        return optionalIdentity.flatMap(
-                identity -> state.getFunctional().get(identity.getIdentifier(), Item.class));
+    public static Optional<Record> getSystemOfInterest(BaselinePair state) {
+        Optional<String> optionalTrace
+                = Identity.findAll(state.getChild()).findAny()
+                .flatMap(Record::getTrace);
+        return optionalTrace.flatMap(
+                trace -> state.getParent().get(trace, Item.item));
     }
 
     /**
@@ -87,7 +66,7 @@ public class Identity implements Relation {
      * @param baseline The baseline whose identity to find
      * @return
      */
-    public static Identity find(Relations baseline) {
+    public static Record get(Baseline baseline) {
         return findAll(baseline).findAny().get();
     }
 
@@ -98,61 +77,20 @@ public class Identity implements Relation {
      * @param baseline The baseline whose identity to find
      * @return
      */
-    public static Stream<Identity> findAll(Relations baseline) {
-        return baseline.findByClass(Identity.class);
+    public static Stream<Record> findAll(Baseline baseline) {
+        return baseline.findByType(identity);
     }
 
-    public String getName() {
-        return name;
+    public static Record create(String now) {
+        return Record.create(identity).build(now);
     }
 
-    public static Identity create() {
-        return new Identity(UUID.randomUUID().toString(), IDPath.empty(), "");
+    public static Record create(String now, Record parentIdentity, Record parentItem) {
+        return itemToIdentity(now, parentIdentity, parentItem);
     }
 
-    @Override
-    public String toString() {
-        if ("".equals(name)) {
-            return idPath.toString();
-        } else {
-            return idPath.toString() + " " + name;
-        }
-    }
-
-    public Identity(String identity, IDPath idPath, String name) {
-        this.identity = identity;
-        this.idPath = idPath;
-        this.name = name;
-    }
-
-    @Override
-    public String getIdentifier() {
-        return identity;
-    }
-
-    public IDPath getIdPath() {
-        return idPath;
-    }
-
-    public Identity(IdentityBean bean) {
-        this.identity = bean.getIdentifier();
-        this.idPath = IDPath.valueOfDotted(bean.getId());
-        this.name = bean.getName();
-    }
-
-    private final String identity;
-    private final IDPath idPath;
-    private final String name;
-
-    public IdentityBean toBean() {
-        return new IdentityBean(identity, idPath.toString(), name);
-    }
-    private static final ReferenceFinder<Identity> FINDER
-            = new ReferenceFinder<>(Identity.class);
-
-    @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
+    public static IDPath getIdPath(Record record) {
+        return IDPath.valueOfDotted(record.getShortName());
     }
 
     /**
@@ -163,8 +101,8 @@ public class Identity implements Relation {
      * @return
      */
     @CheckReturnValue
-    public static Relations setIdentity(Relations baseline, Identity id) {
-        Iterator<Identity> existing = findAll(baseline).iterator();
+    public static Baseline setIdentity(Baseline baseline, Record id) {
+        Iterator<Record> existing = findAll(baseline).iterator();
         while (existing.hasNext()) {
             baseline = baseline.remove(existing.next().getIdentifier());
         }
@@ -172,7 +110,83 @@ public class Identity implements Relation {
     }
 
     @CheckReturnValue
-    public Identity setId(IDPath value) {
-        return new Identity(identity, value, name);
+    public Record setId(Record record, String now, IDPath value) {
+        return record.asBuilder()
+                .setShortName(value.toString())
+                .build(now);
+    }
+
+    @Override
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChild) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        // It's correct for the identity in the parent baseline to be untraced.
+        // The child identity traces to an Item, not an Identity.
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        return untracedChildren
+                .map(record -> Problem.flowProblem(
+                        "Item " + record.getLongName() + " is missing from the parent baseline",
+                        Optional.of((baselines, now) -> addItemToParentBaseline(baselines, now, record)),
+                        Optional.empty()));
+    }
+
+    private static Record itemToIdentity(String now, Record parentIdentity, Record parentItem) {
+        IDPath parentPath = getIdPath(parentIdentity);
+        IDPath itemShortPath = IDPath.valueOfDotted(parentItem.getShortName());
+        IDPath childPath = parentPath.resolve(itemShortPath);
+        return Record.create(identity)
+                .putAll(parentItem.getFields())
+                .setShortName(childPath.toString())
+                .build(now);
+    }
+
+    private static Record identityToItem(Baseline parentBaseline, Record childIdentity) {
+        Record parentIdentity = get(parentBaseline);
+        IDPath parentPath = getIdPath(parentIdentity);
+        IDPath childPath = getIdPath(childIdentity);
+        IDPath itemShortPath;
+        if (childPath.getParent().equals(parentPath)) {
+            itemShortPath = childPath.getLastSegment();
+        } else {
+            itemShortPath = Item.getNextItemId(parentBaseline);
+        }
+        // We have done a best effort short path assignment
+        // If this resulted in any conflicts we leave it to other code to
+        //resolve 
+        Map<String, String> fields = new HashMap<>(childIdentity.getFields());
+        fields.put(Fields.shortName.name(), itemShortPath.toString());
+        return Record.load(Item.item, fields);
+    }
+
+    private BaselinePair addItemToParentBaseline(BaselinePair baselines, String now, Record record) {
+        Optional<Record> childIdentity = baselines.getChild().get(record);
+        Optional<Record> parentIdentity = findAll(baselines.getParent()).findAny();
+        Optional<String> optionalTrace = childIdentity.flatMap(Record::getTrace);
+        Optional<Record> optionalItem = optionalTrace.flatMap(trace -> baselines.getParent().get(trace, Item.item));
+        if (optionalTrace.isPresent() && parentIdentity.isPresent() && !optionalItem.isPresent()) {
+            // Preconditions are met
+            Record item = identityToItem(baselines.getParent(), childIdentity.get());
+            return baselines.setParent(baselines.getParent().add(item));
+        } else {
+            return baselines;
+        }
+    }
+
+    @Override
+    public Object getUniqueConstraint(Record record) {
+        // There can be only one
+        return identity;
+    }
+
+    @Override
+    public Record merge(BaselinePair baselines, String now, Record left, Record right) {
+        return Record.newerOf(left, right);
     }
 }

@@ -26,18 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.moduleapi.UndoState;
-import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.budget.beans.BudgetBean;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Reference;
-import au.id.soundadvice.systemdesign.moduleapi.relation.ReferenceFinder;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relation;
-import au.id.soundadvice.systemdesign.moduleapi.relation.Relations;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
-import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
@@ -48,42 +44,126 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Budget implements Relation {
+public enum Budget implements RecordType {
+    budget;
 
     @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.identifier);
-        return hash;
+    public String getTypeName() {
+        return name();
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
+    public Object getUniqueConstraint(Record record) {
+        Optional<String> trace = record.getTrace();
+        if (trace.isPresent()) {
+            // Only one child budget per parent budget
+            return trace;
+        } else {
+            // Top-level budgets are allowed
+            return record.getIdentifier();
         }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Budget other = (Budget) obj;
-        if (!Objects.equals(this.identifier, other.identifier)) {
-            return false;
-        }
-        if (!Objects.equals(this.key, other.key)) {
-            return false;
-        }
-        return true;
     }
 
-    public Optional<Budget> get(Relations baseline) {
-        return baseline.get(identifier, Budget.class);
+    @Override
+    public Record merge(BaselinePair context, String now, Record left, Record right) {
+        return Record.newerOf(left, right);
+    }
+
+    @Override
+    public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChildren) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(context);
+        Optional<Record> parentAllocation = BudgetAllocation.getForItemAndBudget(
+                context.getParent(), traceParent, systemOfInterest.get());
+        Range parentAmount = parentAllocation.map(allocation -> BudgetAllocation.budgetAllocation.getAmount(allocation))
+                .orElse(Range.ZERO);
+        return traceChildren.flatMap(
+                childBudget -> {
+                    return Stream.concat(
+                            getNameMismatchProblems(traceParent, childBudget),
+                            getBudgetTotalProblems(context, parentAmount, childBudget)
+                    );
+                });
+    }
+
+    private Stream<Problem> getNameMismatchProblems(Record parentBudget, Record childBudget) {
+        if (parentBudget.getLongName().equals(childBudget.getLongName())) {
+            return Stream.empty();
+        } else {
+            return Stream.of(Problem.flowProblem(
+                    "Budget name mismatch\n"
+                    + "Parent = " + parentBudget.getLongName() + "\n"
+                    + "Child = " + childBudget.getLongName(),
+                    Optional.of((baselines, now) -> baselines.setChild(baselines.getChild().add(childBudget.asBuilder().setLongName(parentBudget.getLongName()).build(now)))),
+                    Optional.of((baselines, now) -> baselines.setParent(baselines.getParent().add(parentBudget.asBuilder().setLongName(childBudget.getLongName()).build(now))))));
+        }
+    }
+
+    @Override
+    public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> untracedParents) {
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(context);
+        if (systemOfInterest.isPresent()) {
+            return untracedParents
+                    .filter(parentBudget -> {
+                        return !BudgetAllocation.getForItemAndBudget(context.getParent(), parentBudget, systemOfInterest.get())
+                                .map(allocation -> BudgetAllocation.budgetAllocation.getAmount(allocation))
+                                .orElse(Range.ZERO)
+                                .isExactZero();
+                    })
+                    .map(parentBudget -> {
+                        return Problem.onLoadAutofixProblem(
+                                (baselines, now) -> add(baselines, now, getKey(parentBudget)).getKey());
+                    });
+        }
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> untracedChildren) {
+        Range parentAmount = Range.ZERO;
+        return untracedChildren.flatMap(
+                childBudget -> getBudgetTotalProblems(context, parentAmount, childBudget));
+    }
+
+    public Stream<Problem> getBudgetTotalProblems(BaselinePair context, Range parentAmount, Record childBudget) {
+        Range childAmount = Budget.budget.getTotal(context.getChild(), childBudget);
+        if (parentAmount.equals(childAmount)) {
+            return Stream.empty();
+        } else {
+            return Stream.of(Problem.flowProblem(
+                    childBudget.getLongName() + " mismatch\nParent = " + parentAmount + "\nChild = " + childAmount,
+                    Optional.empty(),
+                    Optional.of((baselines, now)
+                            -> BudgetAllocation.budgetAllocation.setParentAmount(baselines, now, childBudget, childAmount))));
+        }
+    }
+
+    public Range getTotal(Baseline baseline, Record budget) {
+        return BudgetAllocation.sumAmounts(BudgetAllocation.findForBudget(baseline, budget));
     }
 
     public static final class Key implements Comparable<Key> {
 
         @Override
         public String toString() {
-            return name + '(' + unit + ')';
+            if (unit.isEmpty()) {
+                return name;
+            } else {
+                return name + " (" + unit + ')';
+            }
+        }
+
+        static Key valueOf(String input) {
+            int lastParenOpen = input.lastIndexOf('(');
+            if (lastParenOpen < 0) {
+                return new Key(input, "");
+            } else {
+                String name = input.substring(0, lastParenOpen);
+                String unit = input.substring(lastParenOpen + 1);
+                if (unit.endsWith(")")) {
+                    unit = unit.substring(0, unit.length() - 1);
+                }
+                return new Key(name, unit);
+            }
         }
 
         public String getName() {
@@ -121,8 +201,12 @@ public class Budget implements Relation {
         }
 
         public Key(String name, String unit) {
-            this.name = name;
-            this.unit = unit;
+            this.name = safeChars(name);
+            this.unit = safeChars(unit);
+        }
+
+        private static String safeChars(String value) {
+            return value.replaceAll("[()]", "").trim();
         }
 
         private final String name;
@@ -156,136 +240,54 @@ public class Budget implements Relation {
         }
     }
 
-    @Override
-    public String toString() {
-        return key.toString();
+    public static Stream<Record> find(Baseline baseline, Key key) {
+        return find(baseline).filter(budget -> key.equals(Budget.budget.getKey(budget)));
     }
 
-    public static Stream<Budget> find(Relations baseline, Key key) {
-        return find(baseline).filter(budget -> key.equals(budget.key));
-    }
-
-    public static Stream<Budget> find(Relations baseline) {
-        return baseline.findByClass(Budget.class);
-    }
-
-    public Stream<BudgetAllocation> findAllocations(Relations baseline) {
-        return baseline.findReverse(identifier, BudgetAllocation.class);
-    }
-
-    public Stream<BudgetAllocation> findAllocations(Relations baseline, Item item) {
-        return findAllocations(baseline).filter(
-                allocation -> allocation.getItem().getKey().equals(item.getIdentifier()));
+    public static Stream<Record> find(Baseline baseline) {
+        return baseline.findByType(Budget.budget);
     }
 
     @CheckReturnValue
-    public Pair<Relations, Budget> setKey(Relations baseline, Key key) {
-        if (this.key.equals(key)) {
-            return new Pair<>(baseline, this);
+    public Pair<Baseline, Record> setKey(Baseline baseline, String now, Record budget, Key key) {
+        String value = key.toString();
+        if (budget.getLongName().equals(value)) {
+            return new Pair<>(baseline, budget);
         } else {
-            Budget newValue = new Budget(identifier, key);
+            Record newValue = budget.asBuilder()
+                    .setLongName(value)
+                    .build(now);
             return new Pair<>(baseline.add(newValue), newValue);
         }
     }
 
-    public static Budget create(Key key) {
-        return new Budget(UUID.randomUUID().toString(), key);
+    @CheckReturnValue
+    public static Pair<BaselinePair, Record> add(BaselinePair baselines, String now, Key key) {
+        Optional<Record> existingChild = find(baselines.getChild(), key).findAny();
+        if (existingChild.isPresent()) {
+            return new Pair<>(baselines, existingChild.get());
+        } else {
+            Optional<Record> existingParent = find(baselines.getParent(), key).findAny();
+            Record newValue = Record.create(budget)
+                    .setTrace(existingParent)
+                    .setLongName(key.toString())
+                    .build(now);
+            baselines = baselines.setChild(baselines.getChild().add(newValue));
+            return baselines.and(newValue);
+        }
     }
 
     @CheckReturnValue
-    public static Pair<Relations, Budget> add(Relations baseline, Key key) {
-        Optional<Budget> existing = find(baseline, key).findAny();
+    public static Baseline remove(Baseline baseline, Key key) {
+        Optional<Record> existing = find(baseline, key).findAny();
         if (existing.isPresent()) {
-            return new Pair<>(baseline, existing.get());
+            return baseline.remove(existing.get().getIdentifier());
         } else {
-            Budget newValue = create(key);
-            return new Pair<>(baseline.add(newValue), newValue);
+            return baseline;
         }
     }
 
-    public static UndoState removeFromAllocated(UndoState state, Key key) {
-        Relations functional = state.getFunctional();
-        Relations allocated = state.getAllocated();
-        Optional<Item> system = Identity.getSystemOfInterest(state);
-        if (system.isPresent()) {
-            final Relations preUpdateFunctional = functional;
-            Iterator<BudgetAllocation> it = Budget.find(preUpdateFunctional, key)
-                    .flatMap(budget -> budget.findAllocations(preUpdateFunctional, system.get()))
-                    .iterator();
-            while (it.hasNext()) {
-                BudgetAllocation parentAllocation = it.next();
-                functional = parentAllocation.removeFrom(functional);
-            }
-        }
-        Iterator<Budget> it = Budget.find(allocated, key).iterator();
-        while (it.hasNext()) {
-            Budget childBudget = it.next();
-            allocated = childBudget.removeFrom(allocated);
-        }
-        return state.setFunctional(functional).setAllocated(allocated);
-    }
-
-    @CheckReturnValue
-    public Relations removeFrom(Relations baseline) {
-        return baseline.remove(identifier);
-    }
-
-    public Pair<Relations, Budget> addTo(Relations baseline) {
-        Optional<Budget> existing = find(baseline, key).findAny();
-        if (existing.isPresent()) {
-            return new Pair<>(baseline, existing.get());
-        } else {
-            return new Pair<>(baseline.add(this), this);
-        }
-    }
-
-    public Pair<Relations, Budget> setIdentifier(Relations baseline, String identifier) {
-        if (this.identifier.equals(identifier)) {
-            return new Pair<>(baseline, this);
-        } else {
-            // Create the new entry
-            Budget newValue = new Budget(identifier, key);
-            baseline = baseline.add(newValue);
-            // Redirect existing allocations to this budget
-            Iterator<BudgetAllocation> it = this.findAllocations(baseline).iterator();
-            while (it.hasNext()) {
-                BudgetAllocation allocation = it.next();
-                baseline = allocation.setBudget(baseline, newValue).getKey();
-            }
-            return new Pair<>(baseline.remove(this.identifier), newValue);
-        }
-    }
-
-    @Override
-    public String getIdentifier() {
-        return identifier;
-    }
-
-    public Key getKey() {
-        return key;
-    }
-
-    public Budget(BudgetBean bean) {
-        this(bean.getIdentifier(), new Key(bean.getName(), bean.getUnit()));
-    }
-
-    private Budget(String identifier, Key key) {
-        this.identifier = identifier;
-        this.key = key;
-    }
-
-    private final String identifier;
-    private final Key key;
-
-    public BudgetBean toBean() {
-        String description = key.toString();
-        return new BudgetBean(identifier, key.getName(), key.getUnit(), description);
-    }
-    private static final ReferenceFinder<Budget> FINDER
-            = new ReferenceFinder<>(Budget.class);
-
-    @Override
-    public Stream<Reference> getReferences() {
-        return FINDER.getReferences(this);
+    public Key getKey(Record budget) {
+        return Key.valueOf(budget.getLongName());
     }
 }
