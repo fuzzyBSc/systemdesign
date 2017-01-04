@@ -26,10 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.util.Objects;
@@ -37,6 +36,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -44,24 +45,26 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Budget implements RecordType {
+public enum Budget implements Table {
     budget;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        Optional<String> trace = record.getTrace();
-        if (trace.isPresent()) {
-            // Only one child budget per parent budget
-            return trace;
-        } else {
-            // Top-level budgets are allowed
-            return record.getIdentifier();
-        }
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(record -> {
+            Optional<String> trace = record.getTrace();
+            if (trace.isPresent()) {
+                // Only one child budget per parent budget
+                return trace;
+            } else {
+                // No additional unique constraint
+                return record.getIdentifier();
+            }
+        });
     }
 
     @Override

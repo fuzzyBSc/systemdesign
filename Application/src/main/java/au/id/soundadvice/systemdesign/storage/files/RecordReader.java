@@ -29,7 +29,6 @@ package au.id.soundadvice.systemdesign.storage.files;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
@@ -41,6 +40,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -50,9 +50,9 @@ public class RecordReader implements AutoCloseable {
 
     private final CSVReader csvreader;
     private final String[] header;
-    private final RecordType recordType;
+    private final Table recordType;
 
-    public RecordReader(RecordType recordType, CSVReader csvreader) throws IOException {
+    public RecordReader(Table recordType, CSVReader csvreader) throws IOException {
         this.recordType = recordType;
         this.csvreader = csvreader;
 

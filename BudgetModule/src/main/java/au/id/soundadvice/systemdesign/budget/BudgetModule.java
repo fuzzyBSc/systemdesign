@@ -5,13 +5,15 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
+import au.id.soundadvice.systemdesign.budget.tree.BudgetTree;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -34,7 +36,7 @@ public class BudgetModule implements Module {
     }
 
     @Override
-    public Stream<RecordType> getRecordTypes() {
+    public Stream<Table> getTables() {
         return Stream.of(
                 Budget.budget,
                 BudgetAllocation.budgetAllocation);
@@ -43,5 +45,10 @@ public class BudgetModule implements Module {
     @Override
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
         return Stream.empty();
+    }
+
+    @Override
+    public Stream<Tree> getTrees(BaselinePair baselines) {
+        return Stream.of(new BudgetTree(baselines));
     }
 }

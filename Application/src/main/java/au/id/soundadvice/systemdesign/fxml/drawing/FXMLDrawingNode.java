@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
+import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.ContextMenus;
@@ -37,7 +38,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.fxml.logical.PreferredTab;
 import static au.id.soundadvice.systemdesign.logical.Function.function;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Optional;

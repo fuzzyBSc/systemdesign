@@ -14,30 +14,7 @@
     <children>
         <BorderPane layoutX="-1.0" prefHeight="404.0" prefWidth="600.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="0.0">
             <left>
-                <Accordion BorderPane.alignment="CENTER">
-                    <panes>
-                        <TitledPane animated="false" text="Physical">
-                            <content>
-                                <TreeView id="physicalTree" fx:id="physicalTree" prefHeight="200.0" prefWidth="200.0" />
-                            </content>
-                        </TitledPane>
-                        <TitledPane animated="false" text="Logical">
-                            <content>
-                                <TreeView fx:id="logicalTree" prefHeight="200.0" prefWidth="200.0" />
-                            </content>
-                        </TitledPane>
-                        <TitledPane prefHeight="200.0" prefWidth="200.0" text="Type">
-                            <content>
-                                <TreeView fx:id="typeTree" prefHeight="200.0" prefWidth="200.0" />
-                            </content>
-                        </TitledPane>
-                        <TitledPane prefHeight="200.0" prefWidth="200.0" text="Budget">
-                            <content>
-                                <TreeView fx:id="budgetTree" prefHeight="200.0" prefWidth="200.0" />
-                            </content>
-                        </TitledPane>
-                    </panes>
-                </Accordion>
+                <Accordion fx:id="trees" BorderPane.alignment="CENTER" />
             </left>
             <bottom>
                 <TilePane prefHeight="0.0" prefWidth="600.0" BorderPane.alignment="CENTER">
@@ -142,19 +119,7 @@
                 </MenuBar>
             </top>
             <center>
-                <TabPane fx:id="tabs" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
-                    <tabs>
-                        <Tab fx:id="physicalDrawing" text="Physical">
-                            <content>
-                                <ScrollPane>
-                                    <content>
-                                        <AnchorPane minHeight="0.0" minWidth="0.0" />
-                                    </content>
-                                </ScrollPane>
-                            </content>
-                        </Tab>
-                    </tabs>
-                </TabPane>
+                <TabPane fx:id="tabs" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER" />
             </center>
         </BorderPane>
     </children>

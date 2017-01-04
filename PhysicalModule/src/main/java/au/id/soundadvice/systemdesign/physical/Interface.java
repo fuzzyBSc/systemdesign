@@ -26,19 +26,20 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * An association between two items that implies Flows may exist between them.
@@ -49,11 +50,11 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Interface implements RecordType {
+public enum Interface implements Table {
     iface;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return "interface";
     }
 
@@ -347,8 +348,8 @@ public enum Interface implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        return record.getConnectionScope();
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(Record::getConnectionScope);
     }
 
     @Override

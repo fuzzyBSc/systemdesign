@@ -24,43 +24,19 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.storage;
+package au.id.soundadvice.systemdesign.moduleapi.tree;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import java.io.IOException;
-import java.util.Optional;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import java.util.stream.Stream;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface RecordStorage {
+public interface Tree extends Identifiable {
 
-    /**
-     * Load the whole baseline.
-     *
-     * @param factory The factory to use to create RecordType objects
-     * @param label If empty, load the current baseline. If nonempty, load the
-     * nominated branch or tag.
-     * @return The baseline
-     */
-    public Baseline loadBaseline(RecordTypeFactory factory, Optional<String> label) throws IOException;
+    public String getLabel();
 
-    public Stream<VersionInfo> getBranches() throws IOException;
+    public Stream<TreeNode> getChildren();
 
-    public Stream<VersionInfo> getVersions() throws IOException;
-
-    /**
-     * Save the whole baseline.
-     *
-     * @param relations The baseline to store
-     */
-    public void saveBaseline(Baseline relations) throws IOException;
-
-    public Optional<RecordStorage> getParent();
-
-    public Optional<RecordStorage> getChild(String identifier) throws IOException;
-
-    public boolean identityFileExists() throws IOException;
 }

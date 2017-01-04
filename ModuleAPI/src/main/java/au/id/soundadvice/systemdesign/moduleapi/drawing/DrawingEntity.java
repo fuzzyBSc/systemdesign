@@ -26,10 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.drawing;
 
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffInfo;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffInfo;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import java.util.Optional;
 import java.util.stream.Stream;

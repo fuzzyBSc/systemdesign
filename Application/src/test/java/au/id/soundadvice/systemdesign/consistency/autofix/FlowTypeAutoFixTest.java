@@ -28,14 +28,14 @@
 package au.id.soundadvice.systemdesign.consistency.autofix;
 
 import au.id.soundadvice.systemdesign.logical.fix.FlowTypeAutoFix;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.state.Baseline;
 import au.id.soundadvice.systemdesign.logical.Flow;
 import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.relation.Baseline;
 import java.util.Optional;

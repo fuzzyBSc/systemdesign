@@ -24,13 +24,16 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.entity;
+package au.id.soundadvice.systemdesign.moduleapi.collection;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -45,7 +48,7 @@ public interface Baseline {
      * @param type The expected record type
      * @return
      */
-    public Optional<Record> get(String identifier, RecordType type);
+    public Optional<Record> get(RecordID identifier, Table type);
 
     /**
      * Returns a record matching the lookup.
@@ -53,7 +56,7 @@ public interface Baseline {
      * @param identifier The record identifier
      * @return
      */
-    public Optional<Record> getAnyType(String identifier);
+    public Optional<Record> getAnyType(RecordID identifier);
 
     /**
      * Returns a record matching the lookup. Equivalent to
@@ -71,7 +74,7 @@ public interface Baseline {
      * @param type The type of record to search for
      * @return A stream of records matching type
      */
-    public Stream<Record> findByType(RecordType type);
+    public Stream<Record> findByType(Table type);
 
     /**
      * Returns records of the nominated type
@@ -80,7 +83,7 @@ public interface Baseline {
      * baseline
      * @return A stream of records that trace to parentIdentifier
      */
-    public Stream<Record> findByTrace(Optional<String> parentIdentifier);
+    public Stream<Record> findByTrace(Optional<RecordID> parentIdentifier);
 
     /**
      * Returns records that completely include the nominated scope. If the
@@ -106,7 +109,7 @@ public interface Baseline {
      * @param identifier The identifier to find references to
      * @return A stream of records that have references to identifier
      */
-    public Stream<Record> findReverse(String identifier);
+    public Stream<Record> findReverse(RecordID identifier);
 
     /**
      * Returns a list of records in the current baseline with references to the
@@ -117,7 +120,7 @@ public interface Baseline {
      * @return A stream of record of type fromType with references to identifier
      */
     public Stream<Record> findReverse(
-            String identifier, RecordType fromType);
+            RecordID identifier, Table fromType);
 
     /**
      * Adds a new record, replacing any existing record with the same
@@ -136,7 +139,7 @@ public interface Baseline {
      * @return The new baseline
      */
     @CheckReturnValue
-    public Baseline remove(String identifier);
+    public Baseline remove(RecordID identifier);
 
     /**
      * Returns the number of records in the baseline.

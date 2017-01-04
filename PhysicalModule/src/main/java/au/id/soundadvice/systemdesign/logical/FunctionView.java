@@ -26,10 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.logical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Iterator;
 import java.util.Map;
@@ -39,6 +38,8 @@ import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A view of a function within a specific drawing. The separation of the main
@@ -48,13 +49,13 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum FunctionView implements RecordType {
+public enum FunctionView implements Table {
     functionView;
 
     public static Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
@@ -160,8 +161,9 @@ public enum FunctionView implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        return new Object[]{record.getViewOf(), record.getContainer()};
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(
+                record -> new Object[]{record.getViewOf(), record.getContainer()});
     }
 
     @Override

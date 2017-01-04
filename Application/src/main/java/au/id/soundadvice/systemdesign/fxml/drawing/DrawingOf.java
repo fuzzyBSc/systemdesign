@@ -27,9 +27,9 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import java.util.HashSet;
 import java.util.List;

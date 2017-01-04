@@ -26,12 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -67,10 +68,21 @@ public interface Module {
      *
      * @return
      */
-    public Stream<RecordType> getRecordTypes();
+    public Stream<Table> getTables();
 
     /**
      * Return the drawings for this module within the nominated baseline.
+     *
+     * @param baselines The baseline pair to extract drawings from
+     * @return All drawings for this module from the nominated baseline pair
      */
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines);
+
+    /**
+     * Return the drawings for this module within the nominated baseline.
+     *
+     * @param baselines The baseline pair to extract trees from
+     * @return All trees for this module from the nominated baseline pair
+     */
+    public Stream<Tree> getTrees(BaselinePair baselines);
 }

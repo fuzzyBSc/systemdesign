@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.entity;
 
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -34,17 +35,16 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface RecordType {
+public interface Table {
 
-    public String getTypeName();
+    public String getTableName();
 
     /**
-     * Get a unique key for the record.
+     * Get a sequence of unique constraints for a given record
      *
-     * @param record The record to search within
      * @return An object encapsulating the primary key
      */
-    public Object getUniqueConstraint(Record record);
+    public Stream<UniqueConstraint> getUniqueConstraints();
 
     public Record merge(BaselinePair context, String now, Record left, Record right);
 
@@ -57,7 +57,7 @@ public interface RecordType {
     public Stream<Problem> getUntracedChildProblems(
             BaselinePair context, Stream<Record> untracedChildren);
 
-    public class Default implements RecordType {
+    public class Default implements Table {
 
         @Override
         public int hashCode() {
@@ -91,7 +91,7 @@ public interface RecordType {
         private final String name;
 
         @Override
-        public String getTypeName() {
+        public String getTableName() {
             return name;
         }
 
@@ -111,8 +111,8 @@ public interface RecordType {
         }
 
         @Override
-        public Object getUniqueConstraint(Record record) {
-            return record.getIdentifier();
+        public Stream<UniqueConstraint> getUniqueConstraints() {
+            return Stream.empty();
         }
 
         @Override

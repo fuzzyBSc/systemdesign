@@ -29,10 +29,11 @@ package au.id.soundadvice.systemdesign.physical.drawing;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.EntityStyle;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffInfo;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffInfo;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;
 import java.util.List;
@@ -145,7 +146,7 @@ class PhysicalSchematicItem implements DrawingEntity {
     }
 
     @Override
-    public String getIdentifier() {
+    public RecordID getIdentifier() {
         return itemView.getSample().getIdentifier();
     }
 

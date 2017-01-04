@@ -27,11 +27,10 @@
 package au.id.soundadvice.systemdesign.logical;
 
 import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
@@ -42,6 +41,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A function is a unit of functionality of an item. An item can have multiple
@@ -59,11 +60,11 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Function implements RecordType {
+public enum Function implements Table {
     function;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return "function";
     }
 
@@ -147,7 +148,7 @@ public enum Function implements RecordType {
             Optional<Record> existing = externalParentFunction.flatMap(
                     func -> baselines.getChild().findByTrace(Optional.of(func.getIdentifier())).findAny());
             if (existing.isPresent()) {
-                Map<String, String> fields = new HashMap<>(externalParentFunction.get().getFields());
+                Map<String, String> fields = new HashMap<>(externalParentFunction.get().getAllFields());
                 fields.remove(Fields.identifier.name());
                 Record updated = existing.get().asBuilder()
                         .putAll(fields)
@@ -186,7 +187,7 @@ public enum Function implements RecordType {
                 .flatMap(trace -> baselines.getParent().get(trace, Item.item));
         if (externalParentFunction.isPresent() && externalParentItem.isPresent()
                 && externalChildFunction.isPresent() && externalChildItem.isPresent()) {
-            Map<String, String> fields = new HashMap<>(externalChildFunction.get().getFields());
+            Map<String, String> fields = new HashMap<>(externalChildFunction.get().getAllFields());
             fields.remove(Fields.identifier.name());
             fields.remove(Fields.trace.name());
             fields.remove(Fields.refContainer.name());
@@ -234,12 +235,16 @@ public enum Function implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        if (record.isExternal()) {
-            return record.getTrace();
-        } else {
-            return record.getIdentifier();
-        }
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(
+                record -> {
+                    if (record.isExternal()) {
+                        return record.getTrace();
+                    } else {
+                        // No additional constraint
+                        return record.getIdentifier();
+                    }
+                });
     }
 
     @Override
@@ -252,7 +257,7 @@ public enum Function implements RecordType {
         return traceChildren
                 .filter(Record::isExternal)
                 .flatMap(externalChildFunction -> {
-                    HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
+                    HashMap<String, String> parentFields = new HashMap<>(traceParent.getAllFields());
                     HashMap<String, String> childFields = new HashMap<>(externalChildFunction.getFields());
                     for (Fields field : new Fields[]{Fields.identifier, Fields.trace}) {
                         parentFields.remove(field.name());

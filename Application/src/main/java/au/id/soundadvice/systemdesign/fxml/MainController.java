@@ -26,19 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.fxml.physical.PhysicalSchematicController;
-import au.id.soundadvice.systemdesign.fxml.physical.PhysicalTreeController;
-import au.id.soundadvice.systemdesign.fxml.logical.LogicalTreeController;
-import au.id.soundadvice.systemdesign.fxml.logical.LogicalTabs;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.AllSuggestions;
 import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.logical.FlowType;
-import au.id.soundadvice.systemdesign.logical.Function;
+import au.id.soundadvice.systemdesign.fxml.drawing.FXMLAllDrawings;
+import au.id.soundadvice.systemdesign.fxml.tree.FXMLAllTrees;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
-import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import au.id.soundadvice.systemdesign.storage.versioning.jgit.GitVersionControl;
 import java.awt.Desktop;
@@ -54,14 +49,13 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Accordion;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.TreeView;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -76,19 +70,9 @@ public class MainController implements Initializable {
     private static final Logger LOG = Logger.getLogger(MainController.class.getName());
 
     @FXML
-    private TreeView<Item> physicalTree;
-    @FXML
-    private TreeView<Function> logicalTree;
-    @FXML
-    private TreeView<FlowType> typeTree;
-    @FXML
-    private TreeView<BudgetSummary> budgetTree;
-    @FXML
     private Button upButton;
     @FXML
     private Button downButton;
-    @FXML
-    private Tab physicalDrawing;
     @FXML
     private Pane suggestions;
     @FXML
@@ -129,20 +113,18 @@ public class MainController implements Initializable {
     private MenuItem aboutMenuItem;
     @FXML
     private TabPane tabs;
+    @FXML
+    private Accordion trees;
 
     private final EditState edit;
 
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
-    private PhysicalTreeController physicalTreeController;
-    private LogicalTreeController logicalTreeController;
-    private TypeTreeController typeTreeController;
-    private BudgetTreeController budgetTreeController;
-    private PhysicalSchematicController schematicController;
-    private LogicalTabs logicalController;
     private SuggestionsController suggestionsController;
     private VersionMenuController versionMenuController;
     private final Interactions interactions;
+    private FXMLAllTrees treeController;
+    private FXMLAllDrawings drawingController;
 
     public MainController(Interactions interactions, EditState edit) {
         this.edit = edit;
@@ -157,18 +139,10 @@ public class MainController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        physicalTreeController = new PhysicalTreeController(interactions, edit, physicalTree);
-        physicalTreeController.start();
-        logicalTreeController = new LogicalTreeController(interactions, edit, logicalTree);
-        logicalTreeController.start();
-        typeTreeController = new TypeTreeController(interactions, edit, typeTree);
-        typeTreeController.start();
-        budgetTreeController = new BudgetTreeController(interactions, edit, budgetTree);
-        budgetTreeController.start();
-        schematicController = new PhysicalSchematicController(interactions, edit, physicalDrawing);
-        schematicController.start();
-        logicalController = new LogicalTabs(interactions, edit, tabs);
-        logicalController.start();
+        this.treeController = new FXMLAllTrees(interactions, edit, trees);
+        this.treeController.start();
+        this.drawingController = new FXMLAllDrawings(interactions, edit, tabs);
+        this.drawingController.start();
         suggestionsController = new SuggestionsController(
                 edit, suggestions, AllSuggestions::getEditProblems);
         suggestionsController.start();
@@ -195,7 +169,7 @@ public class MainController implements Initializable {
             event.consume();
         });
         revertMenuItem.setOnAction(event -> {
-            Optional<Directory> dir = edit.getStorage();
+            Optional<RecordStorage> dir = edit.getStorage();
             if (dir.isPresent()) {
                 if (interactions.checkSave("Save before reloading?")) {
                     try {
@@ -315,9 +289,8 @@ public class MainController implements Initializable {
         versionMenuController.start();
 
         initialiseGitMenuItem.setOnAction(event -> {
-            Optional<Directory> dir = edit.getStorage();
-            if (edit.getStorage().isNull()
-                    && dir.isPresent()) {
+            Optional<RecordStorage> dir = edit.getStorage();
+            if (!edit.getStorage().isPresent() && dir.isPresent()) {
                 try {
                     GitVersionControl.init(dir.get().getPath());
                     edit.reloadVersionControl();
@@ -329,8 +302,7 @@ public class MainController implements Initializable {
         });
         Runnable updateInitaliseGitMenuItemSensitivity = () -> {
             initialiseGitMenuItem.setDisable(
-                    !edit.getStorage().isNull()
-                    || !edit.getStorage().isPresent());
+                    !edit.getStorage().isPresent());
         };
         edit.subscribe(updateInitaliseGitMenuItemSensitivity);
         updateInitaliseGitMenuItemSensitivity.run();
@@ -344,7 +316,7 @@ public class MainController implements Initializable {
                 Optional<String> interactionResult = dialog.showAndWait();
                 if (interactionResult.isPresent()) {
                     try {
-                        edit.getStorage().commit(interactionResult.get());
+                        edit.getStorage().ifPresent(storage -> storage.commit(interactionResult.get()));
                     } catch (IOException ex) {
                         LOG.log(Level.SEVERE, null, ex);
                     }
@@ -354,7 +326,7 @@ public class MainController implements Initializable {
         });
         Runnable updateCommitMenuItemSensitivity = () -> {
             commitMenuItem.setDisable(
-                    !edit.getStorage().canCommit());
+                    !edit.getStorage().map(RecordStorage::canCommit).orElse(false));
         };
         edit.subscribe(updateCommitMenuItemSensitivity);
         updateCommitMenuItemSensitivity.run();

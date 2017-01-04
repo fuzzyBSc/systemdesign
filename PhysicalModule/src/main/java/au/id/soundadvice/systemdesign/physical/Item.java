@@ -26,11 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Optional;
@@ -41,6 +40,8 @@ import javax.annotation.CheckReturnValue;
 import java.util.HashMap;
 import java.util.Map;
 import javafx.util.Pair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A physical Item. Item is used as a fairly loose term in the model and could
@@ -57,11 +58,11 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Item implements RecordType {
+public enum Item implements Table {
     item;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
@@ -83,7 +84,7 @@ public enum Item implements RecordType {
         // However, external items should be consistent.
         return traceChildren.flatMap(childItem -> {
             if (childItem.isExternal()) {
-                HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
+                HashMap<String, String> parentFields = new HashMap<>(traceParent.getAllFields());
                 HashMap<String, String> childFields = new HashMap<>(childItem.getFields());
                 for (Fields field : new Fields[]{Fields.identifier, Fields.trace}) {
                     parentFields.remove(field.name());
@@ -228,7 +229,7 @@ public enum Item implements RecordType {
         Optional<Record> parentItem = baselines.getParent().get(record);
         Optional<Record> childItem = baselines.getChild().findByTrace(Optional.of(record.getIdentifier())).findAny();
         if (parentItem.isPresent()) {
-            Map<String, String> fields = new HashMap<>(parentItem.get().getFields());
+            Map<String, String> fields = new HashMap<>(parentItem.get().getAllFields());
             // The identifier is not inherited, but instead becomes the trace
             fields.remove(Fields.identifier.name());
             fields.put(Fields.trace.name(), parentItem.get().getIdentifier());
@@ -275,7 +276,7 @@ public enum Item implements RecordType {
                 .flatMap(Record::getTrace)
                 .flatMap(trace -> baselines.getParent().get(trace, item));
         if (childItem.isPresent() && parentItem.isPresent()) {
-            Map<String, String> fields = new HashMap<>(childItem.get().getFields());
+            Map<String, String> fields = new HashMap<>(childItem.get().getAllFields());
             // The identifier is not inherited
             fields.remove(Fields.identifier.name());
             fields.remove(Fields.trace.name());
@@ -338,12 +339,14 @@ public enum Item implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        if (record.isExternal()) {
-            return record.getTrace();
-        } else {
-            return record.getIdentifier();
-        }
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(record -> {
+            if (record.isExternal()) {
+                return record.getTrace();
+            } else {
+                return record.getIdentifier();
+            }
+        });
     }
 
     public Record mergeDuplicates(Record left, Record right) {
@@ -353,6 +356,13 @@ public enum Item implements RecordType {
 
     public String getDisplayName(Record item) {
         return item.getLongName();
+    }
+
+    public Baseline setDisplayName(Baseline baseline, String now, Record item, String value) {
+        item = item.asBuilder()
+                .setLongName(value)
+                .build(now);
+        return baseline.add(item);
     }
 
     @Override

@@ -29,9 +29,8 @@ package au.id.soundadvice.systemdesign.consistency;
 import au.id.soundadvice.systemdesign.consistency.suggest.DirectoryNameMismatch;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +38,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -75,7 +75,7 @@ public class AllSuggestions {
             BaselinePair baselines, Map<Optional<Record>, List<Record>> childTraceMap) {
         List<Record> untracedChildren = childTraceMap.getOrDefault(
                 Optional.empty(), Collections.emptyList());
-        Map<RecordType, List<Record>> byType = untracedChildren.stream()
+        Map<Table, List<Record>> byType = untracedChildren.stream()
                 .collect(Collectors.groupingBy(Record::getType));
         return byType.entrySet().stream()
                 .flatMap(entry -> {
@@ -85,7 +85,7 @@ public class AllSuggestions {
 
     private static Stream<Problem> getUntracedParentProblems(
             BaselinePair baselines, Map<Optional<Record>, List<Record>> childTraceMap) {
-        Map<RecordType, List<Record>> byType = baselines.getParent().stream()
+        Map<Table, List<Record>> byType = baselines.getParent().stream()
                 .filter(parentRecord -> !childTraceMap.containsKey(Optional.of(parentRecord)))
                 .collect(Collectors.groupingBy(Record::getType));
         return byType.entrySet().stream()

@@ -27,8 +27,8 @@
 package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;

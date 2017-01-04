@@ -26,14 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.logical;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.physical.Interface;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.util.Iterator;
@@ -44,6 +43,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 import javafx.util.Pair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -51,7 +52,7 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Flow implements RecordType {
+public enum Flow implements Table {
     flow;
 
     static Pair<BaselinePair, Record> addWithGuessedType(BaselinePair baselines, String now, RecordConnectionScope scope) {
@@ -110,7 +111,7 @@ public enum Flow implements RecordType {
     }
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
@@ -270,8 +271,8 @@ public enum Flow implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        return new Object[]{record.getConnectionScope().setDirection(Direction.None), record.getSubtype()};
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(record -> new Object[]{record.getConnectionScope().setDirection(Direction.None), record.getSubtype()});
     }
 
     @Override

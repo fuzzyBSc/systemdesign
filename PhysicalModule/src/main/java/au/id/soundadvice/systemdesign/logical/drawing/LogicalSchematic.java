@@ -28,13 +28,14 @@ package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.Flow;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -95,7 +96,7 @@ public class LogicalSchematic implements Drawing {
     }
 
     @Override
-    public String getIdentifier() {
+    public RecordID getIdentifier() {
         return parentFunctionIdentifier.orElse(this.getClass().getName());
     }
 

@@ -26,11 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -38,16 +37,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum Identity implements RecordType {
+public enum Identity implements Table {
     identity;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
@@ -142,7 +143,7 @@ public enum Identity implements RecordType {
         IDPath itemShortPath = IDPath.valueOfDotted(parentItem.getShortName());
         IDPath childPath = parentPath.resolve(itemShortPath);
         return Record.create(identity)
-                .putAll(parentItem.getFields())
+                .putAll(parentItem.getAllFields())
                 .setShortName(childPath.toString())
                 .build(now);
     }
@@ -160,7 +161,7 @@ public enum Identity implements RecordType {
         // We have done a best effort short path assignment
         // If this resulted in any conflicts we leave it to other code to
         //resolve 
-        Map<String, String> fields = new HashMap<>(childIdentity.getFields());
+        Map<String, String> fields = new HashMap<>(childIdentity.getAllFields());
         fields.put(Fields.shortName.name(), itemShortPath.toString());
         return Record.load(Item.item, fields);
     }
@@ -180,9 +181,9 @@ public enum Identity implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
+    public Stream<UniqueConstraint> getUniqueConstraints() {
         // There can be only one
-        return identity;
+        return Stream.of(record -> identity);
     }
 
     @Override

@@ -26,10 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.text.ParseException;
@@ -37,6 +36,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 import javafx.util.Pair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -44,7 +45,7 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum BudgetAllocation implements RecordType {
+public enum BudgetAllocation implements Table {
     budgetAllocation;
 
     public static Stream<Record> find(Baseline baseline) {
@@ -129,13 +130,13 @@ public enum BudgetAllocation implements RecordType {
     }
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        return new Object[]{record.getContainer(), record.getViewOf()};
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(record -> new Object[]{record.getContainer(), record.getViewOf()});
     }
 
     @Override

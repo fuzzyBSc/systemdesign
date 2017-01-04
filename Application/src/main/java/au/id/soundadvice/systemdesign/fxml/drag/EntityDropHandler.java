@@ -25,10 +25,9 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml.drawing;
+package au.id.soundadvice.systemdesign.fxml.drag;
 
-import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.state.EditState;
@@ -44,7 +43,7 @@ import javafx.util.Pair;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-class EntityDropHandler implements DragTarget.Drop {
+public class EntityDropHandler implements DragTarget.Drop {
 
     private final EditState edit;
 

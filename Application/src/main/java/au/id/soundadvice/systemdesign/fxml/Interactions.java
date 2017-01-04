@@ -28,7 +28,7 @@ package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.budget.Budget;
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.physical.Item;
@@ -38,9 +38,9 @@ import au.id.soundadvice.systemdesign.physical.IDPath;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Interface;
 import au.id.soundadvice.systemdesign.physical.ItemView;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import java.io.File;
@@ -168,7 +168,7 @@ public class Interactions {
             }
 
             String name = Function.find(allocated).parallel()
-                    .map(Function::getTypeName)
+                    .map(Function::getTableName)
                     .collect(new UniqueName("New Function"));
 
             TextInputDialog dialog = new TextInputDialog(name);
@@ -253,7 +253,7 @@ public class Interactions {
                 return;
             }
 
-            TextInputDialog dialog = new TextInputDialog(function.getTypeName());
+            TextInputDialog dialog = new TextInputDialog(function.getTableName());
             dialog.setTitle("Enter number for function");
             dialog.setHeaderText("Enter number for "
                     + function.getDisplayName(allocated));
@@ -264,7 +264,7 @@ public class Interactions {
             String name = result.get();
             edit.updateAllocated(allocated -> {
                 boolean isUnique = Function.find(allocated).parallel()
-                        .map(Function::getTypeName)
+                        .map(Function::getTableName)
                         .noneMatch((existing) -> name.equals(existing));
                 if (isUnique) {
                     return function.setName(allocated, name).getKey();
@@ -460,7 +460,7 @@ public class Interactions {
         if (suggestion.isPresent()) {
             // Flow down to the allocated baseline if needed
             Optional<FlowType> allocatedType = FlowType.get(
-                    allocated, suggestion.get().getTypeName());
+                    allocated, suggestion.get().getTableName());
             if (allocatedType.isPresent()) {
                 return state.and(allocatedType.get());
             } else {
@@ -469,7 +469,7 @@ public class Interactions {
             }
         }
         String name = FlowType.find(allocated).parallel()
-                .map(FlowType::getTypeName)
+                .map(FlowType::getTableName)
                 .collect(new UniqueName("New Flow"));
         Optional<FlowType> trace = FlowType.get(functional, name);
         Pair<Baseline, FlowType> result = FlowType.add(allocated, trace, name);
@@ -509,7 +509,7 @@ public class Interactions {
             }
             FlowType type = current.get().getType().getTarget(allocated);
 
-            TextInputDialog dialog = new TextInputDialog(type.getTypeName());
+            TextInputDialog dialog = new TextInputDialog(type.getTableName());
             dialog.setTitle("New Flow Type");
             dialog.setHeaderText("Enter Flow Type");
 
@@ -524,7 +524,7 @@ public class Interactions {
                     return state;
                 }
                 FlowType currentType = current.get().getType().getTarget(allocated);
-                if (currentType.getTypeName().equals(typeName)) {
+                if (currentType.getTableName().equals(typeName)) {
                     return state;
                 }
                 Optional<FlowType> newType = FlowType.get(allocated, typeName);

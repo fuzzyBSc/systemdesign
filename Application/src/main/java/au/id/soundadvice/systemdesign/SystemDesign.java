@@ -32,7 +32,6 @@ import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.MainController;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -50,6 +49,7 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -104,7 +104,7 @@ public class SystemDesign extends Application {
                     Path rightFile = Paths.get(args[3]);
                     Path tmpFile = Files.createTempFile("merge", "");
                     Path outputFile = leftFile;
-                    RecordType dummyType = new RecordType.Default("");
+                    Table dummyType = new Table.Default("");
                     try (
                             BufferedReader ancestor = Files.newBufferedReader(ancestorFile);
                             BufferedReader left = Files.newBufferedReader(leftFile);

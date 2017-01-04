@@ -27,12 +27,12 @@
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

@@ -24,10 +24,12 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.entity;
+package au.id.soundadvice.systemdesign.moduleapi.collection;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -105,7 +107,7 @@ public class RecordConnectionScope {
     }
 
     public static Optional<RecordConnectionScope> resolve(
-            Baseline baseline, ConnectionScope scope, RecordType type) {
+            Baseline baseline, ConnectionScope scope, Table type) {
         Optional<Record> left = baseline.get(scope.getLeft(), type);
         Optional<Record> right = baseline.get(scope.getRight(), type);
         if (left.isPresent() && right.isPresent()) {
@@ -130,7 +132,7 @@ public class RecordConnectionScope {
         }
     }
 
-    public Optional<RecordConnectionScope> getTrace(BaselinePair baselines, RecordType type) {
+    public Optional<RecordConnectionScope> getTrace(BaselinePair baselines, Table type) {
         if (left.getTrace().isPresent() && right.getTrace().isPresent()) {
             ConnectionScope traceScope = new ConnectionScope(left.getTrace().get(), right.getTrace().get(), scope.getDirection());
             return resolve(baselines.getParent(), traceScope, type);

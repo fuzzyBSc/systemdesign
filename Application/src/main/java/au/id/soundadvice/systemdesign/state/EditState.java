@@ -30,8 +30,8 @@ import au.id.soundadvice.systemdesign.consistency.AutoFix;
 import au.id.soundadvice.systemdesign.concurrent.Changed;
 import au.id.soundadvice.systemdesign.concurrent.Changed.Inhibit;
 import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
@@ -240,7 +240,7 @@ public class EditState {
         return lastChildIdentity.peek();
     }
 
-    public void load(Directory dir) throws IOException {
+    public void load(RecordStorage dir) throws IOException {
         if (dir == null) {
             throw new IOException("Cannot load from null directory");
         }

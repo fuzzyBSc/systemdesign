@@ -26,10 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.entity;
 
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -40,6 +39,7 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  * An immutable store of records, suitable for use within an undo buffer.
@@ -75,7 +75,7 @@ public class RecordStore implements Baseline {
         return true;
     }
 
-    private static Stream<RecordType> extractType(Record record) {
+    private static Stream<Table> extractType(Record record) {
         return Stream.of(record.getType());
     }
 
@@ -95,7 +95,7 @@ public class RecordStore implements Baseline {
         // Collect the stream in order to duplicate it
         List<Record> collectedInput = input.collect(Collectors.toList());
         ByIdentifier byIdentifier = ByIdentifier.valueOf(collectedInput.stream());
-        HashIndex<RecordType> byType = HashIndex.valueOf(
+        HashIndex<Table> byType = HashIndex.valueOf(
                 RecordStore::extractType, collectedInput.stream());
         HashIndex<Optional<String>> byTrace = HashIndex.valueOf(
                 RecordStore::extractTrace, collectedInput.stream());
@@ -139,7 +139,7 @@ public class RecordStore implements Baseline {
     }
 
     private final ByIdentifier byIdentifier;
-    private final HashIndex<RecordType> byType;
+    private final HashIndex<Table> byType;
     private final HashIndex<Optional<String>> byTrace;
     private final HashIndex<ConnectionScope> byScope;
     private final HashIndex<String> byLongName;
@@ -147,7 +147,7 @@ public class RecordStore implements Baseline {
 
     private RecordStore(
             ByIdentifier relations,
-            HashIndex<RecordType> byType,
+            HashIndex<Table> byType,
             HashIndex<Optional<String>> byTrace,
             HashIndex<ConnectionScope> byScope,
             HashIndex<String> byLongName,
@@ -161,7 +161,7 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Optional<Record> get(String identifier, RecordType type) {
+    public Optional<Record> get(String identifier, Table type) {
         return getAnyType(identifier)
                 .filter(record -> type.equals(record.getType()));
     }
@@ -177,7 +177,7 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Stream<Record> findByType(RecordType type) {
+    public Stream<Record> findByType(Table type) {
         return byType.get(type);
     }
 
@@ -197,7 +197,7 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Stream<Record> findReverse(String key, RecordType fromType) {
+    public Stream<Record> findReverse(String key, Table fromType) {
         return reverseReferences.find(key, fromType);
     }
 
@@ -228,7 +228,7 @@ public class RecordStore implements Baseline {
         } else {
             RecordStore tmp = this;
             ByIdentifier tmpRelations = tmp.byIdentifier.put(value);
-            HashIndex<RecordType> tmpByType = tmp.byType.replace(oldValue, value);
+            HashIndex<Table> tmpByType = tmp.byType.replace(oldValue, value);
             HashIndex<Optional<String>> tmpByTrace = tmp.byTrace.replace(oldValue, value);
             HashIndex<ConnectionScope> tmpByScope = tmp.byScope.replace(oldValue, value);
             HashIndex<String> tmpByLongName = tmp.byLongName.replace(oldValue, value);
@@ -257,7 +257,7 @@ public class RecordStore implements Baseline {
             reverseReferences.cascade(toDelete);
 
             ByIdentifier tmpRelations = byIdentifier.removeAll(toDelete);
-            HashIndex<RecordType> tmpByType = byType.removeAll(toDelete);
+            HashIndex<Table> tmpByType = byType.removeAll(toDelete);
             HashIndex<Optional<String>> tmpByTrace = byTrace.removeAll(toDelete);
             HashIndex<ConnectionScope> tmpByScope = byScope.removeAll(toDelete);
             HashIndex<String> tmpByLongName = byLongName.removeAll(toDelete);

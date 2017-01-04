@@ -27,37 +27,37 @@
 package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 /**
+ * Some vocabulary here is intentionally similar to ReqIF concepts, with the
+ * intention that interchange mechanisms may be added in the future.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface DiffInfo {
-
+public enum References {
     /**
-     * Is there even a previous baseline currently selected for diffing?
-     *
-     * @return
+     * For a connection between two records: The record whose identifier is
+     * lexicographically less.
      */
-    public boolean isDiff();
-
+    left,
     /**
-     * Is this entity changed from the previous revision?
-     *
-     * @return
+     * For a connection between two records: The record whose identifier is
+     * lexicographically greater.
      */
-    public boolean isChanged();
-
+    right,
     /**
-     * Has this entity been added since the previous revision?
-     *
-     * @return
+     * A reference to the record that contains this record. For a view this is a
+     * reference to the drawing that contains the view. For a function, this is
+     * the item. For a flow this is the interface.
      */
-    public boolean isAdded();
-
+    container,
     /**
-     * Has this entity been deleted since the previous revision?
-     *
-     * @return
+     * For a view, a reference to the entity this is a view of.
      */
-    public boolean isDeleted();
+    viewOf,
+    /**
+     * A secondary type identifier, referring to another specific record within
+     * the baseline as the type.
+     */
+    subtype;
 
+    public static String PREFIX = "ref:";
 }

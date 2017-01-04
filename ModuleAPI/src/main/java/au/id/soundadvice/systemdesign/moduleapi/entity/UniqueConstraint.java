@@ -1,11 +1,11 @@
 /*
  * This is free and unencumbered software released into the public domain.
- *
+ * 
  * Anyone is free to copy, modify, publish, use, compile, sell, or
  * distribute this software, either in source code form or as a compiled
  * binary, for any purpose, commercial or non-commercial, and by any
  * means.
- *
+ * 
  * In jurisdictions that recognize copyright laws, the author or authors
  * of this software dedicate any and all copyright interest in the
  * software to the public domain. We make this dedication for the benefit
@@ -13,7 +13,7 @@
  * successors. We intend this dedication to be an overt act of
  * relinquishment in perpetuity of all present and future rights to this
  * software under copyright law.
- *
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,23 +21,19 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
+ * 
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi;
+package au.id.soundadvice.systemdesign.moduleapi.entity;
+
+import java.util.function.Function;
 
 /**
- * An object that has a persistent, globally unique identifier. Multiple
- * versions of the object may exist over time with the same unique identifier.
+ * Return an object for the given Record that must be unique across a given
+ * Table for this constraint
  *
- * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
+ * @author fuzzy
  */
-public interface Identifiable {
+public interface UniqueConstraint extends Function<Record, Object> {
 
-    /**
-     * Returns this instances persistent unique identifier.
-     *
-     * @return
-     */
-    public String getIdentifier();
 }

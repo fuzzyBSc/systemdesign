@@ -26,10 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.physical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import static au.id.soundadvice.systemdesign.physical.Interface.findForItem;
 import java.util.Iterator;
@@ -40,6 +39,8 @@ import javafx.geometry.Point2D;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A physical Item. Item is used as a fairly loose term in the model and could
@@ -56,7 +57,7 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum ItemView implements RecordType {
+public enum ItemView implements Table {
     itemView;
 
     public static Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
@@ -124,7 +125,7 @@ public enum ItemView implements RecordType {
     }
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
@@ -147,9 +148,8 @@ public enum ItemView implements RecordType {
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        // Only one item view is allowed for each item, presently
-        return record.getViewOf();
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(Record::getViewOf);
     }
 
     @Override

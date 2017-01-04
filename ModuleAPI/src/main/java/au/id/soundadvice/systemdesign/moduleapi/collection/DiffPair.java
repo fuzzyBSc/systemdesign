@@ -25,13 +25,16 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.entity;
+package au.id.soundadvice.systemdesign.moduleapi.collection;
 
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -105,7 +108,7 @@ public class DiffPair<T> implements DiffInfo {
 
     public static Stream<DiffPair<Record>> find(
             DiffPair<?> baselines,
-            Function<Baseline, Stream<Record>> finder, RecordType recordType) {
+            Function<Baseline, Stream<Record>> finder, Table recordType) {
         return baselines.map((baseline, record) -> finder.apply(baseline))
                 .stream()
                 .flatMap(stream -> stream)
@@ -115,7 +118,7 @@ public class DiffPair<T> implements DiffInfo {
     }
 
     public static DiffPair<Record> get(
-            DiffPair<?> baselines, String identifier, RecordType type) {
+            DiffPair<?> baselines, RecordID identifier, Table type) {
         Optional<Record> wasInstance = baselines.getWasBaseline().flatMap(
                 wasBaseline -> wasBaseline.get(identifier, type));
         Optional<Record> isInstance = baselines.getIsBaseline().get(identifier, type);

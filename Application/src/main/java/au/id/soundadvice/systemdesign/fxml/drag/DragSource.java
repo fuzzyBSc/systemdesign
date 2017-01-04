@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drag;
 
-import au.id.soundadvice.systemdesign.moduleapi.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javafx.scene.Node;

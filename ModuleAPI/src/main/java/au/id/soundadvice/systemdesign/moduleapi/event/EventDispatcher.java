@@ -26,9 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.event;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +38,7 @@ import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.util.Pair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -48,13 +48,13 @@ public enum EventDispatcher {
     INSTANCE;
 
     private static final Logger LOG = Logger.getLogger(EventDispatcher.class.getName());
-    private final ConcurrentMap<RecordType, List<BiFunction<BaselinePair, Record, BaselinePair>>> flowDownListeners = new ConcurrentHashMap<>();
-    private final ConcurrentMap<RecordType, List<BiFunction<BaselinePair, Record, BaselinePair>>> createListeners = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<RecordType, RecordType>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> copyOperations = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<RecordType, RecordType>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> moveOperations = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<RecordType, RecordType>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> linkOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Table, List<BiFunction<BaselinePair, Record, BaselinePair>>> flowDownListeners = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Table, List<BiFunction<BaselinePair, Record, BaselinePair>>> createListeners = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> copyOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> moveOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> linkOperations = new ConcurrentHashMap<>();
 
-    public void addFlowDownListener(RecordType type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
+    public void addFlowDownListener(Table type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
         List<BiFunction<BaselinePair, Record, BaselinePair>> list = flowDownListeners.get(type);
         if (list == null) {
             list = new CopyOnWriteArrayList<>();
@@ -66,7 +66,7 @@ public enum EventDispatcher {
         list.add(listener);
     }
 
-    public void addCreateListener(RecordType type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
+    public void addCreateListener(Table type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
         List<BiFunction<BaselinePair, Record, BaselinePair>> list = createListeners.get(type);
         if (list == null) {
             list = new CopyOnWriteArrayList<>();
@@ -104,27 +104,27 @@ public enum EventDispatcher {
         return baselines;
     }
 
-    public void setCopyOperation(RecordType from, RecordType to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setCopyOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
         copyOperations.put(new Pair<>(from, to), operation);
     }
 
-    public void setMoveOperation(RecordType from, RecordType to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setMoveOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
         moveOperations.put(new Pair<>(from, to), operation);
     }
 
-    public void setLinkOperation(RecordType from, RecordType to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setLinkOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
         linkOperations.put(new Pair<>(from, to), operation);
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getCopyOperation(RecordType from, RecordType to) {
+    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getCopyOperation(Table from, Table to) {
         return Optional.ofNullable(copyOperations.get(new Pair<>(from, to)));
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getMoveOperation(RecordType from, RecordType to) {
+    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getMoveOperation(Table from, Table to) {
         return Optional.ofNullable(moveOperations.get(new Pair<>(from, to)));
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getLinkOperation(RecordType from, RecordType to) {
+    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getLinkOperation(Table from, Table to) {
         return Optional.ofNullable(linkOperations.get(new Pair<>(from, to)));
     }
 }

@@ -31,7 +31,7 @@ import au.id.soundadvice.systemdesign.logical.Flow;
 import au.id.soundadvice.systemdesign.logical.FlowType;
 import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.physical.Interface;
 import au.id.soundadvice.systemdesign.physical.Item;
 import au.id.soundadvice.systemdesign.physical.ItemView;

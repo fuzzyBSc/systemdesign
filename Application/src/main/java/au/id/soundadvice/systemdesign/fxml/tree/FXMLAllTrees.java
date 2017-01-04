@@ -24,31 +24,33 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml.drawing;
+package au.id.soundadvice.systemdesign.fxml.tree;
 
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
-import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
+import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.Accordion;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.TreeView;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class FXMLAllDrawings {
+public class FXMLAllTrees {
 
-    public FXMLAllDrawings(Interactions interactions, EditState edit, TabPane tabs) {
+    public FXMLAllTrees(Interactions interactions, EditState edit, Accordion tabs) {
         this.interactions = interactions;
         this.edit = edit;
         this.tabs = tabs;
@@ -58,8 +60,8 @@ public class FXMLAllDrawings {
     private final SingleRunnable onChange;
     private final SingleRunnable applyChange = new SingleRunnable(
             JFXExecutor.instance(), new ApplyChange());
-    private final Map<String, FXMLDrawingTab> currentDrawings = new HashMap<>();
-    private final AtomicReference<List<Drawing>> nextDrawings = new AtomicReference<>();
+    private final Map<String, FXMLTree> currentTrees = new HashMap<>();
+    private final AtomicReference<List<Tree>> nextTrees = new AtomicReference<>();
 
     public void start() {
         edit.subscribe(onChange);
@@ -68,20 +70,19 @@ public class FXMLAllDrawings {
 
     private final Interactions interactions;
     private final EditState edit;
-    private final TabPane tabs;
+    private final Accordion tabs;
 
     class OnChange implements Runnable {
 
         @Override
         public void run() {
-            DiffPair<Baseline> baselines = DiffPair.get(edit.getDiffBaseline(), edit.getChild());
-            List<Drawing> drawings = Modules.getModules()
-                    .flatMap(module -> module.getDrawings(baselines))
+            BaselinePair baselines = edit.getState();
+            List<Tree> drawings = Modules.getModules()
+                    .flatMap(module -> module.getTrees(baselines))
                     .collect(Collectors.toList());
-            nextDrawings.set(drawings);
+            nextTrees.set(drawings);
             applyChange.run();
         }
-
     }
 
     class ApplyChange implements Runnable {
@@ -89,9 +90,13 @@ public class FXMLAllDrawings {
         @Override
         public void run() {
             updateElements(
-                    nextDrawings.get().stream(),
-                    currentDrawings,
-                    (state) -> new FXMLDrawingTab(interactions, edit, tabs));
+                    nextTrees.get().stream(),
+                    currentTrees,
+                    state -> {
+                        TreeView<TreeNode> tree = new TreeView<>();
+                        TitledPane tab = new TitledPane(state.getLabel(), tree);
+                        return new FXMLTree(interactions, edit, tabs, tab, tree);
+                    });
         }
 
     }

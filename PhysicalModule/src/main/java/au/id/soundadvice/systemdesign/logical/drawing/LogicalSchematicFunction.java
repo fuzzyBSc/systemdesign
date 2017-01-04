@@ -30,9 +30,10 @@ import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.logical.FunctionView;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.EntityStyle;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -132,7 +133,7 @@ public class LogicalSchematicFunction implements DrawingEntity {
     }
 
     @Override
-    public String getIdentifier() {
+    public RecordID getIdentifier() {
         return view.getSample().getIdentifier();
     }
 

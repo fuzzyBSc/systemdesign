@@ -29,16 +29,18 @@ package au.id.soundadvice.systemdesign.physical;
 import au.id.soundadvice.systemdesign.physical.drawing.PhysicalSchematic;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
+import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import au.id.soundadvice.systemdesign.physical.tree.PhysicalTree;
 import java.util.Optional;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -85,7 +87,7 @@ public class PhysicalModule implements Module {
     }
 
     @Override
-    public Stream<RecordType> getRecordTypes() {
+    public Stream<Table> getTables() {
         return Stream.of(
                 Identity.identity,
                 Item.item,
@@ -96,5 +98,10 @@ public class PhysicalModule implements Module {
     @Override
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
         return Stream.of(new PhysicalSchematic(baselines));
+    }
+
+    @Override
+    public Stream<Tree> getTrees(BaselinePair baselines) {
+        return Stream.of(new PhysicalTree(baselines));
     }
 }

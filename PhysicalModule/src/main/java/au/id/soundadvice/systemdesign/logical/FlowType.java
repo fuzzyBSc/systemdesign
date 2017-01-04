@@ -26,11 +26,10 @@
  */
 package au.id.soundadvice.systemdesign.logical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.HashMap;
@@ -38,6 +37,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -45,18 +46,18 @@ import javax.annotation.CheckReturnValue;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum FlowType implements RecordType {
+public enum FlowType implements Table {
     flowType;
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
+    public Stream<UniqueConstraint> getUniqueConstraints() {
         // Types have unique long names within a baseline
-        return record.getLongName();
+        return Stream.of(Record::getLongName);
     }
 
     @Override
@@ -117,7 +118,7 @@ public enum FlowType implements RecordType {
         if (parent.isPresent()) {
             Optional<Record> child = baselines.getChild().findByTrace(Optional.of(parent.get().getIdentifier())).findAny();
             if (child.isPresent()) {
-                HashMap<String, String> fields = new HashMap<>(parent.get().getFields());
+                HashMap<String, String> fields = new HashMap<>(parent.get().getAllFields());
                 fields.remove(Fields.identifier.name());
                 fields.remove(Fields.trace.name());
                 Record newChild = child.get().asBuilder()
@@ -143,7 +144,7 @@ public enum FlowType implements RecordType {
         Optional<Record> parent = record.getTrace()
                 .flatMap(trace -> baselines.getParent().get(trace, flowType));
         if (child.isPresent() && parent.isPresent()) {
-            HashMap<String, String> fields = new HashMap<>(child.get().getFields());
+            HashMap<String, String> fields = new HashMap<>(child.get().getAllFields());
             fields.remove(Fields.identifier.name());
             fields.remove(Fields.trace.name());
             Record newParent = parent.get().asBuilder()
@@ -163,7 +164,7 @@ public enum FlowType implements RecordType {
     public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChildren) {
         // Duplicate children are handled elsewhere
         return traceChildren.flatMap(childType -> {
-            HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
+            HashMap<String, String> parentFields = new HashMap<>(traceParent.getAllFields());
             HashMap<String, String> childFields = new HashMap<>(childType.getFields());
             for (Fields field : new Fields[]{Fields.identifier, Fields.trace}) {
                 parentFields.remove(field.name());

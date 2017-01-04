@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
 import java.util.function.BiFunction;

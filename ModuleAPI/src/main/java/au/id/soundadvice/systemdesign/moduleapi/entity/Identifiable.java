@@ -24,43 +24,22 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.storage;
-
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import java.io.IOException;
-import java.util.Optional;
-import java.util.stream.Stream;
+package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 /**
+ * An object that has a persistent, globally unique identifier. Multiple
+ * versions of the object may exist over time with the same unique identifier.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface RecordStorage {
+public interface Identifiable {
+
+    public static final String IDENTIFIER = "identifier";
 
     /**
-     * Load the whole baseline.
+     * Returns this instances persistent unique identifier.
      *
-     * @param factory The factory to use to create RecordType objects
-     * @param label If empty, load the current baseline. If nonempty, load the
-     * nominated branch or tag.
-     * @return The baseline
+     * @return
      */
-    public Baseline loadBaseline(RecordTypeFactory factory, Optional<String> label) throws IOException;
-
-    public Stream<VersionInfo> getBranches() throws IOException;
-
-    public Stream<VersionInfo> getVersions() throws IOException;
-
-    /**
-     * Save the whole baseline.
-     *
-     * @param relations The baseline to store
-     */
-    public void saveBaseline(Baseline relations) throws IOException;
-
-    public Optional<RecordStorage> getParent();
-
-    public Optional<RecordStorage> getChild(String identifier) throws IOException;
-
-    public boolean identityFileExists() throws IOException;
+    public RecordID getIdentifier();
 }

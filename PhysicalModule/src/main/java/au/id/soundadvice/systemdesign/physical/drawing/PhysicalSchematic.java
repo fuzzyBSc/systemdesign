@@ -29,9 +29,10 @@ package au.id.soundadvice.systemdesign.physical.drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Interface;
 import au.id.soundadvice.systemdesign.physical.ItemView;
@@ -91,7 +92,7 @@ public class PhysicalSchematic implements Drawing {
     }
 
     @Override
-    public String getIdentifier() {
+    public RecordID getIdentifier() {
         return identity.getIdentifier();
     }
 

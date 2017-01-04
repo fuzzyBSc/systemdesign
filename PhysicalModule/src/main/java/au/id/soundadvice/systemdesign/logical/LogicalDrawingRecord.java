@@ -26,23 +26,21 @@
  */
 package au.id.soundadvice.systemdesign.logical;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.CheckReturnValue;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum LogicalDrawingRecord implements RecordType {
+public enum LogicalDrawingRecord implements Table {
     logicalDrawing;
 
     static Record createForContext(String now) {
@@ -59,13 +57,13 @@ public enum LogicalDrawingRecord implements RecordType {
     }
 
     @Override
-    public String getTypeName() {
+    public String getTableName() {
         return name();
     }
 
     @Override
-    public Object getUniqueConstraint(Record record) {
-        return record.getTrace();
+    public Stream<UniqueConstraint> getUniqueConstraints() {
+        return Stream.of(Record::getTrace);
     }
 
     @Override

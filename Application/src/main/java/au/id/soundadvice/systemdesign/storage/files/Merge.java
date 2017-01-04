@@ -241,8 +241,8 @@ public class Merge {
             }
             Map<String, String> mergedFields = Stream.concat(
                     // Find all keys
-                    triplet.left.get().getFields().keySet().stream(),
-                    triplet.right.get().getFields().keySet().stream())
+                    triplet.left.get().getAllFields().keySet().stream(),
+                    triplet.right.get().getAllFields().keySet().stream())
                     .distinct()
                     .flatMap(key -> {
                         // Perform a three-way merge on each cell

@@ -27,10 +27,11 @@
 package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.Flow;
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -130,7 +131,7 @@ public class LogicalSchematicFlow implements DrawingConnector {
     }
 
     @Override
-    public String getIdentifier() {
+    public RecordID getIdentifier() {
         return Stream.of(flow.getSample().getIdentifier(), leftView.getIdentifier(), rightView.getIdentifier())
                 .collect(Collectors.joining(":"));
     }

@@ -24,7 +24,7 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi;
+package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -94,11 +94,11 @@ public class ConnectionScope {
         return result;
     }
 
-    public String getLeft() {
+    public RecordID getLeft() {
         return left;
     }
 
-    public String getRight() {
+    public RecordID getRight() {
         return right;
     }
 
@@ -106,7 +106,7 @@ public class ConnectionScope {
         return direction;
     }
 
-    public Direction getDirectionFrom(String from) {
+    public Direction getDirectionFrom(RecordID from) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return direction;
@@ -122,7 +122,7 @@ public class ConnectionScope {
         this(left.getIdentifier(), right.getIdentifier());
     }
 
-    public ConnectionScope(String left, String right) {
+    public ConnectionScope(RecordID left, RecordID right) {
         this(left, right, Direction.None);
     }
 
@@ -130,7 +130,7 @@ public class ConnectionScope {
         this(left.getIdentifier(), right.getIdentifier(), direction);
     }
 
-    public ConnectionScope(String left, String right, Direction direction) {
+    public ConnectionScope(RecordID left, RecordID right, Direction direction) {
         if (left.compareTo(right) < 0) {
             this.left = left;
             this.right = right;
@@ -143,8 +143,8 @@ public class ConnectionScope {
         }
     }
 
-    private final String left;
-    private final String right;
+    private final RecordID left;
+    private final RecordID right;
     private final Direction direction;
 
     @CheckReturnValue
@@ -157,7 +157,7 @@ public class ConnectionScope {
     }
 
     @CheckReturnValue
-    public ConnectionScope setDirectionFrom(String from, Direction value) {
+    public ConnectionScope setDirectionFrom(RecordID from, Direction value) {
         if (from.equals(left)) {
             // The from orientation is already our left
             return setDirection(value);
@@ -169,7 +169,7 @@ public class ConnectionScope {
         }
     }
 
-    public String otherEnd(String identifier) throws IllegalArgumentException {
+    public RecordID otherEnd(RecordID identifier) throws IllegalArgumentException {
         if (identifier.equals(left)) {
             return right;
         } else if (identifier.equals(right)) {
@@ -179,11 +179,11 @@ public class ConnectionScope {
         }
     }
 
-    public boolean hasEnd(String identifier) {
+    public boolean hasEnd(RecordID identifier) {
         return identifier.equals(left) || identifier.equals(right);
     }
 
-    public Stream<String> ends() {
+    public Stream<RecordID> ends() {
         return Stream.of(left, right);
     }
 

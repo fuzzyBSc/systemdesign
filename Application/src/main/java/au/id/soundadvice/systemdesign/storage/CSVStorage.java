@@ -31,11 +31,10 @@ import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 import au.id.soundadvice.systemdesign.entity.RecordStore;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordTypeFactory;
 import au.id.soundadvice.systemdesign.physical.Identity;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import au.id.soundadvice.systemdesign.storage.files.SaveTransaction;
@@ -60,6 +59,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -90,7 +90,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
         return Optional.ofNullable(line);
     }
 
-    private Stream<Record> loadRecords(RecordType type, CSVReader reader) throws IOException {
+    private Stream<Record> loadRecords(Table type, CSVReader reader) throws IOException {
         Optional<String[]> header = readLine(reader);
         if (header.isPresent()) {
             for (;;) {
@@ -162,7 +162,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
 
     private static void saveRecords(SaveTransaction transaction, Path csv, List<Record> records) throws IOException {
         String[] headers = records.stream()
-                .flatMap(record -> record.getFields().keySet().stream())
+                .flatMap(record -> record.getAllFields().keySet().stream())
                 .distinct().sorted()
                 .toArray(String[]::new);
         Path directory = csv.getParent();
@@ -191,7 +191,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
                         .collect(Collectors.groupingBy(Record::getType))
                         // Save each type
                         .entrySet().stream().forEach(entry -> {
-                            Path csv = path.resolve(entry.getKey().getTypeName() + EXT);
+                            Path csv = path.resolve(entry.getKey().getTableName() + EXT);
                             try {
                                 saveRecords(transaction, csv, entry.getValue());
                             } catch (IOException ex) {

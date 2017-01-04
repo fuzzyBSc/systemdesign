@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.Iterator;
 

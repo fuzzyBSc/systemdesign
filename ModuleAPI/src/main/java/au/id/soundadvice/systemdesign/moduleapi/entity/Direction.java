@@ -24,7 +24,7 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi;
+package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;

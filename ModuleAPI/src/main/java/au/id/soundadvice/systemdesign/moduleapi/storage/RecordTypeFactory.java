@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.storage;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -34,6 +34,6 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
  */
 public interface RecordTypeFactory {
 
-    public RecordType get(String typename);
+    public Table get(String typename);
 
 }

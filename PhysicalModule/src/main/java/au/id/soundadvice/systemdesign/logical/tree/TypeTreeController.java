@@ -24,16 +24,17 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.fxml;
+package au.id.soundadvice.systemdesign.logical.tree;
 
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.DropHandlers.FunctionDropHandler;
+import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.logical.FlowType;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import java.util.Optional;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
@@ -190,7 +191,7 @@ public class TypeTreeController {
 
         @CheckReturnValue
         private TextField createTextField(FlowType function) {
-            TextField node = new TextField(function.getTypeName());
+            TextField node = new TextField(function.getTableName());
             node.setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(getItem());

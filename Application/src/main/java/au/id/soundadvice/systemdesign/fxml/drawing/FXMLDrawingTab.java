@@ -26,12 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
+import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateScopes;
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;

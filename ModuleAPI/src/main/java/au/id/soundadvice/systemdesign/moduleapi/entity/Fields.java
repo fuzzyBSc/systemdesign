@@ -34,12 +34,6 @@ package au.id.soundadvice.systemdesign.moduleapi.entity;
  */
 public enum Fields {
     /**
-     * The identifier for this record. The identifier is constant across all
-     * versions of the record, and is expected to be distinct from the
-     * identifier of all other records across space and time.
-     */
-    identifier,
-    /**
      * The date and time this record was last modified (iso8601 format).
      */
     lastChange,
@@ -64,16 +58,6 @@ public enum Fields {
      */
     desc,
     /**
-     * For a connection between two records: The record whose identifier is
-     * lexicographically less.
-     */
-    refLeft,
-    /**
-     * For a connection between two records: The record whose identifier is
-     * lexicographically greater.
-     */
-    refRight,
-    /**
      * For a connection between two records: The direction of the connection.
      */
     direction,
@@ -87,16 +71,6 @@ public enum Fields {
      */
     color,
     /**
-     * A reference to the record that contains this record. For a view this is a
-     * reference to the drawing that contains the view. For a function, this is
-     * the item. For a flow this is the interface.
-     */
-    refContainer,
-    /**
-     * For a view, a reference to the entity this is a view of.
-     */
-    refViewOf,
-    /**
      * For a view occupying a definite point, the X coordinate within the
      * drawing.
      */
@@ -106,9 +80,4 @@ public enum Fields {
      * drawing.
      */
     originY,
-    /**
-     * A secondary type identifier, referring to another specific record within
-     * the baseline as the type.
-     */
-    refSubtype,
 }

@@ -24,8 +24,9 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.entity;
+package au.id.soundadvice.systemdesign.moduleapi.collection;
 
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
 import javafx.util.Pair;
@@ -36,6 +37,10 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class BaselinePair {
+
+    public enum Selector {
+        PARENT, CHILD
+    }
 
     @Override
     public int hashCode() {
@@ -67,6 +72,17 @@ public class BaselinePair {
         return new Pair<>(this, record);
     }
 
+    public Baseline get(Selector selector) {
+        switch (selector) {
+            case PARENT:
+                return getParent();
+            case CHILD:
+                return getChild();
+            default:
+                throw new AssertionError(selector.name());
+        }
+    }
+
     public Baseline getParent() {
         return parent;
     }
@@ -81,6 +97,17 @@ public class BaselinePair {
     }
     private final Baseline parent;
     private final Baseline child;
+
+    public BaselinePair set(Selector selector, Baseline value) {
+        switch (selector) {
+            case PARENT:
+                return setParent(value);
+            case CHILD:
+                return setChild(value);
+            default:
+                throw new AssertionError(selector.name());
+        }
+    }
 
     @CheckReturnValue
     public BaselinePair setParent(Baseline value) {

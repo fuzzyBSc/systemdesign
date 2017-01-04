@@ -27,17 +27,18 @@
 package au.id.soundadvice.systemdesign.logical;
 
 import au.id.soundadvice.systemdesign.logical.drawing.LogicalSchematic;
-import au.id.soundadvice.systemdesign.moduleapi.ConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.Direction;
+import au.id.soundadvice.systemdesign.logical.tree.LogicalTree;
+import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordConnectionScope;
-import au.id.soundadvice.systemdesign.moduleapi.entity.RecordType;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
+import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.physical.Identity;
 import au.id.soundadvice.systemdesign.physical.Interface;
@@ -46,6 +47,7 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.util.Pair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
 /**
  *
@@ -141,7 +143,7 @@ public class LogicalModule implements Module {
     }
 
     @Override
-    public Stream<RecordType> getRecordTypes() {
+    public Stream<Table> getTables() {
         return Stream.of(
                 Function.function,
                 FunctionView.functionView,
@@ -153,5 +155,10 @@ public class LogicalModule implements Module {
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
         return baselines.getIsBaseline().findByType(LogicalDrawingRecord.logicalDrawing)
                 .map(entity -> new LogicalSchematic(baselines, entity));
+    }
+
+    @Override
+    public Stream<Tree> getTrees(BaselinePair baselines) {
+        return Stream.of(new LogicalTree(baselines));
     }
 }

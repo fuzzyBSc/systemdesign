@@ -26,7 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.suggest;
 
-import au.id.soundadvice.systemdesign.moduleapi.entity.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
