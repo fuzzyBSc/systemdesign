@@ -41,7 +41,7 @@ public interface IdentityValidator {
 
     public String getIdentityFilename();
 
-    public Path getDirectoryPath();
+    public Path getPath();
 
     public boolean isIdentityMatched(BufferedReader reader);
 }

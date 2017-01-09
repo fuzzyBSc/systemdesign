@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.entity;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -79,7 +80,7 @@ public class RecordStore implements Baseline {
         return Stream.of(record.getType());
     }
 
-    private static Stream<Optional<String>> extractTrace(Record record) {
+    private static Stream<Optional<RecordID>> extractTrace(Record record) {
         return Stream.of(record.getTrace());
     }
 
@@ -97,7 +98,7 @@ public class RecordStore implements Baseline {
         ByIdentifier byIdentifier = ByIdentifier.valueOf(collectedInput.stream());
         HashIndex<Table> byType = HashIndex.valueOf(
                 RecordStore::extractType, collectedInput.stream());
-        HashIndex<Optional<String>> byTrace = HashIndex.valueOf(
+        HashIndex<Optional<RecordID>> byTrace = HashIndex.valueOf(
                 RecordStore::extractTrace, collectedInput.stream());
         HashIndex<ConnectionScope> byScope = HashIndex.valueOf(
                 RecordStore::extractScope, collectedInput.stream());
@@ -107,7 +108,7 @@ public class RecordStore implements Baseline {
         ByReverse byReverse = reverseLoader.build();
 
         // Delete any items needed to establish referential integrity
-        List<String> toDelete = reverseLoader.getDeletedRecords().parallel()
+        List<RecordID> toDelete = reverseLoader.getDeletedRecords().parallel()
                 .collect(Collectors.toList());
         if (!toDelete.isEmpty()) {
             byIdentifier = byIdentifier.removeAll(toDelete);
@@ -140,7 +141,7 @@ public class RecordStore implements Baseline {
 
     private final ByIdentifier byIdentifier;
     private final HashIndex<Table> byType;
-    private final HashIndex<Optional<String>> byTrace;
+    private final HashIndex<Optional<RecordID>> byTrace;
     private final HashIndex<ConnectionScope> byScope;
     private final HashIndex<String> byLongName;
     private final ByReverse reverseReferences;
@@ -148,7 +149,7 @@ public class RecordStore implements Baseline {
     private RecordStore(
             ByIdentifier relations,
             HashIndex<Table> byType,
-            HashIndex<Optional<String>> byTrace,
+            HashIndex<Optional<RecordID>> byTrace,
             HashIndex<ConnectionScope> byScope,
             HashIndex<String> byLongName,
             ByReverse reverseRelations) {
@@ -161,13 +162,13 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Optional<Record> get(String identifier, Table type) {
+    public Optional<Record> get(RecordID identifier, Table type) {
         return getAnyType(identifier)
                 .filter(record -> type.equals(record.getType()));
     }
 
     @Override
-    public Optional<Record> getAnyType(String identifier) {
+    public Optional<Record> getAnyType(RecordID identifier) {
         return byIdentifier.get(identifier);
     }
 
@@ -182,7 +183,7 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Stream<Record> findByTrace(Optional<String> parentIdentifier) {
+    public Stream<Record> findByTrace(Optional<RecordID> parentIdentifier) {
         return byTrace.get(parentIdentifier);
     }
 
@@ -197,12 +198,12 @@ public class RecordStore implements Baseline {
     }
 
     @Override
-    public Stream<Record> findReverse(String key, Table fromType) {
+    public Stream<Record> findReverse(RecordID key, Table fromType) {
         return reverseReferences.find(key, fromType);
     }
 
     @Override
-    public Stream<Record> findReverse(String key) {
+    public Stream<Record> findReverse(RecordID key) {
         return reverseReferences.find(key);
     }
 
@@ -210,8 +211,8 @@ public class RecordStore implements Baseline {
     @Override
     public RecordStore add(Record value) {
         // Check referential integrity
-        boolean referencesOK = value.getReferenceFields().parallel()
-                .map(Map.Entry<String, String>::getValue)
+        boolean referencesOK = value.getReferences().entrySet().parallelStream()
+                .map(Map.Entry<String, RecordID>::getValue)
                 .allMatch(targetIdentifier -> {
                     Optional<Record> target = byIdentifier.get(targetIdentifier);
                     return target.isPresent();
@@ -221,7 +222,7 @@ public class RecordStore implements Baseline {
             return this;
         }
 
-        String key = value.getIdentifier();
+        RecordID key = value.getIdentifier();
         Optional<Record> oldValue = byIdentifier.get(key);
         if (value.equals(oldValue.orElse(null))) {
             return this;
@@ -229,7 +230,7 @@ public class RecordStore implements Baseline {
             RecordStore tmp = this;
             ByIdentifier tmpRelations = tmp.byIdentifier.put(value);
             HashIndex<Table> tmpByType = tmp.byType.replace(oldValue, value);
-            HashIndex<Optional<String>> tmpByTrace = tmp.byTrace.replace(oldValue, value);
+            HashIndex<Optional<RecordID>> tmpByTrace = tmp.byTrace.replace(oldValue, value);
             HashIndex<ConnectionScope> tmpByScope = tmp.byScope.replace(oldValue, value);
             HashIndex<String> tmpByLongName = tmp.byLongName.replace(oldValue, value);
             ByReverse tmpReverseRelations
@@ -242,13 +243,13 @@ public class RecordStore implements Baseline {
 
     @CheckReturnValue
     @Override
-    public RecordStore remove(String key) {
+    public RecordStore remove(RecordID key) {
         return removeAll(Stream.of(key));
     }
 
     @CheckReturnValue
-    public RecordStore removeAll(Stream<String> seed) {
-        HashSet<String> toDelete = seed.parallel()
+    public RecordStore removeAll(Stream<RecordID> seed) {
+        HashSet<RecordID> toDelete = seed.parallel()
                 .filter(key -> byIdentifier.get(key).isPresent())
                 .collect(Collectors.toCollection(HashSet::new));
         if (toDelete.isEmpty()) {
@@ -258,7 +259,7 @@ public class RecordStore implements Baseline {
 
             ByIdentifier tmpRelations = byIdentifier.removeAll(toDelete);
             HashIndex<Table> tmpByType = byType.removeAll(toDelete);
-            HashIndex<Optional<String>> tmpByTrace = byTrace.removeAll(toDelete);
+            HashIndex<Optional<RecordID>> tmpByTrace = byTrace.removeAll(toDelete);
             HashIndex<ConnectionScope> tmpByScope = byScope.removeAll(toDelete);
             HashIndex<String> tmpByLongName = byLongName.removeAll(toDelete);
             ByReverse tmpReverseRelations
@@ -312,7 +313,7 @@ public class RecordStore implements Baseline {
     }
 
     @CheckReturnValue
-    private RecordStore redirectReferences(String now, String toIdentifier, String fromIdentifier) {
+    private RecordStore redirectReferences(String now, RecordID toIdentifier, RecordID fromIdentifier) {
         Iterator<Record.Builder> it = reverseReferences.find(fromIdentifier)
                 .map(record -> record.asBuilder().redirectReferences(toIdentifier, fromIdentifier))
                 .iterator();

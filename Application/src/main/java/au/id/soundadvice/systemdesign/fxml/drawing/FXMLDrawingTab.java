@@ -36,6 +36,7 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -90,7 +91,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
     }
 
     private final AtomicBoolean started = new AtomicBoolean(false);
-    private final Map<String, FXMLDrawingNode> currentNodes = new HashMap<>();
+    private final Map<RecordID, FXMLDrawingNode> currentNodes = new HashMap<>();
     private final Map<ConnectionScope, FXMLDrawingConnectorScope> currentConnectors = new HashMap<>();
 
     private final Interactions interactions;

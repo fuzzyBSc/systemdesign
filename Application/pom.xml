@@ -151,11 +151,6 @@
             <artifactId>ModuleAPI</artifactId>
             <version>1.0</version>
         </dependency>
-        <dependency>
-            <groupId>au.id.soundadvice.systemdesign</groupId>
-            <artifactId>BudgetModule</artifactId>
-            <version>1.0</version>
-        </dependency>
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

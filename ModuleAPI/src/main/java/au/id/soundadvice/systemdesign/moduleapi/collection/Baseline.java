@@ -152,4 +152,6 @@ public interface Baseline {
 
     @CheckReturnValue
     public Baseline mergeRecords(String now, Stream<Record> toMerge, BinaryOperator<Record> mergeFunction);
+
+    public boolean isEmpty();
 }

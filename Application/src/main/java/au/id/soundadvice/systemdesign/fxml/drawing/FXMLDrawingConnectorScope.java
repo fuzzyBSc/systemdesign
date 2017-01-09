@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,7 +60,7 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final Group group;
     private final ConnectionScope scope;
-    private final Map<String, FXMLDrawingNode> currentNodes;
+    private final Map<RecordID, FXMLDrawingNode> currentNodes;
     private Optional<Point2D> previousLeftPoint = Optional.empty();
     private Optional<Point2D> previousRightPoint = Optional.empty();
     private Optional<List<DrawingConnector>> previousConnectors = Optional.empty();
@@ -67,7 +68,7 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
     FXMLDrawingConnectorScope(
             Interactions interactions, EditState edit,
             ConnectionScope scope,
-            Map<String, FXMLDrawingNode> currentNodes,
+            Map<RecordID, FXMLDrawingNode> currentNodes,
             Group parent) {
         this.edit = edit;
         this.interactions = interactions;

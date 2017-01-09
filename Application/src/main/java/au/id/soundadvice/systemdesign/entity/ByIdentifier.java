@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.entity;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -86,36 +87,36 @@ public class ByIdentifier {
                         Collectors.toConcurrentMap(Identifiable::getIdentifier, Function.identity()))));
     }
 
-    private final Map<String, Record> records;
+    private final Map<RecordID, Record> records;
 
-    private ByIdentifier(Map<String, Record> unmodifiable) {
+    private ByIdentifier(Map<RecordID, Record> unmodifiable) {
         this.records = unmodifiable;
     }
 
-    public Optional<Record> get(String key) {
+    public Optional<Record> get(RecordID key) {
         return Optional.ofNullable(records.get(key));
     }
 
     @CheckReturnValue
     public ByIdentifier put(Record value) {
-        String key = value.getIdentifier();
+        RecordID key = value.getIdentifier();
         Record old = records.get(key);
         if (value.equals(old)) {
             return this;
         } else {
-            Map<String, Record> map = new HashMap<>(records);
+            Map<RecordID, Record> map = new HashMap<>(records);
             map.put(key, value);
             return new ByIdentifier(Collections.unmodifiableMap(map));
         }
     }
 
     @CheckReturnValue
-    public ByIdentifier remove(String key) {
+    public ByIdentifier remove(RecordID key) {
         if (records.containsKey(key)) {
             if (records.size() == 1) {
                 return EMPTY;
             } else {
-                Map<String, Record> map = new HashMap<>(records);
+                Map<RecordID, Record> map = new HashMap<>(records);
                 map.remove(key);
                 return new ByIdentifier(Collections.unmodifiableMap(map));
             }
@@ -125,8 +126,8 @@ public class ByIdentifier {
     }
 
     @CheckReturnValue
-    public ByIdentifier removeAll(Collection<String> keys) {
-        List<String> toRemove = keys.parallelStream()
+    public ByIdentifier removeAll(Collection<RecordID> keys) {
+        List<RecordID> toRemove = keys.parallelStream()
                 .filter(key -> records.containsKey(key))
                 .collect(Collectors.toList());
         if (toRemove.isEmpty()) {
@@ -134,7 +135,7 @@ public class ByIdentifier {
         } else if (records.size() == toRemove.size()) {
             return EMPTY;
         } else {
-            Map<String, Record> map = new HashMap<>(records);
+            Map<RecordID, Record> map = new HashMap<>(records);
             map.keySet().removeAll(toRemove);
             return new ByIdentifier(Collections.unmodifiableMap(map));
         }
@@ -148,7 +149,7 @@ public class ByIdentifier {
         return records.values().stream();
     }
 
-    public boolean contains(String key) {
+    public boolean contains(RecordID key) {
         return records.containsKey(key);
     }
 

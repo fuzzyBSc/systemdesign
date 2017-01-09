@@ -29,6 +29,8 @@ package au.id.soundadvice.systemdesign.moduleapi.entity;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -40,12 +42,23 @@ public class RecordID implements Comparable<RecordID> {
         return new RecordID(UUID.randomUUID().toString());
     }
 
-    static Optional<RecordID> load(String value) {
+    public static Optional<RecordID> load(String value) {
         if (value.isEmpty()) {
             return Optional.empty();
         } else {
             return Optional.of(new RecordID(value));
         }
+    }
+
+    public static RecordID of(Class<?> clazz) {
+        return new RecordID(clazz.getName());
+    }
+
+    public static RecordID concat(RecordID... segments) {
+        return new RecordID(
+                Stream.of(segments)
+                .map(RecordID::toString)
+                .collect(Collectors.joining(":")));
     }
 
     @Override

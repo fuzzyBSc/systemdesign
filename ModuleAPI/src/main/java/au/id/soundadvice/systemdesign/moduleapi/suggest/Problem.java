@@ -26,9 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.suggest;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 /**
  *
@@ -36,19 +34,19 @@ import java.util.function.BiFunction;
  */
 public class Problem {
 
-    public Optional<BiFunction<BaselinePair, String, BaselinePair>> getFlowDownSolution() {
+    public Optional<Solution> getFlowDownSolution() {
         return flowDownSolution;
     }
 
-    public Optional<BiFunction<BaselinePair, String, BaselinePair>> getFlowUpSolution() {
+    public Optional<Solution> getFlowUpSolution() {
         return flowUpSolution;
     }
 
-    public Optional<BiFunction<BaselinePair, String, BaselinePair>> getOnLoadAutofixSolution() {
+    public Optional<Solution> getOnLoadAutofixSolution() {
         return onLoadAutoFixSolution;
     }
 
-    public Optional<BiFunction<BaselinePair, String, BaselinePair>> getOnChangeAutofixSolution() {
+    public Optional<Solution> getOnChangeAutofixSolution() {
         return onChangeAutoFixSolution;
     }
 
@@ -62,34 +60,34 @@ public class Problem {
     }
 
     private final String description;
-    private final Optional<BiFunction<BaselinePair, String, BaselinePair>> flowDownSolution;
-    private final Optional<BiFunction<BaselinePair, String, BaselinePair>> flowUpSolution;
-    private final Optional<BiFunction<BaselinePair, String, BaselinePair>> onLoadAutoFixSolution;
-    private final Optional<BiFunction<BaselinePair, String, BaselinePair>> onChangeAutoFixSolution;
+    private final Optional<Solution> flowDownSolution;
+    private final Optional<Solution> flowUpSolution;
+    private final Optional<Solution> onLoadAutoFixSolution;
+    private final Optional<Solution> onChangeAutoFixSolution;
 
     public static Problem flowProblem(
             String description,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> flowDownSolution,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> flowUpSolution) {
+            Optional<Solution> flowDownSolution,
+            Optional<Solution> flowUpSolution) {
         return new Problem(description, Optional.empty(), Optional.empty(), flowDownSolution, flowUpSolution);
     }
 
     public static Problem onLoadAutofixProblem(
-            BiFunction<BaselinePair, String, BaselinePair> solution) {
+            Solution solution) {
         return new Problem("onLoadAutoFix", Optional.of(solution), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     public static Problem onChangeAutofixProblem(
-            BiFunction<BaselinePair, String, BaselinePair> solution) {
+            Solution solution) {
         return new Problem("onChangeAutoFix", Optional.empty(), Optional.of(solution), Optional.empty(), Optional.empty());
     }
 
     private Problem(
             String description,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> onLoadAutofixSolution,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> onChangeAutofixSolution,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> flowDownSolution,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> flowUpSolution) {
+            Optional<Solution> onLoadAutofixSolution,
+            Optional<Solution> onChangeAutofixSolution,
+            Optional<Solution> flowDownSolution,
+            Optional<Solution> flowUpSolution) {
         this.description = description;
         this.onLoadAutoFixSolution = onLoadAutofixSolution;
         this.onChangeAutoFixSolution = onChangeAutofixSolution;

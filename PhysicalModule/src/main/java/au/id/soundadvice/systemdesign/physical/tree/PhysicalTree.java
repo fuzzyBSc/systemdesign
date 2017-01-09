@@ -27,13 +27,13 @@
 package au.id.soundadvice.systemdesign.physical.tree;
 
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
-import au.id.soundadvice.systemdesign.physical.Identity;
-import au.id.soundadvice.systemdesign.physical.Item;
+import au.id.soundadvice.systemdesign.physical.entity.Identity;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -47,11 +47,11 @@ import java.util.stream.Stream;
  */
 public class PhysicalTree implements Tree {
 
-    public PhysicalTree(BaselinePair baselines) {
+    public PhysicalTree(WhyHowPair<Baseline> baselines) {
         children = Item.find(baselines.getParent())
                 .collect(Collectors.toMap(
                         Record::getShortName,
-                        item -> new PhysicalTreeNode(baselines, BaselinePair.Selector.PARENT, item),
+                        item -> new PhysicalTreeNode(baselines, WhyHowPair.Selector.PARENT, item),
                         (u, v) -> {
                             throw new IllegalStateException(String.format("Duplicate key %s", u));
                         },
@@ -67,26 +67,26 @@ public class PhysicalTree implements Tree {
 
     @Override
     public RecordID getIdentifier() {
-        return "Physical";
+        return RecordID.of(this.getClass());
     }
 
     private class PhysicalTreeNode implements TreeNode {
 
-        private final BaselinePair.Selector selector;
+        private final WhyHowPair.Selector selector;
         private final Record item;
         private final SortedMap<String, TreeNode> children;
 
-        private PhysicalTreeNode(BaselinePair baselines, BaselinePair.Selector selector, Record item) {
+        private PhysicalTreeNode(WhyHowPair<Baseline> baselines, WhyHowPair.Selector selector, Record item) {
             this.selector = selector;
             this.item = item;
             Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
-            if (selector == BaselinePair.Selector.PARENT
+            if (selector == WhyHowPair.Selector.PARENT
                     && systemOfInterest.isPresent()
                     && systemOfInterest.get().getIdentifier().equals(item.getIdentifier())) {
                 this.children = Item.find(baselines.getChild())
                         .collect(Collectors.toMap(
                                 Record::getShortName,
-                                childItem -> new PhysicalTreeNode(baselines, BaselinePair.Selector.CHILD, childItem),
+                                childItem -> new PhysicalTreeNode(baselines, WhyHowPair.Selector.CHILD, childItem),
                                 (u, v) -> {
                                     throw new IllegalStateException(String.format("Duplicate key %s", u));
                                 },
@@ -97,7 +97,7 @@ public class PhysicalTree implements Tree {
         }
 
         @Override
-        public BaselinePair setLabel(BaselinePair baselines, String now, String value) {
+        public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value) {
             Baseline baseline = baselines.get(selector);
             Optional<Record> instance = baseline.get(item);
             if (instance.isPresent()) {
@@ -113,9 +113,9 @@ public class PhysicalTree implements Tree {
         }
 
         @Override
-        public BaselinePair removeFrom(BaselinePair baselines) {
+        public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines) {
             // Only allow removal from child baseline
-            if (selector == BaselinePair.Selector.CHILD) {
+            if (selector == WhyHowPair.Selector.CHILD) {
                 Baseline baseline = baselines.get(selector);
                 baseline = baseline.remove(item.getIdentifier());
                 return baselines.set(selector, baseline);

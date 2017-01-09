@@ -26,10 +26,11 @@
  */
 package au.id.soundadvice.systemdesign.consistency;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Solution;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
 /**
@@ -40,7 +41,7 @@ public interface EditSolution {
 
     public static EditSolution of(
             String description,
-            Optional<BiFunction<BaselinePair, String, BaselinePair>> solution) {
+            Optional<Solution> solution) {
         return new EditSolution() {
             @Override
             public String getDescription() {
@@ -54,7 +55,7 @@ public interface EditSolution {
 
             @Override
             public void solve(EditState edit, String now) {
-                UnaryOperator<BaselinePair> boundSolution
+                UnaryOperator<WhyHowPair<Baseline>> boundSolution
                         = baselines -> solution.get().apply(baselines, now);
                 edit.updateState(boundSolution);
             }

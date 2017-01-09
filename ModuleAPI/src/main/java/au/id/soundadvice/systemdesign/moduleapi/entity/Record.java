@@ -37,8 +37,8 @@ import java.util.stream.Stream;
 import javafx.scene.paint.Color;
 import javax.annotation.CheckReturnValue;
 import javafx.geometry.Point2D;
-import com.sun.istack.internal.Nullable;
 import static au.id.soundadvice.systemdesign.moduleapi.util.ToBoolean.toBoolean;
+import javax.annotation.Nullable;
 
 /**
  * An immutable identifiable fundamental unit of storage and modeling.
@@ -64,8 +64,8 @@ public class Record implements Identifiable {
             this.identifier = was
                     .map(Record::getIdentifier)
                     .orElseGet(RecordID::create);
-            this.fields = new TreeMap<>();
-            this.refs = new TreeMap<>();
+            this.fields = Optional.empty();
+            this.refs = Optional.empty();
         }
 
         @CheckReturnValue
@@ -90,12 +90,18 @@ public class Record implements Identifiable {
 
         @CheckReturnValue
         public Builder setTrace(Record parent) {
-            return put(Fields.trace.name(), parent.getTrace().map(Object::toString).orElse(""));
+            return put(Fields.trace.name(), parent.getIdentifier().toString());
         }
 
         @CheckReturnValue
         public Builder removeTrace() {
-            return put(Fields.trace.name(), "");
+            return put(Fields.trace.name(), null);
+        }
+
+        @CheckReturnValue
+        public Builder removeReferences() {
+            this.refs = Optional.of(new TreeMap<>());
+            return this;
         }
 
         @CheckReturnValue
@@ -148,49 +154,91 @@ public class Record implements Identifiable {
         }
 
         @CheckReturnValue
-        public Builder put(String key, String value) {
-            @Nullable
-            String oldValue = fields.get(key);
-            if (oldValue == null && was.isPresent() && fields.isEmpty()) {
-                oldValue = was.get().fields.get(key);
+        public Builder put(String key, @Nullable String value) {
+            SortedMap<String, String> currentMap;
+            if (fields.isPresent()) {
+                currentMap = fields.get();
+            } else if (was.isPresent()) {
+                currentMap = was.get().fields;
+            } else {
+                currentMap = Collections.emptySortedMap();
             }
-            if (!value.equals(oldValue)) {
+            @Nullable
+            String oldValue = currentMap.get(key);
+            if (value == null) {
+                if (oldValue != null) {
+                    initFields();
+                    fields.get().remove(key);
+                }
+            } else if (!value.equals(oldValue)) {
                 initFields();
-                fields.put(key, value);
+                fields.get().put(key, value);
             }
             return this;
         }
 
+        @CheckReturnValue
+        public Builder putFields(Map<String, String> value) {
+            initFields();
+            fields.get().putAll(value);
+            return this;
+        }
+
         private void initFields() {
-            if (fields.isEmpty() && was.isPresent()) {
-                fields.putAll(was.get().fields);
+            if (!fields.isPresent()) {
+                if (was.isPresent()) {
+                    fields = Optional.of(new TreeMap<>(was.get().fields));
+                } else {
+                    fields = Optional.of(new TreeMap<>());
+                }
             }
         }
 
         @CheckReturnValue
         public Builder putRef(String key, RecordID value) {
-            @Nullable
-            RecordID oldValue = refs.get(key);
-            if (oldValue == null && was.isPresent() && refs.isEmpty()) {
-                oldValue = was.get().refs.get(key);
+            SortedMap<String, RecordID> currentMap;
+            if (refs.isPresent()) {
+                currentMap = refs.get();
+            } else if (was.isPresent()) {
+                currentMap = was.get().refs;
+            } else {
+                currentMap = Collections.emptySortedMap();
             }
-            if (!value.equals(oldValue)) {
-                initRefs();
-                refs.put(key, value);
+            @Nullable
+            RecordID oldValue = currentMap.get(key);
+            if (value == null) {
+                if (oldValue != null) {
+                    initFields();
+                    refs.get().remove(key);
+                }
+            } else if (!value.equals(oldValue)) {
+                initFields();
+                refs.get().put(key, value);
             }
             return this;
         }
 
+        @CheckReturnValue
+        public Builder putReferences(Map<String, RecordID> value) {
+            initRefs();
+            refs.get().putAll(value);
+            return this;
+        }
+
         private void initRefs() {
-            if (refs.isEmpty() && was.isPresent()) {
-                refs.putAll(was.get().refs);
+            if (!refs.isPresent()) {
+                if (was.isPresent()) {
+                    refs = Optional.of(new TreeMap<>(was.get().refs));
+                } else {
+                    refs = Optional.of(new TreeMap<>());
+                }
             }
         }
 
         @CheckReturnValue
         public Builder redirectReferences(RecordID toIdentifier, RecordID fromIdentifier) {
             initRefs();
-            for (Map.Entry<String, RecordID> entry : refs.entrySet()) {
+            for (Map.Entry<String, RecordID> entry : refs.get().entrySet()) {
                 if (fromIdentifier.equals(entry.getValue())) {
                     entry.setValue(toIdentifier);
                 }
@@ -200,33 +248,39 @@ public class Record implements Identifiable {
 
         @CheckReturnValue
         public Record build(String now) {
-            if (was.isPresent() && identifier.equals(was.get().identifier) && fields.isEmpty() && refs.isEmpty()) {
+            if (was.isPresent() && identifier.equals(was.get().identifier) && !fields.isPresent() && !refs.isPresent()) {
                 // Nothing changed
                 return was.get();
             } else {
                 put(Fields.lastChange.name(), now);
-                if (was.isPresent()) {
-                    if (fields.isEmpty()) {
-                        fields = was.get().fields;
-                    }
-                    if (refs.isEmpty()) {
-                        refs = was.get().refs;
-                    }
+                SortedMap<String, String> newFields;
+                if (fields.isPresent()) {
+                    newFields = Collections.unmodifiableSortedMap(fields.get());
+                } else if (was.isPresent()) {
+                    newFields = was.get().fields;
+                } else {
+                    newFields = Collections.emptySortedMap();
+                }
+                SortedMap<String, RecordID> newRefs;
+                if (fields.isPresent()) {
+                    newRefs = Collections.unmodifiableSortedMap(refs.get());
+                } else if (was.isPresent()) {
+                    newRefs = was.get().refs;
+                } else {
+                    newRefs = Collections.emptySortedMap();
                 }
                 Record result = new Record(
-                        type, identifier,
-                        Collections.unmodifiableSortedMap(fields),
-                        Collections.unmodifiableSortedMap(refs));
-                fields = null;
-                refs = null;
+                        type, identifier, newFields, newRefs);
+                fields = Optional.empty();
+                refs = Optional.empty();
                 return result;
             }
         }
         private final Optional<Record> was;
         private final Table type;
         private RecordID identifier;
-        private SortedMap<String, String> fields;
-        private SortedMap<String, RecordID> refs;
+        private Optional<SortedMap<String, String>> fields;
+        private Optional<SortedMap<String, RecordID>> refs;
     }
 
     @Override
@@ -324,6 +378,14 @@ public class Record implements Identifiable {
 
     public Optional<RecordID> getRef(String key) {
         return Optional.ofNullable(refs.get(key));
+    }
+
+    public SortedMap<String, String> getFields() {
+        return fields;
+    }
+
+    public SortedMap<String, RecordID> getReferences() {
+        return refs;
     }
 
     public SortedMap<String, String> getAllFields() {

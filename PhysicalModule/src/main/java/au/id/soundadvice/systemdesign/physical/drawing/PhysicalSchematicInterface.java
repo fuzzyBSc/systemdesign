@@ -33,7 +33,7 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
-import au.id.soundadvice.systemdesign.physical.Interface;
+import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import java.util.Objects;
 import java.util.Optional;
 

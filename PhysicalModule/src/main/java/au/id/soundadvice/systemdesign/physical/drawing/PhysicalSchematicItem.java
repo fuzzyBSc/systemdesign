@@ -26,19 +26,19 @@
  */
 package au.id.soundadvice.systemdesign.physical.drawing;
 
-import au.id.soundadvice.systemdesign.logical.Function;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.EntityStyle;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.DiffInfo;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
-import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.physical.ItemView;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
@@ -48,7 +48,23 @@ import javafx.scene.paint.Paint;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-class PhysicalSchematicItem implements DrawingEntity {
+public class PhysicalSchematicItem implements DrawingEntity {
+
+    public interface CompartmentFactory extends Function<DiffPair<Record>, Compartment> {
+    }
+
+    public interface Compartment {
+
+        public boolean isChanged();
+
+        public Stream<DiffPair<String>> getBody();
+    }
+
+    static final List<CompartmentFactory> COMPARTMENTS = new CopyOnWriteArrayList<>();
+
+    public static void addCompartment(CompartmentFactory factory) {
+        COMPARTMENTS.add(factory);
+    }
 
     @Override
     public boolean isDiff() {
@@ -60,7 +76,7 @@ class PhysicalSchematicItem implements DrawingEntity {
         // Changes to the item view itself don't matter
         // We only care about substantive changes
         return item.isChanged()
-                || functions.stream().anyMatch(DiffInfo::isChanged);
+                || compartments.stream().anyMatch(Compartment::isChanged);
     }
 
     @Override
@@ -98,7 +114,7 @@ class PhysicalSchematicItem implements DrawingEntity {
         if (!Objects.equals(this.item, other.item)) {
             return false;
         }
-        if (!Objects.equals(this.functions, other.functions)) {
+        if (!Objects.equals(this.compartments, other.compartments)) {
             return false;
         }
         return true;
@@ -108,19 +124,13 @@ class PhysicalSchematicItem implements DrawingEntity {
             EntityStyle.Shape.Rectangle);
     private final DiffPair<Record> itemView;
     private final DiffPair<Record> item;
-    private final List<DiffPair<Record>> functions;
+    private final List<Compartment> compartments;
 
     public PhysicalSchematicItem(DiffPair<Record> itemView) {
         this.itemView = itemView;
         this.item = itemView.map((baseline, view) -> ItemView.itemView.getItem(baseline, view));
-        this.functions = this.item.map(
-                (baseline, theItem) -> Function.findOwnedFunctions(baseline, theItem))
-                .stream()
-                .flatMap(stream -> stream)
-                .map(Record::getIdentifier)
-                .distinct()
-                .map(functionIdentifier -> DiffPair.get(itemView, functionIdentifier, Function.function))
-                .sorted((left, right) -> left.getSample().getLongName().compareTo(right.getSample().getLongName()))
+        this.compartments = COMPARTMENTS.stream()
+                .map(f -> f.apply(item))
                 .collect(Collectors.toList());
     }
 
@@ -141,8 +151,7 @@ class PhysicalSchematicItem implements DrawingEntity {
 
     @Override
     public Stream<DiffPair<String>> getBody() {
-        return functions.stream()
-                .map(functionDiff -> functionDiff.map(function -> "+" + function.getLongName()));
+        return compartments.stream().flatMap(Compartment::getBody);
     }
 
     @Override

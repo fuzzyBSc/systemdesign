@@ -132,7 +132,7 @@ public class RecordConnectionScope {
         }
     }
 
-    public Optional<RecordConnectionScope> getTrace(BaselinePair baselines, Table type) {
+    public Optional<RecordConnectionScope> getTrace(WhyHowPair<Baseline> baselines, Table type) {
         if (left.getTrace().isPresent() && right.getTrace().isPresent()) {
             ConnectionScope traceScope = new ConnectionScope(left.getTrace().get(), right.getTrace().get(), scope.getDirection());
             return resolve(baselines.getParent(), traceScope, type);

@@ -5,12 +5,13 @@
  */
 package au.id.soundadvice.systemdesign.budget;
 
-import au.id.soundadvice.systemdesign.budget.tree.BudgetTree;
+import au.id.soundadvice.systemdesign.budget.entity.Budget;
+import au.id.soundadvice.systemdesign.budget.entity.BudgetAllocation;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
@@ -26,12 +27,12 @@ public class BudgetModule implements Module {
     }
 
     @Override
-    public BaselinePair onLoadAutoFix(BaselinePair state, String now) {
+    public WhyHowPair<Baseline> onLoadAutoFix(WhyHowPair<Baseline> state, String now) {
         return state;
     }
 
     @Override
-    public BaselinePair onChangeAutoFix(BaselinePair state, String now) {
+    public WhyHowPair<Baseline> onChangeAutoFix(WhyHowPair<Baseline> state, String now) {
         return state;
     }
 
@@ -48,7 +49,8 @@ public class BudgetModule implements Module {
     }
 
     @Override
-    public Stream<Tree> getTrees(BaselinePair baselines) {
-        return Stream.of(new BudgetTree(baselines));
+    public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines) {
+//        return Stream.of(new BudgetTree(baselines));
+        return Stream.empty();
     }
 }

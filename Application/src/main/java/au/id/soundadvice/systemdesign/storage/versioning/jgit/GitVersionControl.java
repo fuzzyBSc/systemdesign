@@ -360,7 +360,7 @@ public class GitVersionControl implements VersionControl {
 
             if (ObjectId.zeroId().equals(diff.getValue())) {
                 // No such tree
-                throw new FileNotFoundException(identityValidator.getDirectoryPath() + " does not exist for label " + label.get());
+                throw new FileNotFoundException(identityValidator.getPath() + " does not exist for label " + label.get());
             } else {
                 // Find the file in this tree
                 TreeWalk treeWalk = new TreeWalk(repo.getRepository());

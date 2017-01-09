@@ -31,6 +31,7 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,9 +57,9 @@ public interface DrawingOf<S> {
 
     public static <I extends Identifiable, O extends DrawingOf<I>> void updateElements(
             Stream<I> inputStream,
-            Map<String, O> current,
+            Map<RecordID, O> current,
             Function<I, O> supplier) {
-        Set<String> toDelete = new HashSet<>(current.keySet());
+        Set<RecordID> toDelete = new HashSet<>(current.keySet());
         inputStream.sequential().forEach(input -> {
             Optional<O> existing = Optional.ofNullable(
                     current.get(input.getIdentifier()));

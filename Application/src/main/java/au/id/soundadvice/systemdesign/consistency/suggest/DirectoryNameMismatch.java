@@ -30,7 +30,7 @@ import au.id.soundadvice.systemdesign.consistency.EditProblem;
 import au.id.soundadvice.systemdesign.consistency.EditSolution;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
-import au.id.soundadvice.systemdesign.physical.Identity;
+import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.storage.FileStorage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -80,10 +80,10 @@ public class DirectoryNameMismatch {
     }
 
     public static Stream<EditProblem> getProblems(EditState edit) {
-        Optional<RecordStorage> dir = edit.getStorage();
+        Optional<RecordStorage> dir = edit.getStorage().getChild();
         if (dir.isPresent() && dir.get() instanceof FileStorage) {
             FileStorage storage = (FileStorage) dir.get();
-            Path path = storage.getDirectoryPath();
+            Path path = storage.getPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
                 String identity = Identity.get(edit.getChild()).toString();

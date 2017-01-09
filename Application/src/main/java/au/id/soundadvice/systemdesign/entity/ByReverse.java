@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.entity;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -36,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.util.Pair;
@@ -58,14 +58,14 @@ public class ByReverse {
 
     public static class Loader {
 
-        private final Set<String> deletedRecords;
+        private final Set<RecordID> deletedRecords;
         private final ByReverse result;
 
         public Loader(ByIdentifier records) {
-            String invalidReference = UUID.randomUUID().toString();
-            Map<String, Set<Record>> reverse = records.stream()
-                    .flatMap(record -> record.getReferenceFields()
-                            .map(Map.Entry<String, String>::getValue)
+            RecordID invalidReference = RecordID.create();
+            Map<RecordID, Set<Record>> reverse = records.stream()
+                    .flatMap(record -> record.getReferences().entrySet().stream()
+                            .map(Map.Entry<String, RecordID>::getValue)
                             .map(targetIdentifier -> {
                                 Optional<Record> target = records.get(targetIdentifier);
                                 if (!target.isPresent()) {
@@ -76,12 +76,12 @@ public class ByReverse {
                             }))
                     .collect(Collectors.groupingBy(Pair::getKey,
                             Collectors.mapping(Pair::getValue, Collectors.toSet())));
-            Map<String, HashIndex<Table>> tmpResult = reverse.entrySet().parallelStream()
+            Map<RecordID, HashIndex<Table>> tmpResult = reverse.entrySet().parallelStream()
                     .collect(Collectors.toMap(
-                            entry -> entry.getKey(),
-                            entry -> HashIndex.valueOf(
+                            Map.Entry<RecordID, Set<Record>>::getKey,
+                            entry -> HashIndex.<Table>valueOf(
                                     record -> Stream.of(record.getType()), entry.getValue().stream())));
-            Set<String> tmpDelete = new HashSet<>();
+            Set<RecordID> tmpDelete = new HashSet<>();
             tmpDelete.add(invalidReference);
             cascade(tmpResult, tmpDelete);
             tmpDelete.remove(invalidReference);
@@ -91,7 +91,7 @@ public class ByReverse {
                             -> records.get(key).map(Stream::of).orElse(Stream.empty())));
         }
 
-        public Stream<String> getDeletedRecords() {
+        public Stream<RecordID> getDeletedRecords() {
             return deletedRecords.stream();
         }
 
@@ -101,11 +101,11 @@ public class ByReverse {
     }
 
     private static void cascade(
-            Map<String, HashIndex<Table>> reverse, Set<String> seed) {
-        Deque<String> stack = seed.stream()
-                .collect(Collectors.toCollection(ArrayDeque<String>::new));
+            Map<RecordID, HashIndex<Table>> reverse, Set<RecordID> seed) {
+        Deque<RecordID> stack = seed.stream()
+                .collect(Collectors.toCollection(ArrayDeque<RecordID>::new));
         while (!stack.isEmpty()) {
-            String current = stack.pop();
+            RecordID current = stack.pop();
             HashIndex<Table> references = reverse.get(current);
             if (references != null) {
                 references.values()
@@ -119,17 +119,17 @@ public class ByReverse {
         }
     }
 
-    private final Map<String, HashIndex<Table>> records;
+    private final Map<RecordID, HashIndex<Table>> records;
 
-    private ByReverse(Map<String, HashIndex<Table>> unmodifiable) {
+    private ByReverse(Map<RecordID, HashIndex<Table>> unmodifiable) {
         this.records = unmodifiable;
     }
 
-    public void cascade(Set<String> seed) {
+    public void cascade(Set<RecordID> seed) {
         cascade(records, seed);
     }
 
-    public Stream<Record> find(String target, Table fromType) {
+    public Stream<Record> find(RecordID target, Table fromType) {
         HashIndex<Table> byType = records.get(target);
         if (byType == null) {
             return Stream.empty();
@@ -138,7 +138,7 @@ public class ByReverse {
         }
     }
 
-    public Stream<Record> find(String target) {
+    public Stream<Record> find(RecordID target) {
         HashIndex<Table> byType = records.get(target);
         if (byType == null) {
             return Stream.empty();
@@ -149,9 +149,9 @@ public class ByReverse {
 
     @CheckReturnValue
     private ByReverse putImpl(Record value) {
-        Map<String, HashIndex<Table>> map = new HashMap<>(records);
-        value.getReferenceFields()
-                .map(Map.Entry<String, String>::getValue)
+        Map<RecordID, HashIndex<Table>> map = new HashMap<>(records);
+        value.getReferences().entrySet().stream()
+                .map(Map.Entry<String, RecordID>::getValue)
                 .forEach(targetIdentifier -> {
                     HashIndex<Table> byType = map.get(targetIdentifier);
                     if (byType == null) {
@@ -180,10 +180,10 @@ public class ByReverse {
 
     @CheckReturnValue
     public ByReverse removeAll(Stream<Record> toDelete) {
-        Map<String, List<String>> toDeleteByTarget = toDelete
+        Map<RecordID, List<RecordID>> toDeleteByTarget = toDelete
                 .flatMap(source -> {
-                    return source.getReferenceFields()
-                            .map(Map.Entry<String, String>::getValue)
+                    return source.getReferences().entrySet().stream()
+                            .map(Map.Entry<String, RecordID>::getValue)
                             .map(targetIdentifier -> {
                                 return new Pair<>(targetIdentifier, source.getIdentifier());
                             });
@@ -194,7 +194,7 @@ public class ByReverse {
             // There were no references
             return this;
         }
-        Map<String, HashIndex<Table>> map = new HashMap<>(records);
+        Map<RecordID, HashIndex<Table>> map = new HashMap<>(records);
         toDeleteByTarget.entrySet().stream()
                 .forEach(entry -> {
                     HashIndex<Table> byType = map.get(entry.getKey());

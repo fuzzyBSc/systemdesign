@@ -18,4 +18,11 @@
 		<module>../Application</module>
 		<module>../BudgetModule</module>
 	</modules>
+    <dependencies>
+        <dependency>
+            <groupId>au.id.soundadvice.systemdesign</groupId>
+            <artifactId>LogicalModule</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
 </project>

@@ -27,15 +27,19 @@
 package au.id.soundadvice.systemdesign.moduleapi.storage;
 
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.entity.TableFactory;
+import java.io.Closeable;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface RecordStorage {
+public interface RecordStorage extends Closeable {
 
     /**
      * Load the whole baseline.
@@ -44,8 +48,9 @@ public interface RecordStorage {
      * @param label If empty, load the current baseline. If nonempty, load the
      * nominated branch or tag.
      * @return The baseline
+     * @throws java.io.IOException The baseline could not be read
      */
-    public Baseline loadBaseline(RecordTypeFactory factory, Optional<String> label) throws IOException;
+    public Baseline loadBaseline(TableFactory factory, Optional<String> label) throws IOException;
 
     public Stream<VersionInfo> getBranches() throws IOException;
 
@@ -55,12 +60,23 @@ public interface RecordStorage {
      * Save the whole baseline.
      *
      * @param relations The baseline to store
+     * @throws java.io.IOException The baseline could not be written
      */
     public void saveBaseline(Baseline relations) throws IOException;
 
+    public void commit(String message) throws IOException;
+
     public Optional<RecordStorage> getParent();
 
-    public Optional<RecordStorage> getChild(String identifier) throws IOException;
+    public Optional<RecordStorage> getChild(RecordID identifier) throws IOException;
+
+    public RecordStorage createChild(Record identityRecord) throws IOException;
 
     public boolean identityFileExists() throws IOException;
+
+    public boolean isVersionControlled();
+
+    public boolean canCommit();
+
+    public Optional<VersionInfo> getDefaultBaseline();
 }

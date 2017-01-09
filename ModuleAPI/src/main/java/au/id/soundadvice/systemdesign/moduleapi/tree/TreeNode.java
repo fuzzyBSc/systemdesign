@@ -26,8 +26,9 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.tree;
 
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -38,11 +39,11 @@ import java.util.stream.Stream;
  */
 public interface TreeNode extends Identifiable {
 
-    public BaselinePair setLabel(BaselinePair baselines, String now, String value);
+    public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value);
 
     public String getLabel();
 
-    public BaselinePair removeFrom(BaselinePair baselines);
+    public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines);
 
     public Stream<TreeNode> getChildren();
 

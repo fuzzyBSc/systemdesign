@@ -26,11 +26,11 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 
@@ -51,7 +51,7 @@ public interface Module {
      * @param baselines The state before fixing
      * @return The state after fixing
      */
-    public BaselinePair onLoadAutoFix(BaselinePair baselines, String now);
+    public WhyHowPair<Baseline> onLoadAutoFix(WhyHowPair<Baseline> baselines, String now);
 
     /**
      * Perform quick automated consistency repair activities that can't
@@ -61,7 +61,7 @@ public interface Module {
      * @param baselines The state before fixing
      * @return The state after fixing
      */
-    public BaselinePair onChangeAutoFix(BaselinePair baselines, String now);
+    public WhyHowPair<Baseline> onChangeAutoFix(WhyHowPair<Baseline> baselines, String now);
 
     /**
      * Return a stream of all record types that are owned by this module.
@@ -84,5 +84,5 @@ public interface Module {
      * @param baselines The baseline pair to extract trees from
      * @return All trees for this module from the nominated baseline pair
      */
-    public Stream<Tree> getTrees(BaselinePair baselines);
+    public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines);
 }

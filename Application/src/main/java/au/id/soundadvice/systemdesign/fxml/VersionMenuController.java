@@ -70,7 +70,7 @@ public class VersionMenuController {
             Function<RecordStorage, Stream<VersionInfo>> getter) {
         ContextMenus.initPerInstanceSubmenu(
                 menu,
-                () -> edit.getStorage().map(getter).orElse(Stream.empty())
+                () -> edit.getStorage().getChild().map(getter).orElse(Stream.empty())
                 .sorted((a, b) -> {
                     int tscompare = -a.getTimestamp().compareTo(b.getTimestamp());
                     if (tscompare != 0) {

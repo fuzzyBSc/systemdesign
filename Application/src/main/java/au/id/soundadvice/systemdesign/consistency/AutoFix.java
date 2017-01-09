@@ -27,7 +27,8 @@
 package au.id.soundadvice.systemdesign.consistency;
 
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.Iterator;
 
@@ -37,7 +38,7 @@ import java.util.Iterator;
  */
 public class AutoFix {
 
-    public static BaselinePair onLoad(BaselinePair state, String now) {
+    public static WhyHowPair<Baseline> onLoad(WhyHowPair<Baseline> state, String now) {
         Iterator<Module> it = Modules.getModules().iterator();
         while (it.hasNext()) {
             state = it.next().onLoadAutoFix(state, now);
@@ -45,7 +46,7 @@ public class AutoFix {
         return state;
     }
 
-    public static BaselinePair onChange(BaselinePair state, String now) {
+    public static WhyHowPair<Baseline> onChange(WhyHowPair<Baseline> state, String now) {
         Iterator<Module> it = Modules.getModules().iterator();
         while (it.hasNext()) {
             state = it.next().onChangeAutoFix(state, now);

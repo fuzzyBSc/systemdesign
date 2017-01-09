@@ -26,7 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.entity;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -46,16 +47,16 @@ public interface Table {
      */
     public Stream<UniqueConstraint> getUniqueConstraints();
 
-    public Record merge(BaselinePair context, String now, Record left, Record right);
+    public Record merge(WhyHowPair<Baseline> context, String now, Record left, Record right);
 
     public Stream<Problem> getTraceProblems(
-            BaselinePair context, Record traceParent, Stream<Record> traceChildren);
+            WhyHowPair<Baseline> context, Record traceParent, Stream<Record> traceChildren);
 
     public Stream<Problem> getUntracedParentProblems(
-            BaselinePair context, Stream<Record> untracedParents);
+            WhyHowPair<Baseline> context, Stream<Record> untracedParents);
 
     public Stream<Problem> getUntracedChildProblems(
-            BaselinePair context, Stream<Record> untracedChildren);
+            WhyHowPair<Baseline> context, Stream<Record> untracedChildren);
 
     public class Default implements Table {
 
@@ -96,17 +97,17 @@ public interface Table {
         }
 
         @Override
-        public Stream<Problem> getTraceProblems(BaselinePair context, Record traceParent, Stream<Record> traceChild) {
+        public Stream<Problem> getTraceProblems(WhyHowPair<Baseline> context, Record traceParent, Stream<Record> traceChild) {
             return Stream.empty();
         }
 
         @Override
-        public Stream<Problem> getUntracedParentProblems(BaselinePair context, Stream<Record> traceParent) {
+        public Stream<Problem> getUntracedParentProblems(WhyHowPair<Baseline> context, Stream<Record> traceParent) {
             return Stream.empty();
         }
 
         @Override
-        public Stream<Problem> getUntracedChildProblems(BaselinePair context, Stream<Record> traceChild) {
+        public Stream<Problem> getUntracedChildProblems(WhyHowPair<Baseline> context, Stream<Record> traceChild) {
             return Stream.empty();
         }
 
@@ -116,7 +117,7 @@ public interface Table {
         }
 
         @Override
-        public Record merge(BaselinePair baselines, String now, Record left, Record right) {
+        public Record merge(WhyHowPair<Baseline> baselines, String now, Record left, Record right) {
             return Record.newerOf(left, right);
         }
     }

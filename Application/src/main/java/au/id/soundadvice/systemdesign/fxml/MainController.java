@@ -30,14 +30,17 @@ import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.consistency.AllSuggestions;
-import au.id.soundadvice.systemdesign.files.Directory;
 import au.id.soundadvice.systemdesign.fxml.drawing.FXMLAllDrawings;
 import au.id.soundadvice.systemdesign.fxml.tree.FXMLAllTrees;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
-import au.id.soundadvice.systemdesign.storage.versioning.jgit.GitVersionControl;
+import au.id.soundadvice.systemdesign.storage.CSVStorage;
+import au.id.soundadvice.systemdesign.storage.FileStorage;
 import java.awt.Desktop;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -58,7 +61,6 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
-import org.eclipse.jgit.api.errors.GitAPIException;
 
 /**
  * FXML Controller class
@@ -105,8 +107,6 @@ public class MainController implements Initializable {
     private Menu diffVersionMenu;
     @FXML
     private CheckMenuItem diffNoneMenuItem;
-    @FXML
-    private MenuItem initialiseGitMenuItem;
     @FXML
     private MenuItem commitMenuItem;
     @FXML
@@ -169,11 +169,11 @@ public class MainController implements Initializable {
             event.consume();
         });
         revertMenuItem.setOnAction(event -> {
-            Optional<RecordStorage> dir = edit.getStorage();
+            Optional<RecordStorage> dir = edit.getStorage().getChild();
             if (dir.isPresent()) {
                 if (interactions.checkSave("Save before reloading?")) {
                     try {
-                        edit.load(dir.get());
+                        edit.load(dir.get(), ISO8601.now());
                     } catch (IOException ex) {
                         LOG.log(Level.SEVERE, null, ex);
                     }
@@ -181,24 +181,24 @@ public class MainController implements Initializable {
             }
             event.consume();
         });
-        ContextMenus.initPerInstanceSubmenu(
-                openRecentMenu,
+        ContextMenus.initPerInstanceSubmenu(openRecentMenu,
                 () -> RecentFiles.getRecentFiles(),
                 path -> new MenuItem(path.getFileName().toString()),
                 (event, path) -> {
                     if (interactions.checkSave("Save before closing?")) {
-                        interactions.tryLoad(edit, Directory.forPath(path));
+                        interactions.tryLoad(edit, CSVStorage.forPath(path));
                     }
                     event.consume();
                 },
                 Optional.empty());
         exploreMenuItem.setOnAction(event -> {
-            Optional<RecordStorage> directory = edit.getStorage();
-            if (directory.isPresent()) {
+            Optional<RecordStorage> directory = edit.getStorage().getChild();
+            if (directory.isPresent() && directory.get() instanceof FileStorage) {
+                FileStorage fileStorage = (FileStorage) directory.get();
                 try {
                     ProcessBuilder builder = new ProcessBuilder();
-                    builder.command("nautilus", directory.get().getPath().toString());
-                    builder.directory(directory.get().getPath().toFile());
+                    builder.command("nautilus", fileStorage.getPath().toString());
+                    builder.directory(fileStorage.getPath().toFile());
                     builder.inheritIO();
                     builder.start();
                 } catch (IOException ex) {
@@ -208,7 +208,7 @@ public class MainController implements Initializable {
                          * application on Ubuntu, so we only do this as a
                          * fallback when nautilus is not available.
                          */
-                        Desktop.getDesktop().open(directory.get().getPath().toFile());
+                        Desktop.getDesktop().open(fileStorage.getPath().toFile());
                     } catch (IOException ex2) {
                         ex2.addSuppressed(ex);
                         LOG.log(Level.WARNING, null, ex2);
@@ -238,7 +238,7 @@ public class MainController implements Initializable {
         });
         Runnable updateExploreMenuItemSensitivity = () -> {
             exploreMenuItem.setDisable(
-                    !edit.getStorage().isPresent());
+                    !edit.getStorage().getChild().isPresent());
         };
         edit.subscribe(updateExploreMenuItemSensitivity);
         updateExploreMenuItemSensitivity.run();
@@ -288,25 +288,6 @@ public class MainController implements Initializable {
                 versionsMenu, diffNoneMenuItem);
         versionMenuController.start();
 
-        initialiseGitMenuItem.setOnAction(event -> {
-            Optional<RecordStorage> dir = edit.getStorage();
-            if (!edit.getStorage().isPresent() && dir.isPresent()) {
-                try {
-                    GitVersionControl.init(dir.get().getPath());
-                    edit.reloadVersionControl();
-                } catch (GitAPIException ex) {
-                    LOG.log(Level.SEVERE, null, ex);
-                }
-            }
-            event.consume();
-        });
-        Runnable updateInitaliseGitMenuItemSensitivity = () -> {
-            initialiseGitMenuItem.setDisable(
-                    !edit.getStorage().isPresent());
-        };
-        edit.subscribe(updateInitaliseGitMenuItemSensitivity);
-        updateInitaliseGitMenuItemSensitivity.run();
-
         commitMenuItem.setOnAction(event -> {
             if (interactions.checkSave("Save before committing?")) {
                 TextInputDialog dialog = new TextInputDialog();
@@ -316,9 +297,15 @@ public class MainController implements Initializable {
                 Optional<String> interactionResult = dialog.showAndWait();
                 if (interactionResult.isPresent()) {
                     try {
-                        edit.getStorage().ifPresent(storage -> storage.commit(interactionResult.get()));
-                    } catch (IOException ex) {
-                        LOG.log(Level.SEVERE, null, ex);
+                        edit.getStorage().getChild().ifPresent(storage -> {
+                            try {
+                                storage.commit(interactionResult.get());
+                            } catch (IOException ex) {
+                                throw new UncheckedIOException(ex);
+                            }
+                        });
+                    } catch (UncheckedIOException ex) {
+                        LOG.log(Level.SEVERE, null, ex.getCause());
                     }
                 }
             }
@@ -326,7 +313,7 @@ public class MainController implements Initializable {
         });
         Runnable updateCommitMenuItemSensitivity = () -> {
             commitMenuItem.setDisable(
-                    !edit.getStorage().map(RecordStorage::canCommit).orElse(false));
+                    !edit.getStorage().getChild().map(RecordStorage::canCommit).orElse(false));
         };
         edit.subscribe(updateCommitMenuItemSensitivity);
         updateCommitMenuItemSensitivity.run();
@@ -341,10 +328,8 @@ public class MainController implements Initializable {
         public void run() {
             undoMenuItem.setDisable(!edit.canUndo());
             redoMenuItem.setDisable(!edit.canRedo());
-            Optional<RecordStorage> dir = edit.getStorage();
-            upButton.setDisable(
-                    !dir.isPresent()
-                    || !dir.get().getParent().getIdentity().isPresent());
+            WhyHowPair<Optional<RecordStorage>> storage = edit.getStorage();
+            upButton.setDisable(!storage.getParent().isPresent());
             downButton.setDisable(!edit.hasLastChild());
         }
     }

@@ -34,6 +34,7 @@ import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElemen
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +59,7 @@ public class FXMLAllDrawings {
     private final SingleRunnable onChange;
     private final SingleRunnable applyChange = new SingleRunnable(
             JFXExecutor.instance(), new ApplyChange());
-    private final Map<String, FXMLDrawingTab> currentDrawings = new HashMap<>();
+    private final Map<RecordID, FXMLDrawingTab> currentDrawings = new HashMap<>();
     private final AtomicReference<List<Drawing>> nextDrawings = new AtomicReference<>();
 
     public void start() {

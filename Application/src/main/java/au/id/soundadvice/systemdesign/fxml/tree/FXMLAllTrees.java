@@ -31,7 +31,9 @@ import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.preferences.Modules;
@@ -60,7 +62,7 @@ public class FXMLAllTrees {
     private final SingleRunnable onChange;
     private final SingleRunnable applyChange = new SingleRunnable(
             JFXExecutor.instance(), new ApplyChange());
-    private final Map<String, FXMLTree> currentTrees = new HashMap<>();
+    private final Map<RecordID, FXMLTree> currentTrees = new HashMap<>();
     private final AtomicReference<List<Tree>> nextTrees = new AtomicReference<>();
 
     public void start() {
@@ -76,7 +78,7 @@ public class FXMLAllTrees {
 
         @Override
         public void run() {
-            BaselinePair baselines = edit.getState();
+            WhyHowPair<Baseline> baselines = edit.getState();
             List<Tree> drawings = Modules.getModules()
                     .flatMap(module -> module.getTrees(baselines))
                     .collect(Collectors.toList());

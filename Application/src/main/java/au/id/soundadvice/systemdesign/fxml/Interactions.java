@@ -26,35 +26,27 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.budget.Budget;
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
-import au.id.soundadvice.systemdesign.files.Directory;
-import au.id.soundadvice.systemdesign.logical.Function;
-import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.logical.Flow;
-import au.id.soundadvice.systemdesign.logical.FlowType;
-import au.id.soundadvice.systemdesign.physical.IDPath;
-import au.id.soundadvice.systemdesign.physical.Identity;
-import au.id.soundadvice.systemdesign.physical.Interface;
-import au.id.soundadvice.systemdesign.physical.ItemView;
-import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.storage.CSVStorage;
+import au.id.soundadvice.systemdesign.storage.FileStorage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.EmptyStackException;
-import java.util.Iterator;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import javafx.geometry.Point2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
@@ -63,13 +55,12 @@ import javafx.scene.control.TextInputDialog;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
-import javafx.util.Pair;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Interactions {
+public class Interactions implements InteractionContext {
 
     private static final Logger LOG = Logger.getLogger(Interactions.class.getName());
 
@@ -80,43 +71,7 @@ public class Interactions {
     private final Window window;
     private final EditState edit;
 
-    public Optional<Item> createItem(Point2D origin) {
-        AtomicReference<Item> result = new AtomicReference<>();
-        String defaultName = Item.find(edit.getChild()).parallel()
-                .filter(item -> !item.isExternal())
-                .map(Item::name)
-                .collect(new UniqueName("New Item"));
-        Optional<String> name = textInput("New Item", "Enter name for item", defaultName);
-        if (name.isPresent()) {
-            edit.updateState(state -> {
-                Baseline allocated = state.getChild();
-                Color color = Identity.getSystemOfInterest(state)
-                        .map(item -> item.getView(state.getParent()).getColor())
-                        .orElse(Color.LIGHTYELLOW);
-                // Shift color
-                // Adjust hue by +/- 128 out of the 256 range
-                double hueShift = Math.random() * 128 - 64;
-                // Adjust saturation by +/- 30%
-                double saturationMultiplier = Math.random() * .6 + .7;
-                // Adjust brightness by +/- 20%
-                double brightnessMultiplier = Math.random() * .4 + .8;
-                double opacityMultiplier = 1;
-                color = color.deriveColor(
-                        hueShift,
-                        saturationMultiplier,
-                        brightnessMultiplier,
-                        opacityMultiplier);
-
-                Pair<Baseline, Item> createResult = Item.create(
-                        allocated, name.get(), origin, color);
-                allocated = createResult.getKey();
-                result.set(createResult.getValue());
-                return state.setChild(allocated);
-            }, 1234);
-        }
-        return Optional.ofNullable(result.get());
-    }
-
+    @Override
     public Optional<String> textInput(String action, String question, String _default) {
         TextInputDialog dialog = new TextInputDialog(_default);
         dialog.setTitle(action);
@@ -124,422 +79,25 @@ public class Interactions {
         return dialog.showAndWait();
     }
 
-    public void createBudget() {
-        String name;
-        String unit;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
+    @Override
+    public Optional<Color> colorInput(String action, String question, Color _default) {
+        Dialog<Color> dialog = new Dialog<>();
+        dialog.setTitle(action);
+        dialog.setHeaderText(question);
+        ColorPicker picker = new ColorPicker(_default);
+        dialog.getDialogPane().setContent(picker);
 
-            Optional<String> optionalName = textInput(
-                    "Create Budget",
-                    "Enter name for budget",
-                    Budget.find(allocated).parallel()
-                    .map(budget -> budget.getKey().getName())
-                    .collect(new UniqueName("New Budget")));
-            if (!optionalName.isPresent()) {
-                return;
-            }
-            name = optionalName.get();
-        }
-        {
-            // User interaction - read only
-            Optional<String> optionalUnit = textInput(
-                    "Create Budget",
-                    "Enter unit for " + name, "units");
-            if (!optionalUnit.isPresent()) {
-                return;
-            }
-            unit = optionalUnit.get();
-        }
+        dialog.getDialogPane().getButtonTypes().addAll(
+                ButtonType.OK, ButtonType.CANCEL);
 
-        edit.updateAllocated(baseline -> {
-            return Budget.add(baseline, new Budget.Key(name, unit)).getKey();
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType.equals(ButtonType.OK)) {
+                return picker.getValue();
+            } else {
+                return null;
+            }
         });
-    }
-
-    public void addFunctionToItem(Item item, Optional<Function> trace, Point2D origin) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
-            if (item.isExternal() || !allocated.get(item).isPresent()) {
-                return;
-            }
-
-            String name = Function.find(allocated).parallel()
-                    .map(Function::getTableName)
-                    .collect(new UniqueName("New Function"));
-
-            TextInputDialog dialog = new TextInputDialog(name);
-            dialog.setTitle("Enter name for function");
-            dialog.setHeaderText("Enter name for function");
-
-            result = dialog.showAndWait();
-        }
-        if (result.isPresent()) {
-            edit.updateAllocated(baseline -> {
-                return Function.create(baseline, item, trace, result.get(), origin)
-                        .getKey();
-            });
-        }
-    }
-
-    public void renumber(Item item) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            if (item.isExternal() || !edit.getChild().get(item).isPresent()) {
-                return;
-            }
-
-            TextInputDialog dialog = new TextInputDialog(
-                    item.getShortId().toString());
-            dialog.setTitle("Enter name for item");
-            dialog.setHeaderText("Enter name for " + item.getDisplayName());
-
-            result = dialog.showAndWait();
-        }
-        if (result.isPresent()) {
-            IDPath path = IDPath.valueOfSegment(result.get());
-            edit.updateAllocated(allocated -> {
-                boolean isUnique = Item.find(allocated).parallel()
-                        .map(Item::getShortId)
-                        .noneMatch((existing) -> path.equals(existing));
-                if (isUnique) {
-                    return item.setShortId(allocated, path).getKey();
-                } else {
-                    return allocated;
-                }
-            });
-        }
-    }
-
-    public void rename(Item item) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            if (item.isExternal() || !edit.getChild().get(item).isPresent()) {
-                return;
-            }
-
-            TextInputDialog dialog = new TextInputDialog(item.name());
-            dialog.setTitle("Enter name for item");
-            dialog.setHeaderText("Enter name for " + item.getDisplayName());
-
-            result = dialog.showAndWait();
-        }
-        if (result.isPresent()) {
-            String name = result.get();
-            edit.updateAllocated(allocated -> {
-                boolean isUnique = Item.find(allocated).parallel()
-                        .map(Item::name)
-                        .noneMatch((existing) -> name.equals(existing));
-                if (isUnique) {
-                    return item.setName(allocated, name).getKey();
-                } else {
-                    return allocated;
-                }
-            });
-        }
-    }
-
-    public void rename(Function function) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
-            if (function.isExternal() || !allocated.get(function).isPresent()) {
-                return;
-            }
-
-            TextInputDialog dialog = new TextInputDialog(function.getTableName());
-            dialog.setTitle("Enter number for function");
-            dialog.setHeaderText("Enter number for "
-                    + function.getDisplayName(allocated));
-
-            result = dialog.showAndWait();
-        }
-        if (result.isPresent()) {
-            String name = result.get();
-            edit.updateAllocated(allocated -> {
-                boolean isUnique = Function.find(allocated).parallel()
-                        .map(Function::getTableName)
-                        .noneMatch((existing) -> name.equals(existing));
-                if (isUnique) {
-                    return function.setName(allocated, name).getKey();
-                } else {
-                    return allocated;
-                }
-            });
-        }
-    }
-
-    void setBudgetName(Budget.Key key) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
-            Optional<Budget> budget = Budget.find(allocated, key).findAny();
-            if (!budget.isPresent()) {
-                return;
-            }
-
-            result = textInput(
-                    "Rename Budget",
-                    "Enter Name for Budget", key.getName());
-        }
-        if (result.isPresent()) {
-            edit.updateState(state -> {
-                Budget.Key newKey = key.setName(result.get());
-                {
-                    Baseline functional = state.getParent();
-                    Iterator<Budget> it = Budget.find(functional, key).iterator();
-                    while (it.hasNext()) {
-                        Budget budget = it.next();
-                        functional = budget.setKey(functional, newKey).getKey();
-                    }
-                    state = state.setParent(functional);
-                }
-                {
-                    Baseline allocated = state.getChild();
-                    Iterator<Budget> it = Budget.find(allocated, key).iterator();
-                    while (it.hasNext()) {
-                        Budget budget = it.next();
-                        allocated = budget.setKey(allocated, newKey).getKey();
-                    }
-                    state = state.setChild(allocated);
-                }
-                return state;
-            }, 1234);
-        }
-    }
-
-    void setBudgetUnit(Budget.Key key) {
-        Optional<String> result;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
-            Optional<Budget> budget = Budget.find(allocated, key).findAny();
-            if (!budget.isPresent()) {
-                return;
-            }
-
-            result = textInput(
-                    "Set Budget Unit",
-                    "Enter Unit for Budget " + key.getName(),
-                    key.getUnit());
-        }
-        if (result.isPresent()) {
-            edit.updateState(state -> {
-                Budget.Key newKey = key.setUnit(result.get());
-                {
-                    Baseline functional = state.getParent();
-                    Iterator<Budget> it = Budget.find(functional, key).iterator();
-                    while (it.hasNext()) {
-                        Budget budget = it.next();
-                        functional = budget.setKey(functional, newKey).getKey();
-                    }
-                    state = state.setParent(functional);
-                }
-                {
-                    Baseline allocated = state.getChild();
-                    Iterator<Budget> it = Budget.find(allocated, key).iterator();
-                    while (it.hasNext()) {
-                        Budget budget = it.next();
-                        allocated = budget.setKey(allocated, newKey).getKey();
-                    }
-                    state = state.setChild(allocated);
-                }
-                return state;
-            }, 1234);
-        }
-    }
-
-    public void color(Item item) {
-        Optional<Color> result;
-        {
-            // User interaction - read only
-            Baseline allocated = edit.getChild();
-            if (item.isExternal() || !allocated.get(item).isPresent()) {
-                return;
-            }
-
-            ItemView view = item.getView(allocated);
-            Dialog<Color> dialog = new Dialog<>();
-            dialog.setTitle("Select color for item");
-            dialog.setHeaderText("Select color for " + item.getDisplayName());
-            ColorPicker picker = new ColorPicker(view.getColor());
-            dialog.getDialogPane().setContent(picker);
-
-            dialog.getDialogPane().getButtonTypes().addAll(
-                    ButtonType.OK, ButtonType.CANCEL);
-
-            dialog.setResultConverter(buttonType -> {
-                if (buttonType.equals(ButtonType.OK)) {
-                    return picker.getValue();
-                } else {
-                    return null;
-                }
-            });
-            result = dialog.showAndWait();
-        }
-        if (result.isPresent()) {
-            Color color = result.get();
-            edit.updateAllocated(allocated -> {
-                Optional<Item> current = allocated.get(item);
-                Optional<ItemView> view = current.map(tmpItem -> tmpItem.getView(allocated));
-                if (view.isPresent()) {
-                    return view.get().setColor(allocated, color).getKey();
-                } else {
-                    return allocated;
-                }
-            });
-        }
-    }
-
-    void addInterface(Item left, Item right) {
-        if (!left.isExternal() || !right.isExternal()) {
-            // One end has to be internal
-            edit.updateAllocated(allocated -> {
-                return Interface.create(allocated, left, right).getKey();
-            });
-        }
-    }
-
-    private Pair<BaselinePair, FlowType> getTypeForNewFlow(
-            BaselinePair state, RecordConnectionScope<Function> endpoints) {
-        final Baseline functional = state.getParent();
-        final Baseline allocated = state.getChild();
-        /*
-         * A stream of functional baseline types that have flows in the required
-         * direction
-         */
-        // See if we can pick out a likely type
-        Optional<Function> leftTrace = endpoints.getLeft().getTrace(functional);
-        Optional<Function> rightTrace = endpoints.getRight().getTrace(functional);
-        Optional<FlowType> suggestion;
-        if (leftTrace.isPresent() && rightTrace.isPresent()
-                && !leftTrace.equals(rightTrace)) {
-            RecordConnectionScope<Function> endpointTraces = new RecordConnectionScope<>(
-                    leftTrace.get(), rightTrace.get(), endpoints.getDirection());
-
-            Set<String> alreadyUsed = Flow.find(allocated).parallel()
-                    .filter(flow -> {
-                        Optional<Function> existingLeftTrace = flow.getLeft(allocated).getTrace(functional);
-                        Optional<Function> existingRightTrace = flow.getRight(allocated).getTrace(functional);
-                        if (existingLeftTrace.isPresent() && existingRightTrace.isPresent()
-                                && !existingLeftTrace.equals(existingRightTrace)) {
-                            RecordConnectionScope<Function> existingEndpointTraces = new RecordConnectionScope<>(
-                                    existingLeftTrace.get(), existingRightTrace.get(), flow.getDirection());
-                            return existingEndpointTraces.contains(endpointTraces);
-                        } else {
-                            return false;
-                        }
-                    })
-                    .map(flow -> flow.getType().getKey())
-                    .collect(Collectors.toSet());
-
-            suggestion = endpointTraces.getLeft().findFlows(functional)
-                    // Flows to the right function in the right direction
-                    .filter(flow -> {
-                        if (flow.otherEnd(functional, endpointTraces.getLeft())
-                                != endpointTraces.getRight()) {
-                            return false;
-                        }
-                        return flow.getDirectionFrom(endpointTraces.getLeft())
-                                .contains(endpointTraces.getDirection());
-                    })
-                    .map(flow -> flow.getType(functional))
-                    .filter(type -> !alreadyUsed.contains(type.getIdentifier()))
-                    .findAny();
-        } else {
-            suggestion = Optional.empty();
-        }
-
-        if (suggestion.isPresent()) {
-            // Flow down to the allocated baseline if needed
-            Optional<FlowType> allocatedType = FlowType.get(
-                    allocated, suggestion.get().getTableName());
-            if (allocatedType.isPresent()) {
-                return state.and(allocatedType.get());
-            } else {
-                return state.setChild(allocated.add(suggestion.get()))
-                        .and(suggestion.get());
-            }
-        }
-        String name = FlowType.find(allocated).parallel()
-                .map(FlowType::getTableName)
-                .collect(new UniqueName("New Flow"));
-        Optional<FlowType> trace = FlowType.get(functional, name);
-        Pair<Baseline, FlowType> result = FlowType.add(allocated, trace, name);
-        return state.setChild(result.getKey()).and(result.getValue());
-    }
-
-    public void addFlow(Function source, Function target) {
-        edit.updateState(state -> {
-            Baseline allocated = state.getChild();
-            Optional<Function> left = allocated.get(source);
-            Optional<Function> right = allocated.get(target);
-            if (left.isPresent() && right.isPresent()
-                    // One end has to be internal
-                    && (!left.get().isExternal() || !right.get().isExternal())) {
-                RecordConnectionScope<Function> endpoints = new RecordConnectionScope<>(
-                        source, target, Direction.Forward);
-                Pair<BaselinePair, FlowType> result = getTypeForNewFlow(state, endpoints);
-                state = result.getKey();
-                allocated = state.getChild();
-                FlowType flowType = result.getValue();
-                allocated = Flow.add(allocated, endpoints, flowType).getKey();
-                return state.setChild(allocated);
-            } else {
-                return state;
-            }
-        }, 1234);
-    }
-
-    void setFlowType(Flow flow) {
-        Optional<String> interactionResult;
-        {
-            // User interaction, read-only
-            Baseline allocated = edit.getChild();
-            Optional<Flow> current = allocated.get(flow);
-            if (!current.isPresent()) {
-                return;
-            }
-            FlowType type = current.get().getType().getTarget(allocated);
-
-            TextInputDialog dialog = new TextInputDialog(type.getTableName());
-            dialog.setTitle("New Flow Type");
-            dialog.setHeaderText("Enter Flow Type");
-
-            interactionResult = dialog.showAndWait();
-        }
-        if (interactionResult.isPresent()) {
-            String typeName = interactionResult.get();
-            edit.updateState(state -> {
-                Baseline allocated = state.getChild();
-                Optional<Flow> current = allocated.get(flow);
-                if (!current.isPresent()) {
-                    return state;
-                }
-                FlowType currentType = current.get().getType().getTarget(allocated);
-                if (currentType.getTableName().equals(typeName)) {
-                    return state;
-                }
-                Optional<FlowType> newType = FlowType.get(allocated, typeName);
-                if (!newType.isPresent()) {
-                    // See if we can flow the type down
-                    Baseline functional = state.getParent();
-                    Optional<FlowType> trace = FlowType.get(functional, typeName);
-                    Pair<Baseline, FlowType> result = FlowType.add(allocated, trace, typeName);
-                    allocated = result.getKey();
-                    newType = Optional.of(result.getValue());
-                }
-                allocated = current.get().setType(allocated, newType.get()).getKey();
-                return state.setChild(allocated);
-            }, 1234);
-        }
+        return dialog.showAndWait();
     }
 
     public void navigateUp() {
@@ -560,14 +118,22 @@ public class Interactions {
         }
     }
 
-    public void navigateDown(Item item) {
-        this.navigateDown(item.asIdentity(edit.getChild()));
+    public void navigateDown(RecordID systemOfInterestID) {
+        try {
+            Optional<Record> systemOfInterest = edit.getChild().get(systemOfInterestID, Item.item);
+            if (systemOfInterest.isPresent()) {
+                navigateDown(systemOfInterest.get());
+            }
+        } catch (EmptyStackException ex) {
+            // Nowhere to navigate down to
+        }
     }
 
-    public void navigateDown(Identity identity) {
+    public void navigateDown(Record systemOfInterest) {
         if (checkSave("Save before navigating?")) {
             try {
-                edit.loadChild(identity);
+                String now = ISO8601.now();
+                edit.loadChild(systemOfInterest, now);
             } catch (IOException ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setTitle("Load Failed");
@@ -609,7 +175,7 @@ public class Interactions {
 
     public boolean trySave() {
         try {
-            if (edit.getStorage().isPresent()) {
+            if (edit.getStorage().getChild().isPresent()) {
                 edit.save();
             } else {
                 return trySaveAs();
@@ -634,7 +200,7 @@ public class Interactions {
             if (selectedDirectory == null) {
                 return false;
             } else {
-                edit.saveTo(Directory.forPath(Paths.get(selectedDirectory.getPath())));
+                edit.saveTo(CSVStorage.forPath(Paths.get(selectedDirectory.getPath())));
                 return true;
             }
         } catch (IOException ex) {
@@ -648,11 +214,14 @@ public class Interactions {
         }
     }
 
-    public boolean tryLoad(EditState edit, Directory dir) {
+    public boolean tryLoad(EditState edit, RecordStorage dir, String now) {
         try {
-            edit.load(dir);
-            RecentFiles.addRecentFile(dir.getPath());
-            Optional<VersionInfo> baseline = edit.getStorage().getDefaultBaseline();
+            edit.load(dir, now);
+            if (dir instanceof FileStorage) {
+                FileStorage fileStorage = (FileStorage) dir;
+                RecentFiles.addRecentFile(fileStorage.getPath());
+            }
+            Optional<VersionInfo> baseline = edit.getStorage().getChild().flatMap(RecordStorage::getDefaultBaseline);
             if (baseline.isPresent()) {
                 // Open default diff baseline
                 edit.setDiffVersion(baseline);
@@ -672,16 +241,47 @@ public class Interactions {
     public boolean tryLoadChooser(Window window, EditState edit) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("System Designs");
-        Optional<Directory> current = edit.getStorage();
-        if (current.isPresent()) {
-            chooser.setInitialDirectory(current.get().getPath().toFile());
+        Optional<RecordStorage> current = edit.getStorage().getChild();
+        if (current.isPresent() && current.get() instanceof FileStorage) {
+            FileStorage fileStorage = (FileStorage) current.get();
+            chooser.setInitialDirectory(fileStorage.getPath().toFile());
         }
         File selectedDirectory = chooser.showDialog(window);
         if (selectedDirectory == null) {
             return false;
         } else {
-            Directory dir = Directory.forPath(Paths.get(selectedDirectory.getPath()));
-            return tryLoad(edit, dir);
+            RecordStorage dir = CSVStorage.forPath(Paths.get(selectedDirectory.getPath()));
+            return tryLoad(edit, dir, ISO8601.now());
         }
+    }
+
+    @Override
+    public void updateState(UnaryOperator<WhyHowPair<Baseline>> mutator) {
+        edit.updateState(mutator);
+    }
+
+    @Override
+    public void updateParent(UnaryOperator<Baseline> mutator) {
+        edit.updateParent(mutator);
+    }
+
+    @Override
+    public void updateChild(UnaryOperator<Baseline> mutator) {
+        edit.updateChild(mutator);
+    }
+
+    @Override
+    public WhyHowPair<Baseline> getState() {
+        return edit.getState();
+    }
+
+    @Override
+    public Baseline getParent() {
+        return edit.getParent();
+    }
+
+    @Override
+    public Baseline getChild() {
+        return edit.getChild();
     }
 }

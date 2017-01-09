@@ -30,6 +30,7 @@ package au.id.soundadvice.systemdesign.storage;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import java.io.IOException;
 import java.nio.file.Path;
+import javax.annotation.CheckReturnValue;
 
 /**
  *
@@ -37,8 +38,9 @@ import java.nio.file.Path;
  */
 public interface FileStorage extends RecordStorage {
 
-    public Path getDirectoryPath();
+    public Path getPath();
 
-    public RecordStorage renameDirectory(Path from, Path to) throws IOException;
+    @CheckReturnValue
+    public FileStorage renameDirectory(Path from, Path to) throws IOException;
 
 }

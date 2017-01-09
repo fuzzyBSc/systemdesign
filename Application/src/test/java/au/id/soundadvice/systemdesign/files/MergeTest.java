@@ -27,14 +27,16 @@
  */
 package au.id.soundadvice.systemdesign.files;
 
-import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.com.bytecode.opencsv.CSVReader;
+import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.com.bytecode.opencsv.CSVWriter;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.UUID;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -44,9 +46,10 @@ public class MergeTest {
 
     @Test
     public void testEmpty() throws Exception {
-        try (CSVReader ancestor = new CSVReader(new StringReader(""));
-                CSVReader left = new CSVReader(new StringReader(""));
-                CSVReader right = new CSVReader(new StringReader(""));
+        Table unknownType = new Table.Default("unknown");
+        try (RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader("")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader("")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader("")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -56,9 +59,10 @@ public class MergeTest {
 
     @Test
     public void testEmptyWithHeaders() throws Exception {
-        try (CSVReader ancestor = new CSVReader(new StringReader("a,b,uuid,z"));
-                CSVReader left = new CSVReader(new StringReader("a,b,uuid,z"));
-                CSVReader right = new CSVReader(new StringReader("a,b,uuid,z"));
+        Table unknownType = new Table.Default("unknown");
+        try (RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -68,17 +72,18 @@ public class MergeTest {
 
     @Test
     public void allEqual() throws Exception {
-        UUID uuid = UUID.randomUUID();
+        RecordID uuid = RecordID.create();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
+                        + "A,B," + uuid + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -90,25 +95,26 @@ public class MergeTest {
 
     @Test
     public void allEqualDistinct() throws Exception {
-        UUID uuid1 = UUID.randomUUID();
-        UUID uuid2 = UUID.randomUUID();
-        UUID uuid3 = UUID.randomUUID();
+        RecordID uuid1 = RecordID.create();
+        RecordID uuid2 = RecordID.create();
+        RecordID uuid3 = RecordID.create();
         if (uuid2.compareTo(uuid3) > 0) {
             // Make uuid2 order less than uuid3 for stable test results
-            UUID tmp = uuid3;
+            RecordID tmp = uuid3;
             uuid3 = uuid2;
             uuid2 = tmp;
         }
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid1 + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid1 + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid2 + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "A,B," + uuid2 + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid3 + ",Z"));
+                        + "A,B," + uuid3 + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -121,17 +127,18 @@ public class MergeTest {
 
     @Test
     public void leftChanged() throws Exception {
-        UUID uuid = UUID.randomUUID();
+        RecordID uuid = RecordID.create();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "AAA,B," + uuid + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
+                        + "A,B," + uuid + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -143,17 +150,18 @@ public class MergeTest {
 
     @Test
     public void rightChanged() throws Exception {
-        UUID uuid = UUID.randomUUID();
+        RecordID uuid = RecordID.create();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,BBB," + uuid + ",Z"));
+                        + "A,BBB," + uuid + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -165,17 +173,18 @@ public class MergeTest {
 
     @Test
     public void bothChangedDifferentCells() throws Exception {
-        UUID uuid = UUID.randomUUID();
+        RecordID uuid = RecordID.create();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "AAA,B," + uuid + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,BBB," + uuid + ",Z"));
+                        + "A,BBB," + uuid + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -187,17 +196,18 @@ public class MergeTest {
 
     @Test
     public void bothChangedSameCell() throws Exception {
-        UUID uuid = UUID.randomUUID();
+        RecordID uuid = RecordID.create();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z"));
-                CSVReader left = new CSVReader(new StringReader(
+                        + "A,B," + uuid + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z"));
-                CSVReader right = new CSVReader(new StringReader(
+                        + "AAA,B," + uuid + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
                         "a,b,uuid,z" + System.lineSeparator()
-                        + "BBB,B," + uuid + ",Z"));
+                        + "BBB,B," + uuid + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);
@@ -229,10 +239,11 @@ public class MergeTest {
                 + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
                 + "\"Report Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistencies\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
                 + "\"Store Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Inconsistencies\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+        Table unknownType = new Table.Default("unknown");
         try (
-                CSVReader ancestor = new CSVReader(new StringReader(O));
-                CSVReader left = new CSVReader(new StringReader(A));
-                CSVReader right = new CSVReader(new StringReader(B));
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(O)));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(A)));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(B)));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
             Merge.threeWayCSV(ancestor, left, right, out);

@@ -26,9 +26,11 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drag;
 
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
@@ -48,16 +50,16 @@ public class DragTarget {
     public interface Drop {
 
         public Map<TransferMode, BooleanSupplier> getActions(
-                BaselinePair baselines, String sourceIdentifier, String targetIdentifier);
+                WhyHowPair<Baseline> baselines, RecordID sourceIdentifier, RecordID targetIdentifier);
     }
 
-    public static Optional<String> toIdentifier(Dragboard dragboard) {
+    public static Optional<RecordID> toIdentifier(Dragboard dragboard) {
         return Optional.ofNullable(dragboard.getUrl())
-                .map(url -> {
+                .flatMap(url -> {
                     if (url.startsWith(UUID_PREFIX)) {
-                        return url.substring(UUID_PREFIX.length());
+                        return RecordID.load(url.substring(UUID_PREFIX.length()));
                     } else {
-                        return url;
+                        return RecordID.load(url);
                     }
                 });
     }
@@ -71,11 +73,11 @@ public class DragTarget {
             EditState edit, Node node, Supplier<Optional<? extends Identifiable>> supplier, Drop drop) {
         node.setOnDragOver(event -> {
             // Decide whether or not to accept the drop
-            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
+            Optional<RecordID> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                BaselinePair state = edit.getState();
+                WhyHowPair<Baseline> state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -88,11 +90,11 @@ public class DragTarget {
         });
         node.setOnDragEntered(event -> {
             // Show drag acceptance visually
-            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
+            Optional<RecordID> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                BaselinePair state = edit.getState();
+                WhyHowPair<Baseline> state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -108,11 +110,11 @@ public class DragTarget {
         });
         node.setOnDragDropped(event -> {
             // Handle drop
-            Optional<String> sourceIdentifier = toIdentifier(event.getDragboard());
+            Optional<RecordID> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                BaselinePair state = edit.getState();
+                WhyHowPair<Baseline> state = edit.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 BooleanSupplier action = actions.get(event.getAcceptedTransferMode());

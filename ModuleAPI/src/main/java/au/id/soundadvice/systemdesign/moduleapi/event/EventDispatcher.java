@@ -26,7 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.event;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import java.util.Collections;
 import java.util.List;
@@ -48,17 +49,17 @@ public enum EventDispatcher {
     INSTANCE;
 
     private static final Logger LOG = Logger.getLogger(EventDispatcher.class.getName());
-    private final ConcurrentMap<Table, List<BiFunction<BaselinePair, Record, BaselinePair>>> flowDownListeners = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Table, List<BiFunction<BaselinePair, Record, BaselinePair>>> createListeners = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> copyOperations = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> moveOperations = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Pair<Table, Table>, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> linkOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Table, List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>>> flowDownListeners = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Table, List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>>> createListeners = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> copyOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> moveOperations = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<Table, Table>, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> linkOperations = new ConcurrentHashMap<>();
 
-    public void addFlowDownListener(Table type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
-        List<BiFunction<BaselinePair, Record, BaselinePair>> list = flowDownListeners.get(type);
+    public void addFlowDownListener(Table type, BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>> listener) {
+        List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> list = flowDownListeners.get(type);
         if (list == null) {
             list = new CopyOnWriteArrayList<>();
-            List<BiFunction<BaselinePair, Record, BaselinePair>> existing = flowDownListeners.putIfAbsent(type, list);
+            List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> existing = flowDownListeners.putIfAbsent(type, list);
             if (existing != null) {
                 list = existing;
             }
@@ -66,11 +67,11 @@ public enum EventDispatcher {
         list.add(listener);
     }
 
-    public void addCreateListener(Table type, BiFunction<BaselinePair, Record, BaselinePair> listener) {
-        List<BiFunction<BaselinePair, Record, BaselinePair>> list = createListeners.get(type);
+    public void addCreateListener(Table type, BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>> listener) {
+        List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> list = createListeners.get(type);
         if (list == null) {
             list = new CopyOnWriteArrayList<>();
-            List<BiFunction<BaselinePair, Record, BaselinePair>> existing = createListeners.putIfAbsent(type, list);
+            List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> existing = createListeners.putIfAbsent(type, list);
             if (existing != null) {
                 list = existing;
             }
@@ -78,10 +79,10 @@ public enum EventDispatcher {
         list.add(listener);
     }
 
-    public BaselinePair dispatchFlowDownEvent(BaselinePair baselines, String now, Record record) {
-        List<BiFunction<BaselinePair, Record, BaselinePair>> listeners
+    public WhyHowPair<Baseline> dispatchFlowDownEvent(WhyHowPair<Baseline> baselines, String now, Record record) {
+        List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> listeners
                 = flowDownListeners.getOrDefault(record.getType(), Collections.emptyList());
-        for (BiFunction<BaselinePair, Record, BaselinePair> listener : listeners) {
+        for (BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>> listener : listeners) {
             try {
                 baselines = listener.apply(baselines, record);
             } catch (RuntimeException ex) {
@@ -91,10 +92,10 @@ public enum EventDispatcher {
         return baselines;
     }
 
-    public BaselinePair dispatchCreateEvent(BaselinePair baselines, String now, Record record) {
-        List<BiFunction<BaselinePair, Record, BaselinePair>> listeners
+    public WhyHowPair<Baseline> dispatchCreateEvent(WhyHowPair<Baseline> baselines, String now, Record record) {
+        List<BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>>> listeners
                 = createListeners.getOrDefault(record.getType(), Collections.emptyList());
-        for (BiFunction<BaselinePair, Record, BaselinePair> listener : listeners) {
+        for (BiFunction<WhyHowPair<Baseline>, Record, WhyHowPair<Baseline>> listener : listeners) {
             try {
                 baselines = listener.apply(baselines, record);
             } catch (RuntimeException ex) {
@@ -104,27 +105,27 @@ public enum EventDispatcher {
         return baselines;
     }
 
-    public void setCopyOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setCopyOperation(Table from, Table to, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>> operation) {
         copyOperations.put(new Pair<>(from, to), operation);
     }
 
-    public void setMoveOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setMoveOperation(Table from, Table to, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>> operation) {
         moveOperations.put(new Pair<>(from, to), operation);
     }
 
-    public void setLinkOperation(Table from, Table to, BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> operation) {
+    public void setLinkOperation(Table from, Table to, BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>> operation) {
         linkOperations.put(new Pair<>(from, to), operation);
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getCopyOperation(Table from, Table to) {
+    public Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> getCopyOperation(Table from, Table to) {
         return Optional.ofNullable(copyOperations.get(new Pair<>(from, to)));
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getMoveOperation(Table from, Table to) {
+    public Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> getMoveOperation(Table from, Table to) {
         return Optional.ofNullable(moveOperations.get(new Pair<>(from, to)));
     }
 
-    public Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> getLinkOperation(Table from, Table to) {
+    public Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> getLinkOperation(Table from, Table to) {
         return Optional.ofNullable(linkOperations.get(new Pair<>(from, to)));
     }
 }

@@ -33,13 +33,13 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf;
 import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
-import au.id.soundadvice.systemdesign.logical.FunctionView;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
 import java.util.stream.Stream;
+import javafx.geometry.Point2D;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Menu;
@@ -56,6 +56,8 @@ import javafx.scene.input.KeyCode;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class FXMLTree implements DrawingOf<Tree> {
+
+    static final Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
 
     public FXMLTree(
             Interactions interactions, EditState edit,
@@ -106,7 +108,7 @@ public class FXMLTree implements DrawingOf<Tree> {
         view.setShowRoot(false);
         view.setEditable(true);
         view.setCellFactory(value -> {
-            FunctionTreeCell cell = new FunctionTreeCell();
+            TreeNodeCell cell = new TreeNodeCell();
             DragSource.bind(cell, () -> Optional.ofNullable(cell.getItem()), false);
             DragTarget.bind(edit, cell, () -> Optional.ofNullable(cell.getItem()),
                     new EntityDropHandler(edit));
@@ -114,17 +116,17 @@ public class FXMLTree implements DrawingOf<Tree> {
         });
     }
 
-    private final class FunctionTreeCell extends TreeCell<TreeNode> {
+    private final class TreeNodeCell extends TreeCell<TreeNode> {
 
         private Optional<TextField> textField = Optional.empty();
         private final ContextMenu contextMenu = new ContextMenu();
 
-        public FunctionTreeCell() {
+        public TreeNodeCell() {
             Menu addMenuItem = ContextMenus.addFunctionMenu(
                     interactions,
                     edit,
                     Optional.empty(),
-                    () -> FunctionView.DEFAULT_ORIGIN);
+                    () -> DEFAULT_ORIGIN);
             contextMenu.getItems().add(addMenuItem);
             MenuItem deleteMenuItem = new MenuItem("Delete");
             contextMenu.getItems().add(deleteMenuItem);

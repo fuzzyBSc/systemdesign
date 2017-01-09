@@ -27,10 +27,11 @@
  */
 package au.id.soundadvice.systemdesign.preferences;
 
-import au.id.soundadvice.systemdesign.budget.BudgetModule;
-import au.id.soundadvice.systemdesign.logical.LogicalModule;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
-import au.id.soundadvice.systemdesign.physical.PhysicalModule;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
 /**
@@ -39,17 +40,20 @@ import java.util.stream.Stream;
  */
 public class Modules {
 
-    private static final Module[] MODULES = {
-        new PhysicalModule(),
-        new LogicalModule(),
-        new BudgetModule()
-    };
+    private static final List<Module> MODULES = new ArrayList();
 
     static {
-        getModules().forEachOrdered(Module::init);
+        ServiceLoader<Module> loader = ServiceLoader.load(Module.class);
+        Iterator<Module> it = loader.iterator();
+        if (it != null) {
+            while (it.hasNext()) {
+                MODULES.add(it.next());
+            }
+        }
+        MODULES.stream().forEach(Module::init);
     }
 
     public static Stream<Module> getModules() {
-        return Stream.of(MODULES);
+        return MODULES.stream();
     }
 }

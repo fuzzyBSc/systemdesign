@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.entity;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -124,7 +125,7 @@ public class HashIndex<I> {
     }
 
     @CheckReturnValue
-    public HashIndex<I> removeAll(Collection<String> identifiers) {
+    public HashIndex<I> removeAll(Collection<RecordID> identifiers) {
         return new HashIndex<>(bucketExtractor, Collections.<I, ByIdentifier>unmodifiableMap(
                 records.entrySet().parallelStream()
                 .map(entry -> new Pair<>(

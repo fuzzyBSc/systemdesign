@@ -77,6 +77,10 @@ public class DiffPair<T> implements DiffInfo {
         return "was=" + wasInstance + ", is=" + isInstance;
     }
 
+    public DiffPair<Baseline> getBaselines() {
+        return get(wasBaseline, isBaseline);
+    }
+
     public Optional<Baseline> getWasBaseline() {
         return wasBaseline;
     }
@@ -130,24 +134,24 @@ public class DiffPair<T> implements DiffInfo {
         return get(baselines, sample.getIdentifier(), sample.getType());
     }
 
-    public <O> DiffPair<O> map(Function<T, O> mapper) {
+    public <O> DiffPair<O> map(Function<? super T, ? extends O> mapper) {
         return new DiffPair(wasBaseline, wasInstance.map(mapper),
                 isBaseline, isInstance.map(mapper));
     }
 
-    public <O> DiffPair<O> flatMap(Function<T, Optional<O>> mapper) {
+    public <O> DiffPair<O> flatMap(Function<? super T, Optional<O>> mapper) {
         return new DiffPair(wasBaseline, wasInstance.flatMap(mapper),
                 isBaseline, isInstance.flatMap(mapper));
     }
 
-    public <O> DiffPair<O> map(BiFunction<Baseline, T, O> mapper) {
+    public <O> DiffPair<O> map(BiFunction<Baseline, ? super T, ? extends O> mapper) {
         Function<T, O> wasMapper = t -> mapper.apply(wasBaseline.get(), t);
         Function<T, O> isMapper = t -> mapper.apply(isBaseline, t);
         return new DiffPair(wasBaseline, wasInstance.map(wasMapper),
                 isBaseline, isInstance.map(isMapper));
     }
 
-    public <O> DiffPair<O> flatMap(BiFunction<Baseline, T, Optional<O>> mapper) {
+    public <O> DiffPair<O> flatMap(BiFunction<Baseline, ? super T, Optional<O>> mapper) {
         Function<T, Optional<O>> wasMapper = t -> mapper.apply(wasBaseline.get(), t);
         Function<T, Optional<O>> isMapper = t -> mapper.apply(isBaseline, t);
         return new DiffPair(wasBaseline, wasInstance.flatMap(wasMapper),

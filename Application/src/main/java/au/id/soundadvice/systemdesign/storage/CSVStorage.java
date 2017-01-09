@@ -32,9 +32,9 @@ import au.com.bytecode.opencsv.CSVWriter;
 import au.id.soundadvice.systemdesign.entity.RecordStore;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
-import au.id.soundadvice.systemdesign.moduleapi.storage.RecordTypeFactory;
-import au.id.soundadvice.systemdesign.physical.Identity;
+import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import au.id.soundadvice.systemdesign.storage.files.SaveTransaction;
@@ -60,6 +60,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.entity.TableFactory;
+import au.id.soundadvice.systemdesign.storage.versioning.NullVersionControl;
+import au.id.soundadvice.systemdesign.storage.versioning.jgit.GitVersionControl;
 
 /**
  *
@@ -75,6 +78,15 @@ public class CSVStorage implements FileStorage, IdentityValidator {
 
     private final VersionControl vcs;
     private final Path path;
+
+    public static CSVStorage forPath(Path path) {
+        try {
+            VersionControl vcs = new GitVersionControl(path);
+            return new CSVStorage(vcs, path);
+        } catch (IOException ex) {
+            return new CSVStorage(new NullVersionControl(), path);
+        }
+    }
 
     private CSVStorage(VersionControl vcs, Path path) {
         this.vcs = vcs;
@@ -138,11 +150,11 @@ public class CSVStorage implements FileStorage, IdentityValidator {
     }
 
     @Override
-    public Baseline loadBaseline(RecordTypeFactory factory, Optional<String> label) throws IOException {
+    public Baseline loadBaseline(TableFactory factory, Optional<String> label) throws IOException {
         try {
             return RecordStore.valueOf(
                     vcs.listFiles(this, label)
-                    .flatMap(file -> {
+                    .<Record>flatMap(file -> {
                         String typename = file;
                         if (typename.endsWith(EXT)) {
                             typename = typename.substring(0, typename.length() - EXT.length());
@@ -150,7 +162,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
                         try (
                                 BufferedReader reader = vcs.getBufferedReader(this, file, label);
                                 CSVReader csv = new CSVReader(reader)) {
-                            return loadRecords(factory.get(typename), csv);
+                            return loadRecords(factory.apply(typename), csv);
                         } catch (IOException ex) {
                             throw new UncheckedIOException(ex);
                         }
@@ -213,7 +225,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
     }
 
     @Override
-    public Optional<RecordStorage> getChild(String identifier) throws IOException {
+    public Optional<RecordStorage> getChild(RecordID identifier) throws IOException {
         try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
             return StreamSupport.stream(dir.spliterator(), true)
                     .filter(childPath -> {
@@ -238,12 +250,12 @@ public class CSVStorage implements FileStorage, IdentityValidator {
     }
 
     @Override
-    public Path getDirectoryPath() {
+    public Path getPath() {
         return path;
     }
 
     @Override
-    public RecordStorage renameDirectory(Path from, Path to) throws IOException {
+    public FileStorage renameDirectory(Path from, Path to) throws IOException {
         if (path.equals(from)) {
             vcs.renameDirectory(from, to);
             VersionControl toVcs = VersionControl.forPath(to);
@@ -301,4 +313,35 @@ public class CSVStorage implements FileStorage, IdentityValidator {
     public Stream<VersionInfo> getVersions() throws IOException {
         return vcs.getVersions();
     }
+
+    @Override
+    public void commit(String message) throws IOException {
+        vcs.commit(message);
+    }
+
+    @Override
+    public RecordStorage createChild(Record identityRecord) throws IOException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isVersionControlled() {
+        return !vcs.isNull();
+    }
+
+    @Override
+    public boolean canCommit() {
+        return vcs.canCommit();
+    }
+
+    @Override
+    public Optional<VersionInfo> getDefaultBaseline() {
+        return vcs.getDefaultBaseline();
+    }
+
+    @Override
+    public void close() throws IOException {
+        vcs.close();
+    }
+
 }

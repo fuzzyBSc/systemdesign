@@ -35,8 +35,6 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
-import au.id.soundadvice.systemdesign.fxml.logical.PreferredTab;
-import static au.id.soundadvice.systemdesign.logical.Function.function;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
@@ -53,6 +51,7 @@ import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import static jdk.nashorn.internal.objects.NativeFunction.function;
 import static jdk.nashorn.internal.runtime.PropertyMap.diff;
 
 /**
@@ -266,7 +265,7 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            edit.updateAllocated(allocated -> view.setOrigin(allocated, ISO8601.now(), layoutCurrent));
+            edit.updateChild(allocated -> view.setOrigin(allocated, ISO8601.now(), layoutCurrent));
         }
     }
 }

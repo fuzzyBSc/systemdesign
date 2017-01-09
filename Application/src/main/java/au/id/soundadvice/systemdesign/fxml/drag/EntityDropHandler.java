@@ -27,8 +27,10 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drag;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.HashMap;
@@ -52,17 +54,17 @@ public class EntityDropHandler implements DragTarget.Drop {
     }
 
     @Override
-    public Map<TransferMode, BooleanSupplier> getActions(BaselinePair baselines, String sourceIdentifier, String targetIdentifier) {
+    public Map<TransferMode, BooleanSupplier> getActions(WhyHowPair<Baseline> baselines, RecordID sourceIdentifier, RecordID targetIdentifier) {
         Map<TransferMode, BooleanSupplier> result = new HashMap<>();
 
         Optional<Record> from = baselines.getChild().getAnyType(sourceIdentifier);
         Optional<Record> to = baselines.getChild().getAnyType(targetIdentifier);
         if (from.isPresent() && to.isPresent()) {
-            Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> copyOperation
+            Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> copyOperation
                     = EventDispatcher.INSTANCE.getCopyOperation(from.get().getType(), to.get().getType());
-            Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> moveOperation
+            Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> moveOperation
                     = EventDispatcher.INSTANCE.getMoveOperation(from.get().getType(), to.get().getType());
-            Optional<BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair>> linkOperation
+            Optional<BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>>> linkOperation
                     = EventDispatcher.INSTANCE.getLinkOperation(from.get().getType(), to.get().getType());
 
             if (copyOperation.isPresent()) {
@@ -79,7 +81,7 @@ public class EntityDropHandler implements DragTarget.Drop {
     }
 
     private BooleanSupplier buildAction(
-            BiFunction<BaselinePair, Pair<Record, Record>, BaselinePair> action,
+            BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>> action,
             Record from, Record to) {
         return () -> {
             edit.updateState(baselines -> {

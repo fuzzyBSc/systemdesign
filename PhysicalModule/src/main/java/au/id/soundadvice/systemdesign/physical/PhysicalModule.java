@@ -30,10 +30,11 @@ import au.id.soundadvice.systemdesign.physical.drawing.PhysicalSchematic;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.collection.BaselinePair;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
@@ -41,6 +42,10 @@ import au.id.soundadvice.systemdesign.physical.tree.PhysicalTree;
 import java.util.Optional;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.physical.entity.Identity;
+import au.id.soundadvice.systemdesign.physical.entity.Interface;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 
 /**
  *
@@ -48,8 +53,8 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
  */
 public class PhysicalModule implements Module {
 
-    private static BaselinePair flowDownExternalItemView(BaselinePair baselines, String now, Record item) {
-        Optional<String> trace = item.getTrace();
+    private static WhyHowPair<Baseline> flowDownExternalItemView(WhyHowPair<Baseline> baselines, String now, Record item) {
+        Optional<RecordID> trace = item.getTrace();
         if (trace.isPresent()) {
             Record parentItem = baselines.getParent().get(trace.get(), Item.item).get();
             Record parentView = Item.item.findViews(baselines.getParent(), parentItem).findAny().get();
@@ -75,13 +80,13 @@ public class PhysicalModule implements Module {
     }
 
     @Override
-    public BaselinePair onLoadAutoFix(BaselinePair baselines, String now) {
+    public WhyHowPair<Baseline> onLoadAutoFix(WhyHowPair<Baseline> baselines, String now) {
         baselines = ItemView.itemView.createNeededViews(baselines, now);
         return baselines;
     }
 
     @Override
-    public BaselinePair onChangeAutoFix(BaselinePair baselines, String now) {
+    public WhyHowPair<Baseline> onChangeAutoFix(WhyHowPair<Baseline> baselines, String now) {
         baselines = ItemView.itemView.createNeededViews(baselines, now);
         return baselines;
     }
@@ -101,7 +106,7 @@ public class PhysicalModule implements Module {
     }
 
     @Override
-    public Stream<Tree> getTrees(BaselinePair baselines) {
+    public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines) {
         return Stream.of(new PhysicalTree(baselines));
     }
 }

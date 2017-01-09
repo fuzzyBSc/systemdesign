@@ -30,6 +30,7 @@ package au.id.soundadvice.systemdesign.storage.files;
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -52,11 +53,11 @@ import javafx.util.Pair;
  */
 public class Merge {
 
-    private static Optional<String> min(
-            Optional<String> ancestor,
-            Optional<String> left,
-            Optional<String> right) {
-        Optional<String> result = ancestor;
+    private static Optional<RecordID> min(
+            Optional<RecordID> ancestor,
+            Optional<RecordID> left,
+            Optional<RecordID> right) {
+        Optional<RecordID> result = ancestor;
         if (!result.isPresent() || (left.isPresent() && left.get().compareTo(result.get()) < 0)) {
             result = left;
         }
@@ -143,7 +144,7 @@ public class Merge {
             rightNext = rightReader.read();
 
             for (;;) {
-                Optional<String> currentIdentifier = min(
+                Optional<RecordID> currentIdentifier = min(
                         ancestorNext.map(Record::getIdentifier),
                         leftNext.map(Record::getIdentifier),
                         rightNext.map(Record::getIdentifier));
@@ -218,6 +219,34 @@ public class Merge {
                 });
     }
 
+    private static <T> Map<String, T> mergeMaps(
+            boolean leftIsNewer,
+            Optional<Map<String, T>> ancestorMap,
+            Map<String, T> leftMap, Map<String, T> rightMap) {
+        BinaryOperator<Optional<T>> fieldMerge;
+        if (leftIsNewer) {
+            fieldMerge = (l, r) -> l;
+        } else {
+            fieldMerge = (l, r) -> r;
+        }
+        return Stream.concat(
+                // Find all keys
+                leftMap.keySet().stream(), rightMap.keySet().stream())
+                .distinct()
+                .flatMap(key -> {
+                    // Perform a three-way merge on each cell
+                    Optional<T> ancestor
+                            = ancestorMap.flatMap(record -> Optional.ofNullable(record.get(key)));
+                    Optional<T> left = Optional.ofNullable(leftMap.get(key));
+                    Optional<T> right = Optional.ofNullable(rightMap.get(key));
+
+                    Optional<T> merged = merge(ancestor, left, right, fieldMerge);
+                    // Return the left result if we have a cell-level conflict
+                    return merged.map(m -> Stream.of(new Pair<>(key, m))).orElse(Stream.empty());
+                })
+                .collect(Collectors.toMap(Pair<String, T>::getKey, Pair<String, T>::getValue));
+    }
+
     public static Optional<Record> mergeRecord(
             Triplet<Optional<Record>> triplet, String now) {
         if (triplet.left.isPresent() && !triplet.right.isPresent()) {
@@ -231,36 +260,24 @@ public class Merge {
         } else {
             assert triplet.left.isPresent();
             assert triplet.right.isPresent();
-            boolean leftIsNewer = Record.newerOf(triplet.left.get(), triplet.right.get())
-                    .equals(triplet.left.get());
-            BinaryOperator<Optional<String>> cellmerge;
-            if (leftIsNewer) {
-                cellmerge = (l, r) -> l;
-            } else {
-                cellmerge = (l, r) -> r;
-            }
-            Map<String, String> mergedFields = Stream.concat(
-                    // Find all keys
-                    triplet.left.get().getAllFields().keySet().stream(),
-                    triplet.right.get().getAllFields().keySet().stream())
-                    .distinct()
-                    .flatMap(key -> {
-                        // Perform a three-way merge on each cell
-                        Optional<String> ancestor
-                                = triplet.ancestor.flatMap(record -> record.get(key));
-                        Optional<String> left
-                                = triplet.left.get().get(key);
-                        Optional<String> right
-                                = triplet.right.get().get(key);
-
-                        Optional<String> merged = merge(ancestor, left, right, cellmerge);
-                        // Return the left result if we have a cell-level conflict
-                        return merged.map(m -> Stream.of(new Pair<>(key, m))).orElse(Stream.empty());
-                    })
-                    .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+            Record left = triplet.left.get();
+            Record right = triplet.right.get();
+            boolean leftIsNewer = Record.newerOf(left, right)
+                    .equals(left);
+            Map<String, String> mergedFields = mergeMaps(
+                    leftIsNewer,
+                    triplet.ancestor.map(Record::getFields),
+                    left.getFields(), right.getFields()
+            );
+            Map<String, RecordID> mergedReferences = mergeMaps(
+                    leftIsNewer,
+                    triplet.ancestor.map(Record::getReferences),
+                    left.getReferences(), right.getReferences()
+            );
             return Optional.of(
-                    triplet.left.get().asBuilder()
-                    .putAll(mergedFields)
+                    left.asBuilder()
+                    .putFields(mergedFields)
+                    .putReferences(mergedReferences)
                     .build(now));
         }
     }

@@ -80,7 +80,7 @@ public class NullVersionControl implements VersionControl {
     @Override
     public Stream<String> listFiles(
             IdentityValidator identity, Optional<String> versionInfo) throws IOException {
-        Path path = identity.getDirectoryPath();
+        Path path = identity.getPath();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             return StreamSupport.stream(stream.spliterator(), true)
                     .map(Path::getFileName)
@@ -93,14 +93,14 @@ public class NullVersionControl implements VersionControl {
     @Override
     public boolean exists(
             IdentityValidator identity, String filename, Optional<String> versionInfo) {
-        Path path = identity.getDirectoryPath().resolve(filename);
+        Path path = identity.getPath().resolve(filename);
         return Files.exists(path);
     }
 
     @Override
     public BufferedReader getBufferedReader(
             IdentityValidator identity, String filename, Optional<String> versionInfo) throws IOException {
-        Path path = identity.getDirectoryPath().resolve(filename);
+        Path path = identity.getPath().resolve(filename);
         return Files.newBufferedReader(path);
     }
 

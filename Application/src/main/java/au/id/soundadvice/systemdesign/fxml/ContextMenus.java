@@ -27,16 +27,17 @@
 package au.id.soundadvice.systemdesign.fxml;
 
 import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.logical.Flow;
-import au.id.soundadvice.systemdesign.logical.FlowType;
-import au.id.soundadvice.systemdesign.logical.Function;
-import au.id.soundadvice.systemdesign.logical.FunctionView;
+import au.id.soundadvice.systemdesign.logical.entity.Flow;
+import au.id.soundadvice.systemdesign.logical.entity.FlowType;
+import au.id.soundadvice.systemdesign.logical.entity.Function;
+import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.physical.Interface;
-import au.id.soundadvice.systemdesign.physical.Item;
-import au.id.soundadvice.systemdesign.physical.ItemView;
+import au.id.soundadvice.systemdesign.physical.entity.Interface;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -181,7 +182,7 @@ public class ContextMenus {
                 && !function.isTracedTo(drawing.get())) {
             MenuItem deleteMenuItem = new MenuItem("Delete View");
             deleteMenuItem.setOnAction(event -> {
-                edit.updateAllocated(baseline -> view.removeFrom(baseline));
+                edit.updateChild(baseline -> view.removeFrom(baseline));
                 event.consume();
             });
             contextMenu.getItems().add(deleteMenuItem);
@@ -246,7 +247,7 @@ public class ContextMenus {
         contextMenu.getItems().add(typeMenu);
         MenuItem deleteMenuItem = new MenuItem("Delete");
         deleteMenuItem.setOnAction((event) -> {
-            edit.updateAllocated(baseline -> flow.removeFrom(baseline));
+            edit.updateChild(baseline -> flow.removeFrom(baseline));
             event.consume();
         });
         contextMenu.getItems().add(deleteMenuItem);

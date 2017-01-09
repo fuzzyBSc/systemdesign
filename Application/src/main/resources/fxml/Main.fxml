@@ -99,7 +99,6 @@
                                 <Menu fx:id="diffVersionMenu" mnemonicParsing="false" text="Diff To Version" />
                                 <CheckMenuItem fx:id="diffNoneMenuItem" mnemonicParsing="false" text="No Diff" />
                                 <SeparatorMenuItem mnemonicParsing="false" />
-                                <MenuItem fx:id="initialiseGitMenuItem" mnemonicParsing="false" text="Initialise Git" />
                                 <MenuItem fx:id="exploreMenuItem" mnemonicParsing="false" text="Explore" />
                                 <MenuItem fx:id="commitMenuItem" mnemonicParsing="false" text="Commit" />
                             </items>
