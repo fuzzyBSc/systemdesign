@@ -33,17 +33,14 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf;
 import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
-import au.id.soundadvice.systemdesign.state.EditState;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Accordion;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.TreeCell;
@@ -60,12 +57,12 @@ public class FXMLTree implements DrawingOf<Tree> {
     static final Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
 
     public FXMLTree(
-            Interactions interactions, EditState edit,
+            Interactions interactions, ContextMenus menus,
             Accordion tabs,
             TitledPane tab,
             TreeView<TreeNode> view) {
         this.interactions = interactions;
-        this.edit = edit;
+        this.menus = menus;
         this.tabs = tabs;
         this.tab = tab;
         this.view = view;
@@ -73,7 +70,6 @@ public class FXMLTree implements DrawingOf<Tree> {
 
     @Override
     public void start() {
-        addContextMenu();
         tabs.getPanes().add(tab);
     }
 
@@ -82,9 +78,13 @@ public class FXMLTree implements DrawingOf<Tree> {
         tabs.getPanes().remove(tab);
     }
 
-    private void addContextMenu() {
-        view.setContextMenu(ContextMenus.logicalTreeBackgroundMenu(
-                interactions, edit));
+    private void addContextMenu(Tree tree) {
+        Optional<MenuItems> menu = tree.getContextMenu();
+        if (menu.isPresent()) {
+            view.setContextMenu(menus.getMenu(menu.get()));
+        } else {
+            view.setContextMenu(null);
+        }
     }
 
     private void updateTreeItem(TreeItem<TreeNode> target, Stream<TreeNode> values) {
@@ -110,39 +110,25 @@ public class FXMLTree implements DrawingOf<Tree> {
         view.setCellFactory(value -> {
             TreeNodeCell cell = new TreeNodeCell();
             DragSource.bind(cell, () -> Optional.ofNullable(cell.getItem()), false);
-            DragTarget.bind(edit, cell, () -> Optional.ofNullable(cell.getItem()),
-                    new EntityDropHandler(edit));
+            DragTarget.bind(interactions, cell, () -> Optional.ofNullable(cell.getItem()),
+                    new EntityDropHandler(interactions));
             return cell;
         });
+        addContextMenu(state);
     }
 
     private final class TreeNodeCell extends TreeCell<TreeNode> {
 
         private Optional<TextField> textField = Optional.empty();
-        private final ContextMenu contextMenu = new ContextMenu();
 
         public TreeNodeCell() {
-            Menu addMenuItem = ContextMenus.addFunctionMenu(
-                    interactions,
-                    edit,
-                    Optional.empty(),
-                    () -> DEFAULT_ORIGIN);
-            contextMenu.getItems().add(addMenuItem);
-            MenuItem deleteMenuItem = new MenuItem("Delete");
-            contextMenu.getItems().add(deleteMenuItem);
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateState(baselines -> {
-                    return getItem().removeFrom(baselines);
-                });
-                event.consume();
-            });
             this.editableProperty().bind(this.itemProperty().isNotNull());
         }
 
         @Override
         public void startEdit() {
-            TreeNode function = getItem();
-            if (function != null) {
+            TreeNode node = getItem();
+            if (node != null) {
                 super.startEdit();
 
                 if (!textField.isPresent()) {
@@ -172,14 +158,14 @@ public class FXMLTree implements DrawingOf<Tree> {
         }
 
         @Override
-        public void commitEdit(TreeNode function) {
-            edit.updateState(baselines -> function.setLabel(
+        public void commitEdit(TreeNode node) {
+            interactions.updateState(baselines -> node.setLabel(
                     baselines, ISO8601.now(), textField.get().getText()));
         }
 
         @Override
-        public void updateItem(TreeNode function, boolean empty) {
-            super.updateItem(function, empty);
+        public void updateItem(TreeNode node, boolean empty) {
+            super.updateItem(node, empty);
 
             if (empty) {
                 setText(null);
@@ -193,7 +179,16 @@ public class FXMLTree implements DrawingOf<Tree> {
             } else {
                 setText(getString());
                 setGraphic(getTreeItem().getGraphic());
-                setContextMenu(contextMenu);
+                addContextMenu(node);
+            }
+        }
+
+        private void addContextMenu(TreeNode node) {
+            Optional<MenuItems> menu = node.getContextMenu();
+            if (menu.isPresent()) {
+                setContextMenu(menus.getMenu(menu.get()));
+            } else {
+                setContextMenu(null);
             }
         }
 
@@ -216,7 +211,7 @@ public class FXMLTree implements DrawingOf<Tree> {
         }
     }
     private final Interactions interactions;
-    private final EditState edit;
+    private final ContextMenus menus;
     private final Accordion tabs;
     private final TitledPane tab;
     private final TreeView<TreeNode> view;

@@ -32,6 +32,7 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 
@@ -147,6 +148,12 @@ public class RecordConnectionScope {
             result = Stream.concat(result, Stream.of(this.setDirection(Direction.None)));
         }
         return result;
+    }
+
+    public RecordConnectionScope map(UnaryOperator<Record> mutator) {
+        return RecordConnectionScope.resolve(
+                mutator.apply(left), mutator.apply(right),
+                scope.getDirection());
     }
 
     public ConnectionScope getScope() {

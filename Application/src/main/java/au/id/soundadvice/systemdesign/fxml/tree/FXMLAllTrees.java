@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.fxml.tree;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
@@ -52,9 +53,12 @@ import javafx.scene.control.TreeView;
  */
 public class FXMLAllTrees {
 
-    public FXMLAllTrees(Interactions interactions, EditState edit, Accordion tabs) {
+    public FXMLAllTrees(
+            Interactions interactions, EditState edit, ContextMenus menus,
+            Accordion tabs) {
         this.interactions = interactions;
         this.edit = edit;
+        this.menus = menus;
         this.tabs = tabs;
         this.onChange = new SingleRunnable(edit.getExecutor(), new OnChange());
     }
@@ -72,6 +76,7 @@ public class FXMLAllTrees {
 
     private final Interactions interactions;
     private final EditState edit;
+    private final ContextMenus menus;
     private final Accordion tabs;
 
     class OnChange implements Runnable {
@@ -97,7 +102,7 @@ public class FXMLAllTrees {
                     state -> {
                         TreeView<TreeNode> tree = new TreeView<>();
                         TitledPane tab = new TitledPane(state.getLabel(), tree);
-                        return new FXMLTree(interactions, edit, tabs, tab, tree);
+                        return new FXMLTree(interactions, menus, tabs, tab, tree);
                     });
         }
 

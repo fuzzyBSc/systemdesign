@@ -27,6 +27,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;

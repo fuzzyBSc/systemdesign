@@ -271,6 +271,14 @@ public enum Flow implements Table {
         return baseline.get(flow.getSubtype().get(), FlowType.flowType).get();
     }
 
+    @CheckReturnValue
+    public Pair<Baseline, Record> setFlowType(Baseline baseline, Record flow, Record flowType, String now) {
+        Record newFlow = flow.asBuilder()
+                .setSubtype(flowType)
+                .build(now);
+        return new Pair<>(baseline.add(newFlow), newFlow);
+    }
+
     @Override
     public Stream<UniqueConstraint> getUniqueConstraints() {
         return Stream.of(record -> new Object[]{record.getConnectionScope().setDirection(Direction.None), record.getSubtype()});

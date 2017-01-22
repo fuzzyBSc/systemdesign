@@ -158,7 +158,7 @@ public enum FunctionView implements Table {
     }
 
     public Record getDrawing(Baseline baseline, Record view) {
-        return baseline.get(view.getViewOf().get(), LogicalDrawingRecord.logicalDrawing).get();
+        return baseline.get(view.getContainer().get(), LogicalDrawingRecord.logicalDrawing).get();
     }
 
     @Override
@@ -188,6 +188,14 @@ public enum FunctionView implements Table {
     public Stream<Problem> getUntracedChildProblems(WhyHowPair<Baseline> context, Stream<Record> untracedChildren) {
         // Views don't trace
         return Stream.empty();
+    }
+
+    // Is this view part of the main drawing for the function's parent, or is it
+    // a foreign view situated within another drawing?
+    public boolean isForeign(Baseline baseline, Record view) {
+        Record function = getFunction(baseline, view);
+        Record drawing = getDrawing(baseline, view);
+        return !function.getTrace().equals(drawing.getTrace());
     }
 
 }

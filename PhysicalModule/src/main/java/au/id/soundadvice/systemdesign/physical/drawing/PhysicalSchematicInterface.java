@@ -33,7 +33,10 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -42,6 +45,15 @@ import java.util.Optional;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 class PhysicalSchematicInterface implements DrawingConnector {
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        if (iface.isDeleted()) {
+            return Optional.of(menus.getDeletedInterfaceContextMenu(iface.getSample()));
+        } else {
+            return Optional.of(menus.getInterfaceContextMenu(iface.getSample()));
+        }
+    }
 
     @Override
     public boolean isDiff() {
@@ -120,9 +132,13 @@ class PhysicalSchematicInterface implements DrawingConnector {
         return true;
     }
 
+    private final PhysicalContextMenus menus;
     private final DiffPair<Record> iface;
 
-    public PhysicalSchematicInterface(DiffPair<Record> iface) {
+    public PhysicalSchematicInterface(
+            PhysicalContextMenus menus,
+            DiffPair<Record> iface) {
+        this.menus = menus;
         this.iface = iface;
     }
 

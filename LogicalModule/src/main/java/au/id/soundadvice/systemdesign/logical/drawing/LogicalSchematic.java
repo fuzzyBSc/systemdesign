@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
@@ -53,7 +54,9 @@ public class LogicalSchematic implements Drawing {
     private final List<DrawingEntity> entities;
     private final List<DrawingConnector> connectors;
 
-    public LogicalSchematic(DiffPair<Baseline> baselines, Record drawing) {
+    public LogicalSchematic(
+            LogicalContextMenus menus,
+            DiffPair<Baseline> baselines, Record drawing) {
         this.drawing = drawing;
         this.parentFunctionIdentifier = drawing.getTrace();
         Map<RecordID, DiffPair<Record>> functionIdentifierToFunctionView
@@ -65,7 +68,7 @@ public class LogicalSchematic implements Drawing {
                         view -> view.getSample().getViewOf().get(),
                         view -> view));
         this.entities = functionIdentifierToFunctionView.values().stream()
-                .map(view -> new LogicalSchematicFunction(drawing, view))
+                .map(view -> new LogicalSchematicFunction(menus, drawing, view))
                 .collect(Collectors.toList());
         this.connectors = DiffPair.find(baselines, Flow::find, Flow.flow)
                 .flatMap(flowDiff -> {
@@ -73,7 +76,7 @@ public class LogicalSchematic implements Drawing {
                     Record leftView = functionIdentifierToFunctionView.get(scope.getLeft()).getSample();
                     Record rightView = functionIdentifierToFunctionView.get(scope.getRight()).getSample();
                     if (leftView != null && rightView != null) {
-                        return Stream.of(new LogicalSchematicFlow(flowDiff, leftView, rightView));
+                        return Stream.of(new LogicalSchematicFlow(menus, flowDiff, leftView, rightView));
                     }
                     return Stream.empty();
                 })

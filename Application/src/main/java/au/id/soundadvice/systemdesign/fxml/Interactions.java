@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.fxml.drawing.PreferredTab;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
@@ -112,27 +113,29 @@ public class Interactions implements InteractionContext {
 
     public void navigateDown() {
         try {
-            navigateDown(edit.getLastChild());
+            navigateDown(edit.getLastChild(), Optional.empty());
         } catch (EmptyStackException ex) {
             // Nowhere to navigate down to
         }
     }
 
-    public void navigateDown(RecordID systemOfInterestID) {
+    public void navigateDown(RecordID systemOfInterestID, Optional<Record> preferredTab) {
         try {
             Optional<Record> systemOfInterest = edit.getChild().get(systemOfInterestID, Item.item);
             if (systemOfInterest.isPresent()) {
-                navigateDown(systemOfInterest.get());
+                navigateDown(systemOfInterest.get(), preferredTab);
             }
         } catch (EmptyStackException ex) {
             // Nowhere to navigate down to
         }
     }
 
-    public void navigateDown(Record systemOfInterest) {
+    @Override
+    public void navigateDown(Record systemOfInterest, Optional<Record> preferredTab) {
         if (checkSave("Save before navigating?")) {
             try {
                 String now = ISO8601.now();
+                preferredTab.ifPresent(tab -> PreferredTab.set(tab.getIdentifier()));
                 edit.loadChild(systemOfInterest, now);
             } catch (IOException ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -214,8 +217,9 @@ public class Interactions implements InteractionContext {
         }
     }
 
-    public boolean tryLoad(EditState edit, RecordStorage dir, String now) {
+    public boolean tryLoad(EditState edit, RecordStorage dir) {
         try {
+            String now = ISO8601.now();
             edit.load(dir, now);
             if (dir instanceof FileStorage) {
                 FileStorage fileStorage = (FileStorage) dir;
@@ -251,7 +255,7 @@ public class Interactions implements InteractionContext {
             return false;
         } else {
             RecordStorage dir = CSVStorage.forPath(Paths.get(selectedDirectory.getPath()));
-            return tryLoad(edit, dir, ISO8601.now());
+            return tryLoad(edit, dir);
         }
     }
 
@@ -283,5 +287,15 @@ public class Interactions implements InteractionContext {
     @Override
     public Baseline getChild() {
         return edit.getChild();
+    }
+
+    @Override
+    public Optional<Baseline> getWas() {
+        return edit.getDiffBaseline();
+    }
+
+    @Override
+    public void restoreDeleted(Record sample) {
+        edit.restoreDeleted(sample);
     }
 }

@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.fxml.drawing;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
@@ -49,9 +50,12 @@ import javafx.scene.control.TabPane;
  */
 public class FXMLAllDrawings {
 
-    public FXMLAllDrawings(Interactions interactions, EditState edit, TabPane tabs) {
+    public FXMLAllDrawings(
+            Interactions interactions, EditState edit, ContextMenus menus,
+            TabPane tabs) {
         this.interactions = interactions;
         this.edit = edit;
+        this.menus = menus;
         this.tabs = tabs;
         this.onChange = new SingleRunnable(edit.getExecutor(), new OnChange());
     }
@@ -69,6 +73,7 @@ public class FXMLAllDrawings {
 
     private final Interactions interactions;
     private final EditState edit;
+    private final ContextMenus menus;
     private final TabPane tabs;
 
     class OnChange implements Runnable {
@@ -92,7 +97,7 @@ public class FXMLAllDrawings {
             updateElements(
                     nextDrawings.get().stream(),
                     currentDrawings,
-                    (state) -> new FXMLDrawingTab(interactions, edit, tabs));
+                    state -> new FXMLDrawingTab(interactions, menus, tabs));
         }
 
     }

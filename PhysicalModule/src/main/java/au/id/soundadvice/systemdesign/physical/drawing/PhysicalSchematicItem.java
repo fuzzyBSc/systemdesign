@@ -32,8 +32,12 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -49,6 +53,20 @@ import javafx.scene.paint.Paint;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class PhysicalSchematicItem implements DrawingEntity {
+
+    @Override
+    public Optional<Runnable> getDefaultAction(InteractionContext context) {
+        return Optional.of(() -> context.navigateDown(item.getSample(), Optional.empty()));
+    }
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        if (item.isDeleted()) {
+            return Optional.of(menus.getDeletedItemContextMenu(item.getSample()));
+        } else {
+            return Optional.of(menus.getItemContextMenu(item.getSample()));
+        }
+    }
 
     public interface CompartmentFactory extends Function<DiffPair<Record>, Compartment> {
     }
@@ -122,11 +140,17 @@ public class PhysicalSchematicItem implements DrawingEntity {
 
     private static final EntityStyle STYLE = new EntityStyle(
             EntityStyle.Shape.Rectangle);
+    private final PhysicalInteractions interactions;
+    private final PhysicalContextMenus menus;
     private final DiffPair<Record> itemView;
     private final DiffPair<Record> item;
     private final List<Compartment> compartments;
 
-    public PhysicalSchematicItem(DiffPair<Record> itemView) {
+    public PhysicalSchematicItem(
+            PhysicalInteractions interactions, PhysicalContextMenus menus,
+            DiffPair<Record> itemView) {
+        this.interactions = interactions;
+        this.menus = menus;
         this.itemView = itemView;
         this.item = itemView.map((baseline, view) -> ItemView.itemView.getItem(baseline, view));
         this.compartments = COMPARTMENTS.stream()

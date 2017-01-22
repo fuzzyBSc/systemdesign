@@ -68,7 +68,7 @@ public class LogicalInteractions {
         return Optional.ofNullable(result.get());
     }
 
-    public void renameFunction(InteractionContext context, Record sample) {
+    public void setFunctionName(InteractionContext context, Record sample) {
         if (sample.isExternal()) {
             return;
         }
@@ -112,7 +112,7 @@ public class LogicalInteractions {
         return Optional.ofNullable(result.get());
     }
 
-    public void setFlowType(InteractionContext context, Record flowSample) {
+    public void createAndSetFlowType(InteractionContext context, Record flowSample) {
         if (flowSample.isExternal()) {
             return;
         }

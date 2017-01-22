@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign.moduleapi.interaction;
 
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 import javafx.scene.paint.Color;
@@ -53,5 +54,11 @@ public interface InteractionContext {
     public Baseline getParent();
 
     public Baseline getChild();
+
+    public Optional<Baseline> getWas();
+
+    public void navigateDown(Record item, Optional<Record> preferredTab);
+
+    public void restoreDeleted(Record sample);
 
 }

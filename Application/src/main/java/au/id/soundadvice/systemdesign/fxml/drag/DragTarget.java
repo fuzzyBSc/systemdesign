@@ -27,10 +27,10 @@
 package au.id.soundadvice.systemdesign.fxml.drag;
 
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
@@ -64,20 +64,20 @@ public class DragTarget {
                 });
     }
 
-    public static void bind(EditState edit, Node node, Identifiable target, Drop drop) {
+    public static void bind(InteractionContext context, Node node, Identifiable target, Drop drop) {
         Optional<Identifiable> optionalTarget = Optional.of(target);
-        bind(edit, node, () -> optionalTarget, drop);
+        bind(context, node, () -> optionalTarget, drop);
     }
 
     public static void bind(
-            EditState edit, Node node, Supplier<Optional<? extends Identifiable>> supplier, Drop drop) {
+            InteractionContext context, Node node, Supplier<Optional<? extends Identifiable>> supplier, Drop drop) {
         node.setOnDragOver(event -> {
             // Decide whether or not to accept the drop
             Optional<RecordID> sourceIdentifier = toIdentifier(event.getDragboard());
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                WhyHowPair<Baseline> state = edit.getState();
+                WhyHowPair<Baseline> state = context.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -94,7 +94,7 @@ public class DragTarget {
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                WhyHowPair<Baseline> state = edit.getState();
+                WhyHowPair<Baseline> state = context.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 if (!actions.isEmpty()) {
@@ -114,7 +114,7 @@ public class DragTarget {
             Optional<? extends Identifiable> target = supplier.get();
             if (sourceIdentifier.isPresent() && target.isPresent()
                     && !sourceIdentifier.get().equals(target.get().getIdentifier())) {
-                WhyHowPair<Baseline> state = edit.getState();
+                WhyHowPair<Baseline> state = context.getState();
                 Map<TransferMode, BooleanSupplier> actions
                         = drop.getActions(state, sourceIdentifier.get(), target.get().getIdentifier());
                 BooleanSupplier action = actions.get(event.getAcceptedTransferMode());

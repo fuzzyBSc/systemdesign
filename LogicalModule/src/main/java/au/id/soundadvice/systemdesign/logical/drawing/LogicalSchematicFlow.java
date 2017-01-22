@@ -27,18 +27,31 @@
 package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class LogicalSchematicFlow implements DrawingConnector {
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        if (flow.isDeleted()) {
+            return Optional.of(menus.getDeletedFlowContextMenu(flow.getSample()));
+        } else {
+            return Optional.of(menus.getFlowContextMenu(flow.getSample()));
+        }
+    }
 
     @Override
     public int hashCode() {
@@ -102,7 +115,10 @@ public class LogicalSchematicFlow implements DrawingConnector {
         return flow.isDeleted();
     }
 
-    public LogicalSchematicFlow(DiffPair<Record> flow, Record leftView, Record rightView) {
+    public LogicalSchematicFlow(
+            LogicalContextMenus menus,
+            DiffPair<Record> flow, Record leftView, Record rightView) {
+        this.menus = menus;
         this.flow = flow;
         this.leftView = leftView;
         this.rightView = rightView;
@@ -112,6 +128,7 @@ public class LogicalSchematicFlow implements DrawingConnector {
                 flow.getSample().getConnectionScope().getDirection());
     }
 
+    private final LogicalContextMenus menus;
     private final DiffPair<Record> flow;
     private final DiffPair<Record> flowType;
     private final ConnectionScope scope;

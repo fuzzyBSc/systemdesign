@@ -27,6 +27,8 @@
 package au.id.soundadvice.systemdesign.moduleapi.tree;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -38,5 +40,7 @@ public interface Tree extends Identifiable {
     public String getLabel();
 
     public Stream<TreeNode> getChildren();
+
+    public Optional<MenuItems> getContextMenu();
 
 }

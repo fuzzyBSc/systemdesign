@@ -26,14 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
-import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.fxml.ContextMenus;
-import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,8 +53,8 @@ import javafx.scene.text.TextFlow;
  */
 class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
 
-    private final EditState edit;
-    private final Interactions interactions;
+    private final InteractionContext context;
+    private final ContextMenus menus;
     private final Group parent;
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final Group group;
@@ -66,12 +65,13 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
     private Optional<List<DrawingConnector>> previousConnectors = Optional.empty();
 
     FXMLDrawingConnectorScope(
-            Interactions interactions, EditState edit,
+            InteractionContext context,
+            ContextMenus menus,
             ConnectionScope scope,
             Map<RecordID, FXMLDrawingNode> currentNodes,
             Group parent) {
-        this.edit = edit;
-        this.interactions = interactions;
+        this.context = context;
+        this.menus = menus;
         this.parent = parent;
         this.scope = scope;
         this.currentNodes = currentNodes;
@@ -182,13 +182,10 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
             reverseArrow.setLayoutY(layoutY);
         });
 
-        if (connector.isDeleted()) {
-            ContextMenu contextMenu = ContextMenus.deletedFlowContextMenu(
-                    wasBaseline.get(), connector, interactions, edit);
-            label.setContextMenu(contextMenu);
-        } else {
-            ContextMenu contextMenu = ContextMenus.flowContextMenu(connector, interactions, edit);
-            label.setContextMenu(contextMenu);
+        Optional<ContextMenu> menu = connector.getContextMenu(context).map(
+                menuItems -> menus.getMenu(menuItems));
+        if (menu.isPresent()) {
+            label.setContextMenu(menu.get());
         }
 
         Group singleConnectorGroup = new Group(path, label, normalArrow, reverseArrow);

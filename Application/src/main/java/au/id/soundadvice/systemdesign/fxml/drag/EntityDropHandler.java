@@ -32,7 +32,7 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
-import au.id.soundadvice.systemdesign.state.EditState;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -47,10 +47,10 @@ import javafx.util.Pair;
  */
 public class EntityDropHandler implements DragTarget.Drop {
 
-    private final EditState edit;
+    private final InteractionContext context;
 
-    public EntityDropHandler(EditState edit) {
-        this.edit = edit;
+    public EntityDropHandler(InteractionContext context) {
+        this.context = context;
     }
 
     @Override
@@ -84,7 +84,7 @@ public class EntityDropHandler implements DragTarget.Drop {
             BiFunction<WhyHowPair<Baseline>, Pair<Record, Record>, WhyHowPair<Baseline>> action,
             Record from, Record to) {
         return () -> {
-            edit.updateState(baselines -> {
+            context.updateState(baselines -> {
                 return action.apply(baselines, new Pair<>(from, to));
             });
             return true;

@@ -30,6 +30,9 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffInfo;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
+import java.util.Optional;
 
 /**
  *
@@ -40,4 +43,6 @@ public interface DrawingConnector extends Identifiable, DiffInfo {
     public ConnectionScope getScope();
 
     public DiffPair<String> getLabel();
+
+    public Optional<MenuItems> getContextMenu(InteractionContext context);
 }

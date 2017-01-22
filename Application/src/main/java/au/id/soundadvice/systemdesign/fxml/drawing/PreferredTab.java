@@ -27,6 +27,7 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,14 +37,14 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class PreferredTab {
 
-    private static final AtomicReference<Optional<String>> PREFERRED
+    private static final AtomicReference<Optional<RecordID>> PREFERRED
             = new AtomicReference<>(Optional.empty());
 
-    public static void set(String drawing) {
+    public static void set(RecordID drawing) {
         PREFERRED.set(Optional.of(drawing));
     }
 
-    public static Optional<String> getAndClear() {
+    public static Optional<RecordID> getAndClear() {
         return PREFERRED.getAndSet(Optional.empty());
     }
 }

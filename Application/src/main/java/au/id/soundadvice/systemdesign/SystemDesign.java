@@ -28,6 +28,7 @@ package au.id.soundadvice.systemdesign;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.Interactions;
@@ -64,10 +65,11 @@ public class SystemDesign extends Application {
 
         EditState edit = EditState.init(Executors.newCachedThreadPool());
         Interactions interactions = new Interactions(stage, edit);
+        ContextMenus menus = new ContextMenus(interactions);
 
         Callback<Class<?>, Object> controllerFactory = (Class<?> param) -> {
             if (param.equals(MainController.class)) {
-                return new MainController(interactions, edit);
+                return new MainController(interactions, edit, menus);
             } else {
                 try {
                     return param.newInstance();

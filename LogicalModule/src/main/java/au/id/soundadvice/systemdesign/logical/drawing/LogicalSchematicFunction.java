@@ -28,12 +28,15 @@ package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.entity.Function;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.EntityStyle;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -45,6 +48,21 @@ import javafx.scene.paint.Paint;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class LogicalSchematicFunction implements DrawingEntity {
+
+    @Override
+    public Optional<Runnable> getDefaultAction(InteractionContext context) {
+        return Optional.of(() -> context.navigateDown(
+                item.getSample(), Optional.of(function.getSample())));
+    }
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        if (item.isDeleted()) {
+            return Optional.of(menus.getDeletedFunctionContextMenu(function.getSample()));
+        } else {
+            return Optional.of(menus.getFunctionContextMenu(function.getSample()));
+        }
+    }
 
     @Override
     public boolean isDiff() {
@@ -98,13 +116,17 @@ public class LogicalSchematicFunction implements DrawingEntity {
         return true;
     }
 
-    public LogicalSchematicFunction(Record drawing, DiffPair<Record> view) {
+    public LogicalSchematicFunction(
+            LogicalContextMenus menus,
+            Record drawing, DiffPair<Record> view) {
+        this.menus = menus;
         this.drawing = drawing;
         this.view = view;
         this.function = view.map((baseline, record) -> FunctionView.functionView.getFunction(baseline, record));
         this.item = function.map((baseline, record) -> Function.function.getItemForFunction(baseline, record));
     }
 
+    private final LogicalContextMenus menus;
     private final Record drawing;
     private final DiffPair<Record> view;
     private final DiffPair<Record> function;

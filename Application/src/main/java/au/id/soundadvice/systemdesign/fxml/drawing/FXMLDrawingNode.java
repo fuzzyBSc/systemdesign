@@ -27,10 +27,8 @@
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
 import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
-import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler.Dragged;
 import au.id.soundadvice.systemdesign.fxml.ContextMenus;
-import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drag.GridSnap;
@@ -38,6 +36,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.MoveHandler;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,8 +50,6 @@ import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
-import static jdk.nashorn.internal.objects.NativeFunction.function;
-import static jdk.nashorn.internal.runtime.PropertyMap.diff;
 
 /**
  *
@@ -62,18 +59,18 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
 
     private static final double SQRT2 = Math.sqrt(2);
 
-    private final EditState edit;
-    private final Interactions interactions;
+    private final InteractionContext context;
+    private final ContextMenus menus;
     private final Group parent;
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final Group group;
     private Optional<DrawingEntity> previous = Optional.empty();
 
     FXMLDrawingNode(
-            Interactions interactions, EditState edit,
+            InteractionContext context, ContextMenus menus,
             Group parent) {
-        this.edit = edit;
-        this.interactions = interactions;
+        this.context = context;
+        this.menus = menus;
         this.parent = parent;
         this.group = new Group();
     }
@@ -113,7 +110,7 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
         Optional<Record> dragObject = state.getDragDropObject();
         if (dragObject.isPresent()) {
             DragSource.bind(node, dragObject.get(), true);
-            DragTarget.bind(edit, node, dragObject.get(), new EntityDropHandler(edit));
+            DragTarget.bind(context, node, dragObject.get(), new EntityDropHandler(context));
         }
         this.group.getChildren().clear();
         this.group.getChildren().add(node);
@@ -175,21 +172,17 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
         nodeGroup.setLayoutX(entity.getOrigin().getX());
         nodeGroup.setLayoutY(entity.getOrigin().getY());
 
-        if (entity.isDeleted()) {
-            ContextMenu contextMenu = ContextMenus.deletedFunctionContextMenu(
-                    diff.getWasBaseline().get(), function, interactions, edit);
-            label.setContextMenu(contextMenu);
-        } else {
-            ContextMenu contextMenu = ContextMenus.functionContextMenu(
-                    entity.getItem(), drawingSupplier, function, entity.getView(), interactions, edit);
-            label.setContextMenu(contextMenu);
+        Optional<ContextMenu> menu = entity.getContextMenu(context).map(
+                menuItems -> menus.getMenu(menuItems));
+        if (menu.isPresent()) {
+            label.setContextMenu(menu.get());
         }
 
-        if (!function.isExternal()) {
+        Optional<Runnable> defaultAction = entity.getDefaultAction(context);
+        if (defaultAction.isPresent()) {
             nodeGroup.setOnMouseClicked(event -> {
                 if (event.getClickCount() > 1) {
-                    PreferredTab.set(Optional.of(function));
-                    interactions.navigateDown(entity.getItem());
+                    defaultAction.get().run();
                     event.consume();
                 }
             });
@@ -265,7 +258,7 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
 
         @Override
         public void dragged(Node parent, Node draggable, Point2D layoutCurrent) {
-            edit.updateChild(allocated -> view.setOrigin(allocated, ISO8601.now(), layoutCurrent));
+            context.updateChild(allocated -> view.setOrigin(allocated, ISO8601.now(), layoutCurrent));
         }
     }
 }

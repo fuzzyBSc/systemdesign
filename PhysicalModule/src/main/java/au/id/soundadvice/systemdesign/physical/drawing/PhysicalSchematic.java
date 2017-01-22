@@ -36,6 +36,8 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -58,21 +60,28 @@ import java.util.stream.Stream;
  */
 public class PhysicalSchematic implements Drawing {
 
+    private final PhysicalInteractions interactions;
+    private final PhysicalContextMenus menus;
     private final Record identity;
     private final List<DrawingEntity> entities;
     private final List<DrawingConnector> connectors;
 
-    public PhysicalSchematic(DiffPair<Baseline> baselines) {
+    public PhysicalSchematic(
+            PhysicalInteractions interactions,
+            PhysicalContextMenus menus,
+            DiffPair<Baseline> baselines) {
+        this.interactions = interactions;
+        this.menus = menus;
         this.identity = Identity.get(baselines.getSample());
 
         this.entities = DiffPair.find(baselines, ItemView::find, ItemView.itemView)
-                .map(PhysicalSchematicItem::new)
+                .map(view -> new PhysicalSchematicItem(interactions, menus, view))
                 .collect(Collectors.toList());
         this.connectors = DiffPair.find(baselines,
                 baseline -> Interface.find(baseline)
                 .filter(iface -> !iface.getConnectionScope().isSelfConnection()),
                 Interface.iface)
-                .map(PhysicalSchematicInterface::new)
+                .map(iface -> new PhysicalSchematicInterface(menus, iface))
                 .collect(Collectors.toList());
     }
 

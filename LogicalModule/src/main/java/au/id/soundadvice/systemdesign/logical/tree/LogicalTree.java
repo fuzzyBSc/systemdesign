@@ -27,11 +27,13 @@
 package au.id.soundadvice.systemdesign.logical.tree;
 
 import au.id.soundadvice.systemdesign.logical.entity.Function;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
@@ -60,7 +62,12 @@ public class LogicalTree implements Tree {
         return RecordID.of(this.getClass());
     }
 
-    public static final class LogicalTreeNode implements TreeNode {
+    @Override
+    public Optional<MenuItems> getContextMenu() {
+        return Optional.of(menus.getLogicalTreeBackgroundMenu());
+    }
+
+    public final class LogicalTreeNode implements TreeNode {
 
         public LogicalTreeNode(Optional<Record> function, WhyHowPair.Selector selector, SortedMap<String, TreeNode> children) {
             this.function = function;
@@ -126,6 +133,11 @@ public class LogicalTree implements Tree {
         public Optional<Record> getDragDropObject() {
             return function;
         }
+
+        @Override
+        public Optional<MenuItems> getContextMenu() {
+            return function.map(ff -> menus.getFunctionContextMenu(ff));
+        }
     }
 
     @Override
@@ -137,10 +149,14 @@ public class LogicalTree implements Tree {
         return result;
     }
 
+    private final LogicalContextMenus menus;
     private final SortedMap<String, TreeNode> allocation;
     private final LogicalTreeNode orphans;
 
-    public LogicalTree(WhyHowPair<Baseline> baselines) {
+    public LogicalTree(
+            LogicalContextMenus menus,
+            WhyHowPair<Baseline> baselines) {
+        this.menus = menus;
         Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
 
         Map<RecordID, Record> parentFunctions;

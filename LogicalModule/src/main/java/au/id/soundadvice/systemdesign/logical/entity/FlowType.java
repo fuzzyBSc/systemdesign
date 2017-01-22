@@ -178,6 +178,10 @@ public enum FlowType implements Table {
         });
     }
 
+    public String getDisplayName(Record flowType) {
+        return flowType.getLongName();
+    }
+
     @Override
     public Stream<Problem> getUntracedParentProblems(WhyHowPair<Baseline> context, Stream<Record> untracedParents) {
         // It's correct for types to exist in the parent that either have not

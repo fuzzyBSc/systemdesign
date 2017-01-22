@@ -26,9 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.collection;
 
-import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;

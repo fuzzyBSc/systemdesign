@@ -59,7 +59,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.util.Pair;
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
 
 /**
@@ -247,50 +246,50 @@ public class EditState {
         return !lastChildIdentity.isEmpty();
     }
 
-    /**
-     * Attempt to restore a relation, plus all recursive references to that
-     * relation
-     *
-     * @param was The baseline in which deleted relation is still present
-     * @param is The baseline to restore the deleted relation into
-     * @param record The deleted record to restore into the "is" baseline.
-     * @return The updated "is" baseline.
-     */
-    @CheckReturnValue
-    private static Baseline restoreDeleted(
-            Baseline was, Baseline is, Record record) {
-        // Verify that the deleted relation is in the "was" baseline
-        Optional<Record> wasRecord = was.get(record);
-        Optional<Record> isRecord = is.get(record);
-        if (wasRecord.isPresent() && !isRecord.isPresent()) {
-            // Add the old relation back in
-            is = is.add(wasRecord.get());
-            Iterator<Record> it = is.findReverse(record.getIdentifier()).iterator();
-            while (it.hasNext()) {
-                // Walk the tree
-                is = restoreDeleted(was, is, it.next());
-            }
-        }
-        return is;
+    private Stream<Record> followForeignKeysUp(Baseline baseline, Record record) {
+        return Stream.concat(
+                record.getReferences().values().stream()
+                .flatMap(id -> {
+                    Optional<Record> newRecord = baseline.getAnyType(id);
+                    return newRecord.map(next -> followForeignKeysUp(baseline, next))
+                            .orElse(Stream.empty());
+                }),
+                Stream.of(record));
+    }
+
+    private Stream<Record> followForeignKeysDown(Baseline baseline, Record record) {
+        return Stream.concat(
+                Stream.of(record),
+                baseline.findReverse(record.getIdentifier()));
     }
 
     /**
-     * Attempt to restore a record, plus all recursive references to that
-     * relation
+     * Attempt to restore a record, plus all records it depends upon, plus all
+     * recursive references to the restored record
      *
-     * @param deletedRecords The deleted record to restore into the current
-     * baseline.
+     * @param sample The deleted record to restore into the current baseline.
      */
-    public void restoreDeleted(Record... deletedRecords) {
+    public void restoreDeleted(Record sample) {
         updateState(state -> {
             // Restore the entire deleted tree of relations
-            Optional<Pair<VersionInfo, Baseline>> was = diffBaseline.get();
-            if (was.isPresent()) {
+            Optional<Pair<VersionInfo, Baseline>> wasInfo = diffBaseline.get();
+            Optional<Record> record = wasInfo.flatMap(pair -> pair.getValue().get(sample));
+            if (record.isPresent()) {
                 String now = ISO8601.now();
-                for (Record relation : deletedRecords) {
-                    state = state.setChild(
-                            restoreDeleted(was.get().getValue(), state.getChild(), relation));
+                Baseline was = wasInfo.get().getValue();
+                Stream<Record> toRestore = Stream.concat(
+                        followForeignKeysUp(was, record.get()),
+                        followForeignKeysDown(was, record.get()));
+                Baseline is = state.getChild();
+                Iterator<Record> it = toRestore.iterator();
+                while (it.hasNext()) {
+                    Record candidate = it.next();
+                    Optional<Record> existing = is.get(candidate);
+                    if (!existing.isPresent()) {
+                        is = is.add(candidate);
+                    }
                 }
+                state = state.setChild(is);
                 // Rely on autofix behaviours to resolve any conflicts that arose
                 state = AutoFix.onLoad(state, now);
             }

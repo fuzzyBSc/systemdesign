@@ -32,6 +32,8 @@ import au.id.soundadvice.systemdesign.logical.entity.FlowType;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
 import au.id.soundadvice.systemdesign.logical.entity.Function;
 import au.id.soundadvice.systemdesign.logical.drawing.LogicalSchematic;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
+import au.id.soundadvice.systemdesign.logical.interactions.LogicalInteractions;
 import au.id.soundadvice.systemdesign.logical.tree.LogicalTree;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
@@ -54,6 +56,7 @@ import au.id.soundadvice.systemdesign.physical.drawing.PhysicalSchematicItem;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -172,6 +175,10 @@ public class LogicalModule implements Module {
         }
     }
 
+    private final PhysicalInteractions physicalInteractions = new PhysicalInteractions();
+    private final LogicalInteractions logicalInteractions = new LogicalInteractions();
+    private final LogicalContextMenus menus = new LogicalContextMenus(physicalInteractions, logicalInteractions);
+
     @Override
     public WhyHowPair<Baseline> onLoadAutoFix(WhyHowPair<Baseline> baselines, String now) {
         baselines = LogicalDrawingRecord.logicalDrawing.createNeededDrawings(baselines, now);
@@ -197,11 +204,11 @@ public class LogicalModule implements Module {
     @Override
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
         return baselines.getIsBaseline().findByType(LogicalDrawingRecord.logicalDrawing)
-                .map(entity -> new LogicalSchematic(baselines, entity));
+                .map(entity -> new LogicalSchematic(menus, baselines, entity));
     }
 
     @Override
     public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines) {
-        return Stream.of(new LogicalTree(baselines));
+        return Stream.of(new LogicalTree(menus, baselines));
     }
 }

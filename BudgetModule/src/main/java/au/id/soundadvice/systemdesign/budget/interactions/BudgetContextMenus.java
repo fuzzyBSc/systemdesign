@@ -24,31 +24,35 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.tree;
+package au.id.soundadvice.systemdesign.budget.interactions;
 
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
-import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
-import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
-import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
-import java.util.Optional;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.stream.Stream;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface TreeNode extends Identifiable {
+public class BudgetContextMenus {
 
-    public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value);
+    public BudgetContextMenus(BudgetInteractions budgetInteractions) {
+        this.budgetInteractions = budgetInteractions;
+    }
 
-    public String getLabel();
+    private final BudgetInteractions budgetInteractions;
 
-    public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines);
+    public MenuItems getBudgetTreeBackgroundMenu() {
+        return new BudgetTreeBackgroundMenu();
+    }
 
-    public Stream<TreeNode> getChildren();
+    class BudgetTreeBackgroundMenu implements MenuItems {
 
-    public Optional<Record> getDragDropObject();
-
-    public Optional<MenuItems> getContextMenu();
+        @Override
+        public Stream<MenuItems.MenuItem> items(InteractionContext context) {
+            return Stream.of(new SingleMenuItem(
+                    "Add Budget",
+                    () -> budgetInteractions.createBudget(context)));
+        }
+    }
 }

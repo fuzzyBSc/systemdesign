@@ -30,10 +30,12 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -47,8 +49,11 @@ import java.util.stream.Stream;
  */
 public class PhysicalTree implements Tree {
 
-    public PhysicalTree(WhyHowPair<Baseline> baselines) {
-        children = Item.find(baselines.getParent())
+    public PhysicalTree(
+            PhysicalContextMenus menus,
+            WhyHowPair<Baseline> baselines) {
+        this.menus = menus;
+        this.children = Item.find(baselines.getParent())
                 .collect(Collectors.toMap(
                         Record::getShortName,
                         item -> new PhysicalTreeNode(baselines, WhyHowPair.Selector.PARENT, item),
@@ -58,6 +63,7 @@ public class PhysicalTree implements Tree {
                         TreeMap::new));
     }
 
+    private final PhysicalContextMenus menus;
     private final SortedMap<String, TreeNode> children;
 
     @Override
@@ -68,6 +74,11 @@ public class PhysicalTree implements Tree {
     @Override
     public RecordID getIdentifier() {
         return RecordID.of(this.getClass());
+    }
+
+    @Override
+    public Optional<MenuItems> getContextMenu() {
+        return Optional.of(menus.getItemTreeBackgroundMenu());
     }
 
     private class PhysicalTreeNode implements TreeNode {
@@ -137,6 +148,11 @@ public class PhysicalTree implements Tree {
         @Override
         public RecordID getIdentifier() {
             return item.getIdentifier();
+        }
+
+        @Override
+        public Optional<MenuItems> getContextMenu() {
+            return Optional.of(menus.getItemContextMenu(item));
         }
 
     }

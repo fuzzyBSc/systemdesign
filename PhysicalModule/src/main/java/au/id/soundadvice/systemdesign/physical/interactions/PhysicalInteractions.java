@@ -98,7 +98,7 @@ public class PhysicalInteractions {
         }
     }
 
-    public void renameItem(InteractionContext context, Record sample) {
+    public void setItemName(InteractionContext context, Record sample) {
         if (sample.isExternal()) {
             return;
         }
@@ -126,7 +126,7 @@ public class PhysicalInteractions {
         }
     }
 
-    public void colorItem(InteractionContext context, Record sample) {
+    public void setItemColor(InteractionContext context, Record sample) {
         if (sample.isExternal()) {
             return;
         }

@@ -26,23 +26,14 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
-import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.logical.entity.Flow;
-import au.id.soundadvice.systemdesign.logical.entity.FlowType;
-import au.id.soundadvice.systemdesign.logical.entity.Function;
-import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
-import au.id.soundadvice.systemdesign.physical.entity.Interface;
-import au.id.soundadvice.systemdesign.physical.entity.Item;
-import au.id.soundadvice.systemdesign.physical.entity.ItemView;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javafx.event.ActionEvent;
-import javafx.geometry.Point2D;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
@@ -52,6 +43,55 @@ import javafx.scene.control.MenuItem;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class ContextMenus {
+
+    public ContextMenus(Interactions interactions) {
+        this.interactions = interactions;
+    }
+
+    private final Interactions interactions;
+
+    public ContextMenu getMenu(MenuItems target) {
+        ContextMenu result = new ContextMenu();
+        fillMenu(result.getItems(), target.items(interactions));
+        return result;
+    }
+
+    private void fillMenu(List<MenuItem> result, Stream<MenuItems.MenuItem> target) {
+        result.clear();
+        result.addAll(
+                target
+                .map((MenuItems.MenuItem ourMenuItem) -> {
+                    MenuItem fxmlMenuItem;
+                    if (ourMenuItem instanceof MenuItems.Submenu) {
+                        Menu fxmlSubmenu = new Menu(ourMenuItem.getText());
+                        MenuItem dummy = new MenuItem("dummy");
+                        dummy.setVisible(false);
+                        fxmlSubmenu.getItems().add(dummy);
+                        fxmlSubmenu.setOnShowing(showEvent -> {
+                            // Populate the menu
+                            fillMenu(fxmlSubmenu.getItems(), ourMenuItem.getChildren());
+                            if (fxmlSubmenu.getItems().isEmpty()) {
+                                MenuItem noItems = new MenuItem("None Found");
+                                noItems.setDisable(true);
+                                fxmlSubmenu.getItems().add(noItems);
+                            }
+                            showEvent.consume();
+                        });
+                        fxmlMenuItem = fxmlSubmenu;
+                    } else if (ourMenuItem instanceof Runnable) {
+                        fxmlMenuItem = new MenuItem(ourMenuItem.getText());
+                        fxmlMenuItem.setOnAction(e -> {
+                            ((Runnable) ourMenuItem).run();
+                            e.consume();
+                        });
+                    } else {
+                        fxmlMenuItem = new MenuItem(ourMenuItem.getText());
+                        fxmlMenuItem.setDisable(true);
+                    }
+                    return fxmlMenuItem;
+                })
+                .collect(Collectors.toList()));
+    }
 
     public static <T> void initPerInstanceSubmenu(
             Menu menu,
@@ -82,244 +122,4 @@ public class ContextMenus {
             }
         });
     }
-
-    public static ContextMenu itemContextMenu(Item item, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        if (item.isExternal()) {
-            MenuItem deleteMenuItem = new MenuItem("Delete External Item");
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateAllocated(baseline -> item.removeFrom(baseline));
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        } else {
-            MenuItem addMenuItem = new MenuItem("Add Function");
-            addMenuItem.setOnAction(event -> {
-                interactions.addFunctionToItem(item, Optional.empty(), FunctionView.DEFAULT_ORIGIN);
-                event.consume();
-            });
-            contextMenu.getItems().add(addMenuItem);
-            MenuItem renameMenuItem = new MenuItem("Rename Item");
-            renameMenuItem.setOnAction(event -> {
-                interactions.rename(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(renameMenuItem);
-            MenuItem colorMenuItem = new MenuItem("Set Color");
-            colorMenuItem.setOnAction(event -> {
-                interactions.color(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(colorMenuItem);
-            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
-            navigateMenuItem.setOnAction(event -> {
-                interactions.navigateDown(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(navigateMenuItem);
-            MenuItem deleteMenuItem = new MenuItem("Delete Item");
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateAllocated(baseline -> item.removeFrom(baseline));
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        }
-        return contextMenu;
-    }
-
-    public static ContextMenu deletedItemContextMenu(
-            Baseline was, Item item, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem restoreMenuItem = new MenuItem("Restore Item");
-        restoreMenuItem.setOnAction(event -> {
-            edit.restoreDeleted(item);
-            event.consume();
-        });
-        contextMenu.getItems().add(restoreMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu interfaceContextMenu(
-            Interface iface, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem deleteMenuItem = new MenuItem("Delete Interface");
-        deleteMenuItem.setOnAction(event -> {
-            edit.updateAllocated(baseline -> iface.removeFrom(baseline));
-            event.consume();
-        });
-        contextMenu.getItems().add(deleteMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu deletedInterfaceContextMenu(
-            Baseline was, Interface iface, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem restoreMenuItem = new MenuItem("Restore Interface");
-        restoreMenuItem.setOnAction(event -> {
-            // Restore dependencies
-            Item wasLeftItem = iface.getLeft(was);
-            Item wasRightItem = iface.getRight(was);
-            edit.restoreDeleted(wasLeftItem, wasRightItem, iface);
-            event.consume();
-        });
-        contextMenu.getItems().add(restoreMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu functionContextMenu(
-            Item item,
-            Optional<Function> drawing, Function function, FunctionView view,
-            Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        if (function.isExternal()) {
-            MenuItem deleteMenuItem = new MenuItem("Delete External Function");
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateAllocated(baseline -> function.removeFrom(baseline));
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        } else if (drawing.isPresent()
-                && !function.isTracedTo(drawing.get())) {
-            MenuItem deleteMenuItem = new MenuItem("Delete View");
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateChild(baseline -> view.removeFrom(baseline));
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        } else {
-            MenuItem addMenuItem = new MenuItem("Rename Function");
-            addMenuItem.setOnAction(event -> {
-                interactions.rename(function);
-                event.consume();
-            });
-            contextMenu.getItems().add(addMenuItem);
-            MenuItem navigateMenuItem = new MenuItem("Navigate Down");
-            navigateMenuItem.setOnAction(event -> {
-                interactions.navigateDown(item);
-                event.consume();
-            });
-            contextMenu.getItems().add(navigateMenuItem);
-            MenuItem deleteMenuItem = new MenuItem("Delete Function");
-            deleteMenuItem.setOnAction(event -> {
-                edit.updateAllocated(baseline -> function.removeFrom(baseline));
-                event.consume();
-            });
-            contextMenu.getItems().add(deleteMenuItem);
-        }
-        return contextMenu;
-    }
-
-    public static ContextMenu deletedFunctionContextMenu(
-            Baseline was, Function function, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem restoreMenuItem = new MenuItem("Restore Function");
-        restoreMenuItem.setOnAction(event -> {
-            Item wasItem = function.getItem(was);
-            edit.restoreDeleted(wasItem, function);
-            event.consume();
-        });
-        contextMenu.getItems().add(restoreMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu flowContextMenu(Flow flow, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        Menu typeMenu = new Menu("Set Type");
-        MenuItem typeMenuItem = new MenuItem("New Type");
-        typeMenuItem.setOnAction((event) -> {
-            interactions.setFlowType(flow);
-            event.consume();
-        });
-        initPerInstanceSubmenu(
-                typeMenu,
-                () -> FlowType.find(edit.getChild())
-                .sorted((a, b) -> a.getName().compareTo(b.getName())),
-                type -> new MenuItem(type.getName()),
-                (e, type) -> edit.updateAllocated(allocated -> {
-                    Optional<Flow> flowSample = allocated.get(flow);
-                    Optional<FlowType> typeSample = allocated.get(type);
-                    if (flowSample.isPresent() && typeSample.isPresent()) {
-                        allocated = flowSample.get().setType(allocated, typeSample.get()).getKey();
-                    }
-                    return allocated;
-                }),
-                Optional.of(typeMenuItem));
-        contextMenu.getItems().add(typeMenu);
-        MenuItem deleteMenuItem = new MenuItem("Delete");
-        deleteMenuItem.setOnAction((event) -> {
-            edit.updateChild(baseline -> flow.removeFrom(baseline));
-            event.consume();
-        });
-        contextMenu.getItems().add(deleteMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu deletedFlowContextMenu(
-            Baseline was, Flow flow, Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem restoreMenuItem = new MenuItem("Restore Flow");
-        restoreMenuItem.setOnAction(event -> {
-            // Restore dependencies
-            Function wasLeftFunction = flow.getLeft(was);
-            Function wasRightFunction = flow.getRight(was);
-            FlowType wasFlowType = flow.getType(was);
-            edit.restoreDeleted(wasLeftFunction, wasRightFunction, wasFlowType, flow);
-
-            event.consume();
-        });
-        contextMenu.getItems().add(restoreMenuItem);
-        return contextMenu;
-    }
-
-    public static ContextMenu logicalTreeBackgroundMenu(
-            Interactions interactions, EditState edit) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem addMenuItem = ContextMenus.addFunctionMenu(
-                interactions,
-                edit,
-                Optional.empty(),
-                () -> FunctionView.DEFAULT_ORIGIN);
-        contextMenu.getItems().add(addMenuItem);
-        return contextMenu;
-    }
-
-    static ContextMenu budgetTreeBackgroundMenu(Interactions interactions) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem addMenuItem = new MenuItem("Add Budget");
-        contextMenu.getItems().add(addMenuItem);
-        addMenuItem.setOnAction(event -> {
-            interactions.createBudget();
-            event.consume();
-        });
-        return contextMenu;
-    }
-
-    public static Menu addFunctionMenu(
-            Interactions interactions,
-            EditState edit,
-            Optional<Function> parentFunction,
-            Supplier<Point2D> originSupplier) {
-        Menu addFunctionMenu = new Menu("Add Function to...");
-        MenuItem newItemMenuItem = new MenuItem("New Item");
-        newItemMenuItem.setOnAction(e -> {
-            Optional<Item> item = interactions.createItem(ItemView.DEFAULT_ORIGIN);
-            if (item.isPresent()) {
-                Point2D origin = originSupplier.get();
-                interactions.addFunctionToItem(item.get(), parentFunction, origin);
-            }
-        });
-        ContextMenus.initPerInstanceSubmenu(
-                addFunctionMenu,
-                () -> Item.find(edit.getChild())
-                .filter(item -> !item.isExternal())
-                .sorted((a, b) -> a.getShortId().compareTo(b.getShortId())),
-                item -> new MenuItem(item.getDisplayName()),
-                (e, item) -> {
-                    Point2D origin = originSupplier.get();
-                    interactions.addFunctionToItem(item, parentFunction, origin);
-                },
-                Optional.of(newItemMenuItem));
-        return addFunctionMenu;
-    }
-
 }

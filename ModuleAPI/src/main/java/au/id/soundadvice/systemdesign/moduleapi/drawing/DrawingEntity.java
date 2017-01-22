@@ -31,6 +31,8 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffInfo;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.geometry.Point2D;
@@ -59,4 +61,8 @@ public interface DrawingEntity extends Identifiable, DiffInfo {
     public Baseline setOrigin(Baseline baseline, String now, Point2D origin);
 
     public Optional<Record> getDragDropObject();
+
+    public Optional<Runnable> getDefaultAction(InteractionContext context);
+
+    public Optional<MenuItems> getContextMenu(InteractionContext context);
 }

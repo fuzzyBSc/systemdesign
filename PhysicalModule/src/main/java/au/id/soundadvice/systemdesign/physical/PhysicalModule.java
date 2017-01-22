@@ -46,6 +46,8 @@ import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
+import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 
 /**
  *
@@ -100,13 +102,16 @@ public class PhysicalModule implements Module {
                 Interface.iface);
     }
 
+    private final PhysicalInteractions interactions = new PhysicalInteractions();
+    private final PhysicalContextMenus menus = new PhysicalContextMenus(interactions);
+
     @Override
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
-        return Stream.of(new PhysicalSchematic(baselines));
+        return Stream.of(new PhysicalSchematic(interactions, menus, baselines));
     }
 
     @Override
     public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines) {
-        return Stream.of(new PhysicalTree(baselines));
+        return Stream.of(new PhysicalTree(menus, baselines));
     }
 }

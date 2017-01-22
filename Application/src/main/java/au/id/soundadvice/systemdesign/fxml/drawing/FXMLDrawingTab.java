@@ -26,9 +26,8 @@
  */
 package au.id.soundadvice.systemdesign.fxml.drawing;
 
+import au.id.soundadvice.systemdesign.fxml.ContextMenus;
 import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
-import au.id.soundadvice.systemdesign.state.EditState;
-import au.id.soundadvice.systemdesign.fxml.Interactions;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateElements;
 import static au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf.updateScopes;
@@ -37,6 +36,7 @@ import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -53,9 +53,9 @@ import javafx.scene.layout.AnchorPane;
  */
 public class FXMLDrawingTab implements DrawingOf<Drawing> {
 
-    public FXMLDrawingTab(Interactions interactions, EditState edit, TabPane tabs) {
-        this.interactions = interactions;
-        this.edit = edit;
+    public FXMLDrawingTab(InteractionContext context, ContextMenus menus, TabPane tabs) {
+        this.context = context;
+        this.menus = menus;
         this.tabs = tabs;
         this.tab = new Tab();
         // Control rendering order by placing different nodes into ordered layers
@@ -94,8 +94,8 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
     private final Map<RecordID, FXMLDrawingNode> currentNodes = new HashMap<>();
     private final Map<ConnectionScope, FXMLDrawingConnectorScope> currentConnectors = new HashMap<>();
 
-    private final Interactions interactions;
-    private final EditState edit;
+    private final InteractionContext context;
+    private final ContextMenus menus;
     private final TabPane tabs;
     private final Tab tab;
     private final AnchorPane pane;
@@ -110,7 +110,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
             Group parent = entity.isDeleted()
                     ? deletedEntitiesGroup
                     : otherEntitiesGroup;
-            return new FXMLDrawingNode(interactions, edit, parent);
+            return new FXMLDrawingNode(context, menus, parent);
         });
         updateScopes(state.getConnectors(), currentConnectors, (scope, list) -> {
             boolean allDeleted = list.stream()
@@ -118,12 +118,12 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
             Group parent = allDeleted
                     ? deletedConnectorsGroup
                     : otherConnectorsGroup;
-            return new FXMLDrawingConnectorScope(interactions, edit, scope, currentNodes, parent);
+            return new FXMLDrawingConnectorScope(context, menus, scope, currentNodes, parent);
         });
         Optional<Record> dragObject = state.getDragDropObject();
         if (dragObject.isPresent()) {
             //    DragSource.bind(node, dragObject.get(), true);
-            DragTarget.bind(edit, pane, dragObject.get(), new EntityDropHandler(edit));
+            DragTarget.bind(context, pane, dragObject.get(), new EntityDropHandler(context));
         }
     }
 }

@@ -117,6 +117,7 @@ public class MainController implements Initializable {
     private Accordion trees;
 
     private final EditState edit;
+    private final ContextMenus menus;
 
     private final SingleRunnable buttonDisable = new SingleRunnable(
             JFXExecutor.instance(), new ButtonDisable());
@@ -126,9 +127,10 @@ public class MainController implements Initializable {
     private FXMLAllTrees treeController;
     private FXMLAllDrawings drawingController;
 
-    public MainController(Interactions interactions, EditState edit) {
+    public MainController(Interactions interactions, EditState edit, ContextMenus menus) {
         this.edit = edit;
         this.interactions = interactions;
+        this.menus = menus;
     }
 
     /**
@@ -139,9 +141,9 @@ public class MainController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        this.treeController = new FXMLAllTrees(interactions, edit, trees);
+        this.treeController = new FXMLAllTrees(interactions, edit, menus, trees);
         this.treeController.start();
-        this.drawingController = new FXMLAllDrawings(interactions, edit, tabs);
+        this.drawingController = new FXMLAllDrawings(interactions, edit, menus, tabs);
         this.drawingController.start();
         suggestionsController = new SuggestionsController(
                 edit, suggestions, AllSuggestions::getEditProblems);
