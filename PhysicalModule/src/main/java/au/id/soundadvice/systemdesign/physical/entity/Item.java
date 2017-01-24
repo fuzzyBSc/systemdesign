@@ -30,6 +30,7 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Fields;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.event.EventDispatcher;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import java.util.Map;
 import javafx.util.Pair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A physical Item. Item is used as a fairly loose term in the model and could
@@ -66,6 +68,11 @@ public enum Item implements Table {
         return name();
     }
 
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
+
     /**
      * Return all items for the baseline.
      *
@@ -74,6 +81,23 @@ public enum Item implements Table {
      */
     public static Stream<Record> find(Baseline baseline) {
         return baseline.findByType(item);
+    }
+
+    /**
+     * Find all items that have direct interfaces to item in baseline
+     */
+    public static Stream<Record> findConnectedItems(Baseline baseline, Record item) {
+        return Interface.findForItem(baseline, item)
+                .map((Record iface) -> iface.getConnectionScope().otherEnd(item.getIdentifier()))
+                .distinct()
+                .map((RecordID itemID) -> baseline.get(itemID, Item.item))
+                .flatMap((Optional<Record> optional) -> {
+                    if (optional.isPresent()) {
+                        return Stream.of(optional.get());
+                    } else {
+                        return Stream.empty();
+                    }
+                });
     }
 
     @Override

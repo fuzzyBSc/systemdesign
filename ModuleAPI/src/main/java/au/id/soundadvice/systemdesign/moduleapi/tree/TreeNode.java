@@ -40,9 +40,12 @@ import java.util.stream.Stream;
  */
 public interface TreeNode extends Identifiable {
 
-    public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value);
+    /**
+     * Implementations must include a toString method
+     */
+    public String toString();
 
-    public String getLabel();
+    public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value);
 
     public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines);
 

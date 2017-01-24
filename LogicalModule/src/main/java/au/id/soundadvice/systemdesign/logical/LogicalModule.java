@@ -148,7 +148,7 @@ public class LogicalModule implements Module {
                     .map(Record::getIdentifier)
                     .distinct()
                     .map(functionIdentifier -> DiffPair.get(itemDiffPair, functionIdentifier, Function.function))
-                    .sorted((left, right) -> left.getSample().getLongName().compareTo(right.getSample().getLongName()))
+                    .sorted((left, right) -> left.getSample().compareTo(right.getSample()))
                     .collect(Collectors.toList());
                     return new FunctionCompartment(functions);
                 }

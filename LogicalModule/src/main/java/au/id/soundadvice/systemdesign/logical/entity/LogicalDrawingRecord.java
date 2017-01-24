@@ -36,6 +36,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  *
@@ -43,6 +44,11 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
  */
 public enum LogicalDrawingRecord implements Table {
     logicalDrawing;
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
 
     static Record createForContext(String now) {
         return Record.create(logicalDrawing)

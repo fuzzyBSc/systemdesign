@@ -28,6 +28,9 @@ package au.id.soundadvice.systemdesign.consistency.suggest;
 
 import au.id.soundadvice.systemdesign.consistency.EditProblem;
 import au.id.soundadvice.systemdesign.consistency.EditSolution;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
@@ -79,19 +82,59 @@ public class DirectoryNameMismatch {
 
     }
 
+    private static class RenameIdentity implements EditSolution {
+
+        private final String name;
+
+        public RenameIdentity(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String getDescription() {
+            return "Set identity name to " + name;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return true;
+        }
+
+        @Override
+        public void solve(EditState edit, String now) {
+            edit.updateChild(child -> {
+                Record identity = Identity.get(child);
+                identity = identity.asBuilder()
+                        .setLongName(name)
+                        .build(now);
+                return child.add(identity);
+            });
+        }
+    }
+
     public static Stream<EditProblem> getProblems(EditState edit) {
+        WhyHowPair<Baseline> state = edit.getState();
         Optional<RecordStorage> dir = edit.getStorage().getChild();
         if (dir.isPresent() && dir.get() instanceof FileStorage) {
             FileStorage storage = (FileStorage) dir.get();
             Path path = storage.getPath();
             if (Files.isDirectory(path)) {
                 String lastSegment = path.getFileName().toString();
-                String identity = Identity.get(edit.getChild()).toString();
+                String identity = Identity.get(state.getChild()).toString();
                 if (!"".equals(identity) && !lastSegment.equals(identity)) {
-                    Path renameTo = path.getParent().resolve(identity);
-                    if (!Files.exists(renameTo)) {
-                        return Stream.of(new EditProblem("Directory name mismatch", true,
-                                Stream.of(new RenameDir(path, renameTo))));
+                    if (Identity.findAll(state.getParent()).findAny().isPresent()) {
+                        // This is a child directory somewhere within a model
+                        // Offer to rename the directory to match the model
+                        Path renameTo = path.getParent().resolve(identity);
+                        if (!Files.exists(renameTo)) {
+                            return Stream.of(new EditProblem("Directory name mismatch", EditProblem.Type.Manual,
+                                    Stream.of(new RenameDir(path, renameTo))));
+                        }
+                    } else {
+                        // This is a top-level system context
+                        // Automatically rename the model to match the directory
+                        return Stream.of(new EditProblem("autoFix", EditProblem.Type.OnLoad,
+                                Stream.of(new RenameIdentity(lastSegment))));
                     }
                 }
             }

@@ -48,7 +48,12 @@ import static au.id.soundadvice.systemdesign.moduleapi.util.ToBoolean.toBoolean;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class Record implements Identifiable {
+public class Record implements Identifiable, Comparable<Record> {
+
+    @Override
+    public int compareTo(Record other) {
+        return type.getNaturalOrdering().compare(this, other);
+    }
 
     @Override
     public int hashCode() {

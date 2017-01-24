@@ -46,6 +46,7 @@ import javax.annotation.CheckReturnValue;
 import javafx.util.Pair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -55,6 +56,11 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
  */
 public enum Flow implements Table {
     flow;
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
 
     public static Pair<WhyHowPair<Baseline>, Record> addWithGuessedType(WhyHowPair<Baseline> baselines, String now, RecordConnectionScope scope) {
         Pair<WhyHowPair<Baseline>, Record> tmp = FlowType.define(baselines, now, guessTypeName(baselines, scope));

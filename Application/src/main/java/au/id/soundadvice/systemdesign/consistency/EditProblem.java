@@ -38,13 +38,21 @@ import java.util.stream.Stream;
  */
 public class EditProblem {
 
+    public enum Type {
+        OnLoad,
+        OnChange,
+        Manual
+    }
+
     public static EditProblem of(Problem problem) {
-        // On load autofix is handled by AutoFix
         if (problem.getOnChangeAutofixSolution().isPresent()) {
-            return new EditProblem(problem.getDescription(), false, Stream.of(
+            return new EditProblem(problem.getDescription(), Type.OnChange, Stream.of(
                     EditSolution.of("autofix", problem.getOnChangeAutofixSolution())));
+        } else if (problem.getOnLoadAutofixSolution().isPresent()) {
+            return new EditProblem(problem.getDescription(), Type.OnLoad, Stream.of(
+                    EditSolution.of("autofix", problem.getOnLoadAutofixSolution())));
         } else {
-            return new EditProblem(problem.getDescription(), true, Stream.of(
+            return new EditProblem(problem.getDescription(), Type.Manual, Stream.of(
                     EditSolution.of(SolutionFlow.Down.getDescription(), problem.getFlowDownSolution()),
                     EditSolution.of(SolutionFlow.Up.getDescription(), problem.getFlowUpSolution())));
         }
@@ -59,8 +67,8 @@ public class EditProblem {
         return description;
     }
 
-    public boolean isManual() {
-        return manual;
+    public Type getType() {
+        return type;
     }
 
     public Stream<EditSolution> getSolutions() {
@@ -68,12 +76,12 @@ public class EditProblem {
     }
 
     private final String description;
-    private final boolean manual;
+    private final Type type;
     private final List<EditSolution> solutions;
 
-    public EditProblem(String description, boolean manual, Stream<EditSolution> solutions) {
+    public EditProblem(String description, Type type, Stream<EditSolution> solutions) {
         this.description = description;
-        this.manual = manual;
+        this.type = type;
         this.solutions = Collections.unmodifiableList(
                 solutions.collect(Collectors.toList()));
     }

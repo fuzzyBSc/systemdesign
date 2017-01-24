@@ -39,6 +39,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -52,6 +53,11 @@ public enum Budget implements Table {
     @Override
     public String getTableName() {
         return name();
+    }
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
     }
 
     @Override

@@ -94,11 +94,12 @@ public class PhysicalContextMenus {
                             context.updateChild(child -> child.remove(item.getIdentifier()));
                         }));
             } else {
-                return Stream.of(new MenuItems.SingleMenuItem(
-                        "Add Function",
-                        () -> {
-                            // context.updateChild(child -> child.remove(item.getIdentifier()));
-                        }),
+                return Stream.of(
+//                        new MenuItems.SingleMenuItem(
+//                                "Add Function",
+//                                () -> {
+//                                    // context.updateChild(child -> child.remove(item.getIdentifier()));
+//                                }),
                         new MenuItems.SingleMenuItem(
                                 "Rename Item",
                                 () -> {

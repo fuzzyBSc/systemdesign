@@ -55,7 +55,7 @@ public class AllSuggestions {
         return Stream.concat(result, getUndoProblems(edit.getState()).map(EditProblem::of));
     }
 
-    private static Stream<Problem> getUndoProblems(WhyHowPair<Baseline> baselines) {
+    public static Stream<Problem> getUndoProblems(WhyHowPair<Baseline> baselines) {
         return getAllTraceProblems(baselines);
     }
 

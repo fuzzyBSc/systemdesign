@@ -241,7 +241,7 @@ public class LogicalContextMenus {
                     "Set Type",
                     () -> {
                         Stream<MenuItems.MenuItem> dynamicItems = FlowType.find(context.getChild())
-                        .sorted((a, b) -> a.getShortName().compareTo(b.getShortName()))
+                        .sorted()
                         .map(flowTypeSample -> {
                             return new MenuItems.SingleMenuItem(
                                     FlowType.flowType.getDisplayName(flowTypeSample),
@@ -316,7 +316,7 @@ public class LogicalContextMenus {
                     () -> {
                         Stream<MenuItems.MenuItem> dynamicItems = Item.find(context.getChild())
                         .filter(item -> !item.isExternal())
-                        .sorted((a, b) -> a.getShortName().compareTo(b.getShortName()))
+                        .sorted()
                         .map(item -> {
                             return new MenuItems.SingleMenuItem(
                                     Item.item.getDisplayName(item),

@@ -38,6 +38,7 @@ import javax.annotation.CheckReturnValue;
 import javafx.util.Pair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A flow represents the transfer of information, energy and/or materials from
@@ -47,6 +48,11 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
  */
 public enum BudgetAllocation implements Table {
     budgetAllocation;
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
 
     public static Stream<Record> find(Baseline baseline) {
         return baseline.findByType(BudgetAllocation.budgetAllocation);

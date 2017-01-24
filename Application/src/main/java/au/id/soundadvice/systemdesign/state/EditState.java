@@ -132,7 +132,7 @@ public class EditState {
         }
     }
 
-    public void loadParent() throws IOException {
+    public void loadParent(String now) throws IOException {
         WhyHowPair<Optional<RecordStorage>> newStorage = storage.get();
         Optional<RecordStorage> newChildDir = newStorage.getParent();
         if (newChildDir.isPresent()) {
@@ -157,6 +157,9 @@ public class EditState {
                         .setParent(state.getParent());
                 setStorage(newStorage);
                 this.undo.set(state);
+                // Perform onLoad fixes in a separate undo buffer update so that
+                // they can be undone
+                this.undo.update(ss -> AutoFix.onLoad(ss, now));
                 this.savedState.set(newSaved);
                 lastChildIdentity.push(childIdentifier);
                 this.loadVersionControl(newChildDir);
@@ -205,6 +208,9 @@ public class EditState {
                     .setChild(state.getChild());
             setStorage(newStorage);
             this.undo.set(state);
+            // Perform onLoad fixes in a separate undo buffer update so that
+            // they can be undone
+            this.undo.update(ss -> AutoFix.onLoad(ss, now));
             this.savedState.set(newSaved);
             if (!lastChildIdentity.isEmpty()) {
                 if (systemOfInterest.getIdentifier().equals(lastChildIdentity.peek())) {
@@ -238,6 +244,9 @@ public class EditState {
             });
             setStorage(newStorage);
             this.undo.set(state);
+            // Perform onLoad fixes in a separate undo buffer update so that
+            // they can be undone
+            this.undo.update(ss -> AutoFix.onLoad(ss, now));
             this.savedState.set(state);
             lastChildIdentity.clear();
             this.loadVersionControl(newStorage.getChild());

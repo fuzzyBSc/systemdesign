@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  *
@@ -51,6 +52,11 @@ public enum Identity implements Table {
     @Override
     public String getTableName() {
         return name();
+    }
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
     }
 
     public static Optional<Record> getSystemOfInterest(WhyHowPair<Baseline> state) {
@@ -132,11 +138,17 @@ public enum Identity implements Table {
 
     @Override
     public Stream<Problem> getUntracedChildProblems(WhyHowPair<Baseline> context, Stream<Record> untracedChildren) {
-        return untracedChildren
-                .map(record -> Problem.flowProblem(
-                        "Item " + record.getLongName() + " is missing from the parent baseline",
-                        Optional.of((baselines, now) -> addItemToParentBaseline(baselines, now, record)),
-                        Optional.empty()));
+        if (Identity.findAll(context.getParent()).findAny().isPresent()) {
+            // We only care about untraced identities if this is the top level
+            // of the model
+            return untracedChildren
+                    .map(record -> Problem.flowProblem(
+                            "Item " + record.getLongName() + " is missing from the parent baseline",
+                            Optional.of((baselines, now) -> addItemToParentBaseline(baselines, now, record)),
+                            Optional.empty()));
+        } else {
+            return Stream.empty();
+        }
     }
 
     private static Record itemToIdentity(String now, Record parentIdentity, Record parentItem) {

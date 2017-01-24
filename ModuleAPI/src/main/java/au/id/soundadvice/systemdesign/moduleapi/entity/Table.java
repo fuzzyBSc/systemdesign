@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.moduleapi.entity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -57,6 +58,8 @@ public interface Table {
 
     public Stream<Problem> getUntracedChildProblems(
             WhyHowPair<Baseline> context, Stream<Record> untracedChildren);
+
+    public Comparator<Record> getNaturalOrdering();
 
     public class Default implements Table {
 
@@ -119,6 +122,11 @@ public interface Table {
         @Override
         public Record merge(WhyHowPair<Baseline> baselines, String now, Record left, Record right) {
             return Record.newerOf(left, right);
+        }
+
+        @Override
+        public Comparator<Record> getNaturalOrdering() {
+            return (a, b) -> a.getShortName().compareTo(b.getShortName());
         }
     }
 }

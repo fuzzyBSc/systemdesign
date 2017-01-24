@@ -40,6 +40,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * An association between two items that implies Flows may exist between them.
@@ -56,6 +57,11 @@ public enum Interface implements Table {
     @Override
     public String getTableName() {
         return "interface";
+    }
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
     }
 
     /**

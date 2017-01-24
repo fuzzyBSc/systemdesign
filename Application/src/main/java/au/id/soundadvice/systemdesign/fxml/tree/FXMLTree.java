@@ -193,7 +193,7 @@ public class FXMLTree implements DrawingOf<Tree> {
         }
 
         private void createTextField(TreeNode treeNode) {
-            textField = Optional.of(new TextField(treeNode.getLabel()));
+            textField = Optional.of(new TextField(treeNode.toString()));
             textField.get().setOnKeyReleased(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
                     commitEdit(getItem());

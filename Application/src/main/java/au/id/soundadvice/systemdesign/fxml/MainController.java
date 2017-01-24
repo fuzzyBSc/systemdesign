@@ -145,8 +145,7 @@ public class MainController implements Initializable {
         this.treeController.start();
         this.drawingController = new FXMLAllDrawings(interactions, edit, menus, tabs);
         this.drawingController.start();
-        suggestionsController = new SuggestionsController(
-                edit, suggestions, AllSuggestions::getEditProblems);
+        suggestionsController = new SuggestionsController(edit, suggestions);
         suggestionsController.start();
 
         upButton.setOnAction(event -> {

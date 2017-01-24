@@ -41,6 +41,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A view of a function within a specific drawing. The separation of the main
@@ -58,6 +59,11 @@ public enum FunctionView implements Table {
     @Override
     public String getTableName() {
         return name();
+    }
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
     }
 
     /**

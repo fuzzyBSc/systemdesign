@@ -104,7 +104,8 @@ public class Interactions implements InteractionContext {
     public void navigateUp() {
         try {
             if (checkSave("Save before navigating?")) {
-                edit.loadParent();
+                String now = ISO8601.now();
+                edit.loadParent(now);
             }
         } catch (IOException ex) {
             LOG.log(Level.SEVERE, null, ex);

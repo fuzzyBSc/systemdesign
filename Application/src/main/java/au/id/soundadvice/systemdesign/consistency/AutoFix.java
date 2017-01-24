@@ -31,6 +31,9 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.preferences.Modules;
 import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 
 /**
  *
@@ -38,10 +41,15 @@ import java.util.Iterator;
  */
 public class AutoFix {
 
+    private static final List<BiFunction<WhyHowPair<Baseline>, String, WhyHowPair<Baseline>>> OTHER_ON_LOAD = new CopyOnWriteArrayList<>();
+
     public static WhyHowPair<Baseline> onLoad(WhyHowPair<Baseline> state, String now) {
         Iterator<Module> it = Modules.getModules().iterator();
         while (it.hasNext()) {
             state = it.next().onLoadAutoFix(state, now);
+        }
+        for (BiFunction<WhyHowPair<Baseline>, String, WhyHowPair<Baseline>> otherOnLoad : OTHER_ON_LOAD) {
+            state = otherOnLoad.apply(state, now);
         }
         return state;
     }
@@ -52,5 +60,9 @@ public class AutoFix {
             state = it.next().onChangeAutoFix(state, now);
         }
         return state;
+    }
+
+    public static void addOnLoad(BiFunction<WhyHowPair<Baseline>, String, WhyHowPair<Baseline>> onLoad) {
+        OTHER_ON_LOAD.add(onLoad);
     }
 }

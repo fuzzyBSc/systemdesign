@@ -29,18 +29,24 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
+import au.id.soundadvice.systemdesign.consistency.AllSuggestions;
+import au.id.soundadvice.systemdesign.consistency.AutoFix;
 import au.id.soundadvice.systemdesign.consistency.EditProblem;
 import au.id.soundadvice.systemdesign.consistency.EditSolution;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Problem;
+import au.id.soundadvice.systemdesign.moduleapi.suggest.Solution;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -54,36 +60,52 @@ import javafx.scene.layout.VBox;
  */
 public class SuggestionsController {
 
-    public SuggestionsController(
-            EditState edit, Pane parent,
-            Function<EditState, Stream<EditProblem>> factory) {
+    public SuggestionsController(EditState edit, Pane parent) {
         this.parent = parent;
         this.edit = edit;
+        this.onLoad = new OnLoad();
         this.onChange = new SingleRunnable(edit.getExecutor(), new OnChange());
-        this.factory = factory;
     }
 
     public void start() {
+        AutoFix.addOnLoad(onLoad);
         edit.subscribe(onChange);
         onChange.run();
     }
 
     private final Pane parent;
     private final EditState edit;
-    private final Function<EditState, Stream<EditProblem>> factory;
+    private final OnLoad onLoad;
     private final SingleRunnable<OnChange> onChange;
     private final AtomicReference<Collection<EditProblem>> problems = new AtomicReference<>();
     private final SingleRunnable<UpdateDisplay> updateDisplay
             = new SingleRunnable(JFXExecutor.instance(), new UpdateDisplay());
 
+    private final class OnLoad implements BiFunction<WhyHowPair<Baseline>, String, WhyHowPair<Baseline>> {
+
+        @Override
+        public WhyHowPair<Baseline> apply(WhyHowPair<Baseline> state, String now) {
+            Iterator<Problem> it = AllSuggestions.getUndoProblems(state).iterator();
+            // Apply automatic fixes immediately
+            while (it.hasNext()) {
+                Problem problem = it.next();
+                Optional<Solution> solution = problem.getOnLoadAutofixSolution();
+                if (solution.isPresent()) {
+                    state = solution.get().apply(state, now);
+                }
+            }
+            return state;
+        }
+    };
+
     private final class OnChange implements Runnable {
 
         @Override
         public void run() {
-            Map<Boolean, List<EditProblem>> newProblems = factory.apply(edit)
-                    .collect(Collectors.groupingBy(EditProblem::isManual));
+            Map<EditProblem.Type, List<EditProblem>> newProblems = AllSuggestions.getEditProblems(edit)
+                    .collect(Collectors.groupingBy(EditProblem::getType));
             // Apply automatic fixes immediately
-            Iterator<EditSolution> it = newProblems.getOrDefault(false, Collections.emptyList())
+            Iterator<EditSolution> it = newProblems.getOrDefault(EditProblem.Type.OnChange, Collections.emptyList())
                     .stream()
                     .flatMap(EditProblem::getSolutions)
                     .iterator();
@@ -92,11 +114,10 @@ public class SuggestionsController {
                 EditSolution solution = it.next();
                 solution.solve(edit, now);
             }
-            List<EditProblem> manualFix = newProblems.getOrDefault(true, Collections.emptyList());
+            List<EditProblem> manualFix = newProblems.getOrDefault(EditProblem.Type.Manual, Collections.emptyList());
             problems.set(manualFix);
             updateDisplay.run();
         }
-
     };
 
     private final class UpdateDisplay implements Runnable {

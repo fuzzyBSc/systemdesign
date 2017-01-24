@@ -42,6 +42,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A physical Item. Item is used as a fairly loose term in the model and could
@@ -62,6 +63,11 @@ public enum ItemView implements Table {
     itemView;
 
     public static Point2D DEFAULT_ORIGIN = new Point2D(200, 200);
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
 
     /**
      * Return all views of items within the baseline.

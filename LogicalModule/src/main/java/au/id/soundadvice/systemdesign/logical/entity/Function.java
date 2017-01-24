@@ -44,6 +44,7 @@ import javafx.util.Pair;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
+import java.util.Comparator;
 
 /**
  * A function is a unit of functionality of an item. An item can have multiple
@@ -63,6 +64,11 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.UniqueConstraint;
  */
 public enum Function implements Table {
     function;
+
+    @Override
+    public Comparator<Record> getNaturalOrdering() {
+        return (a, b) -> a.getShortName().compareTo(b.getShortName());
+    }
 
     @Override
     public String getTableName() {

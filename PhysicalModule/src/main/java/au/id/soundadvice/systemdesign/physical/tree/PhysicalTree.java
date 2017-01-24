@@ -37,9 +37,10 @@ import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,22 +50,47 @@ import java.util.stream.Stream;
  */
 public class PhysicalTree implements Tree {
 
+    private final PhysicalContextMenus menus;
+    private final Optional<RecordID> systemOfInterestIdentifier;
+    private final TreeNode systemOfInterest;
+    private final List<TreeNode> externalSystems;
+    private final List<TreeNode> children;
+
     public PhysicalTree(
             PhysicalContextMenus menus,
-            WhyHowPair<Baseline> baselines) {
+            WhyHowPair<Baseline> state) {
         this.menus = menus;
-        this.children = Item.find(baselines.getParent())
-                .collect(Collectors.toMap(
-                        Record::getShortName,
-                        item -> new PhysicalTreeNode(baselines, WhyHowPair.Selector.PARENT, item),
-                        (u, v) -> {
-                            throw new IllegalStateException(String.format("Duplicate key %s", u));
-                        },
-                        TreeMap::new));
-    }
 
-    private final PhysicalContextMenus menus;
-    private final SortedMap<String, TreeNode> children;
+        this.children = Item.find(state.getChild())
+                .filter(item -> !item.isExternal())
+                .sorted()
+                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.CHILD, sample, Collections.emptyList()))
+                .collect(Collectors.toList());
+
+        Optional<Record> systemOfInterestSample = Identity.getSystemOfInterest(state);
+        this.systemOfInterestIdentifier = systemOfInterestSample.map(Record::getIdentifier);
+        this.systemOfInterest = Identity.getSystemOfInterest(state)
+                .<TreeNode>map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.PARENT, sample, children))
+                .<TreeNode>orElseGet(() -> new DummySystemOfInterestNode(Identity.get(state.getChild())));
+        Map<RecordID, Record> tmpConnectedSystems;
+        if (systemOfInterestSample.isPresent()) {
+            tmpConnectedSystems
+                    = Item.findConnectedItems(state.getParent(), systemOfInterestSample.get())
+                    .collect(Collectors.toMap(Record::getIdentifier, Function.identity()));
+        } else {
+            tmpConnectedSystems = Collections.emptyMap();
+        }
+        this.externalSystems
+                = Stream.concat(
+                        tmpConnectedSystems.values().stream()
+                        .sorted(),
+                        Item.find(state.getParent())
+                        .filter(item -> !tmpConnectedSystems.containsKey(item.getIdentifier()))
+                        .sorted()
+                )
+                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.CHILD, sample, Collections.emptyList()))
+                .collect(Collectors.toList());
+    }
 
     @Override
     public String getLabel() {
@@ -81,46 +107,85 @@ public class PhysicalTree implements Tree {
         return Optional.of(menus.getPhysicalBackgroundMenu());
     }
 
+    private class DummySystemOfInterestNode implements TreeNode {
+
+        public DummySystemOfInterestNode(Record identity) {
+            this.identity = identity;
+        }
+        private final Record identity;
+
+        @Override
+        public String toString() {
+            return identity.getLongName();
+        }
+
+        @Override
+        public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value) {
+            return baselines;
+        }
+
+        @Override
+        public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines) {
+            return baselines;
+        }
+
+        @Override
+        public Stream<TreeNode> getChildren() {
+            return children.stream();
+        }
+
+        @Override
+        public Optional<Record> getDragDropObject() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<MenuItems> getContextMenu() {
+            return Optional.of(menus.getPhysicalBackgroundMenu());
+        }
+
+        @Override
+        public RecordID getIdentifier() {
+            return RecordID.load("System Context").get();
+        }
+
+    }
+
     private class PhysicalTreeNode implements TreeNode {
 
         private final WhyHowPair.Selector selector;
-        private final Record item;
-        private final SortedMap<String, TreeNode> children;
+        private final Record sample;
+        private final List<TreeNode> children;
 
-        private PhysicalTreeNode(WhyHowPair<Baseline> baselines, WhyHowPair.Selector selector, Record item) {
+        private PhysicalTreeNode(
+                WhyHowPair.Selector selector,
+                Record sample, List<TreeNode> children) {
             this.selector = selector;
-            this.item = item;
-            Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
-            if (selector == WhyHowPair.Selector.PARENT
-                    && systemOfInterest.isPresent()
-                    && systemOfInterest.get().getIdentifier().equals(item.getIdentifier())) {
-                this.children = Item.find(baselines.getChild())
-                        .collect(Collectors.toMap(
-                                Record::getShortName,
-                                childItem -> new PhysicalTreeNode(baselines, WhyHowPair.Selector.CHILD, childItem),
-                                (u, v) -> {
-                                    throw new IllegalStateException(String.format("Duplicate key %s", u));
-                                },
-                                TreeMap::new));
-            } else {
-                this.children = Collections.emptySortedMap();
-            }
+            this.sample = sample;
+            this.children = children;
         }
 
         @Override
         public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value) {
             Baseline baseline = baselines.get(selector);
-            Optional<Record> instance = baseline.get(item);
+            Optional<Record> instance = baseline.get(sample);
             if (instance.isPresent()) {
                 baseline = Item.item.setDisplayName(baseline, now, instance.get(), value);
-                return baselines.set(selector, baseline);
+                baselines = baselines.set(selector, baseline);
+                if (systemOfInterestIdentifier.equals(instance.map(Record::getIdentifier))) {
+                    Record childIdentity = Identity.get(baselines.getChild());
+                    baselines = baselines.setChild(baselines.getChild().add(childIdentity.asBuilder()
+                            .setLongName(value)
+                            .build(now)));
+                }
+                return baselines;
             }
             return baselines;
         }
 
         @Override
-        public String getLabel() {
-            return Item.item.getDisplayName(item);
+        public String toString() {
+            return Item.item.getDisplayName(sample);
         }
 
         @Override
@@ -128,7 +193,7 @@ public class PhysicalTree implements Tree {
             // Only allow removal from child baseline
             if (selector == WhyHowPair.Selector.CHILD) {
                 Baseline baseline = baselines.get(selector);
-                baseline = baseline.remove(item.getIdentifier());
+                baseline = baseline.remove(sample.getIdentifier());
                 return baselines.set(selector, baseline);
             } else {
                 return baselines;
@@ -137,29 +202,31 @@ public class PhysicalTree implements Tree {
 
         @Override
         public Stream<TreeNode> getChildren() {
-            return children.values().stream();
+            return children.stream();
         }
 
         @Override
         public Optional<Record> getDragDropObject() {
-            return Optional.of(item);
+            return Optional.of(sample);
         }
 
         @Override
         public RecordID getIdentifier() {
-            return item.getIdentifier();
+            return sample.getIdentifier();
         }
 
         @Override
         public Optional<MenuItems> getContextMenu() {
-            return Optional.of(menus.getItemContextMenu(item));
+            return Optional.of(menus.getItemContextMenu(sample));
         }
 
     }
 
     @Override
     public Stream<TreeNode> getChildren() {
-        return children.values().stream();
+        return Stream.concat(
+                Stream.of(systemOfInterest),
+                externalSystems.stream());
     }
 
 }

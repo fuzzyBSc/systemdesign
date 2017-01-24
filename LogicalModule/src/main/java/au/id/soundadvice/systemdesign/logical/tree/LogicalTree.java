@@ -69,20 +69,25 @@ public class LogicalTree implements Tree {
 
     public final class LogicalTreeNode implements TreeNode {
 
-        public LogicalTreeNode(Optional<Record> function, WhyHowPair.Selector selector, SortedMap<String, TreeNode> children) {
-            this.function = function;
+        private final String orphanLabel;
+
+        public LogicalTreeNode(
+                String orphanLabel, Optional<Record> sample,
+                WhyHowPair.Selector selector, SortedMap<String, TreeNode> children) {
+            this.orphanLabel = orphanLabel;
+            this.sample = sample;
             this.selector = selector;
             this.children = children;
         }
 
         @Override
         public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value) {
-            if (function.isPresent()) {
+            if (sample.isPresent()) {
                 Baseline baseline = baselines.get(selector);
 
-                Optional<Record> instance = baseline.get(function.get());
-                if (instance.isPresent()) {
-                    Record updated = instance.get().asBuilder()
+                Optional<Record> function = baseline.get(sample.get());
+                if (function.isPresent()) {
+                    Record updated = function.get().asBuilder()
                             .setLongName(value)
                             .build(now);
                     baseline = baseline.add(updated);
@@ -94,12 +99,12 @@ public class LogicalTree implements Tree {
         }
 
         @Override
-        public String getLabel() {
-            return function.map(Record::getLongName).orElse("(orphans)");
+        public String toString() {
+            return sample.map(Record::getLongName).orElse(orphanLabel);
         }
 
         private final WhyHowPair.Selector selector;
-        private final Optional<Record> function;
+        private final Optional<Record> sample;
         private final SortedMap<String, TreeNode> children;
 
         private boolean isEmpty() {
@@ -108,10 +113,10 @@ public class LogicalTree implements Tree {
 
         @Override
         public WhyHowPair<Baseline> removeFrom(WhyHowPair<Baseline> baselines) {
-            if (function.isPresent()) {
+            if (sample.isPresent()) {
                 Baseline baseline = baselines.get(selector);
 
-                baseline = baseline.remove(function.get().getIdentifier());
+                baseline = baseline.remove(sample.get().getIdentifier());
 
                 return baselines.set(selector, baseline);
             } else {
@@ -126,17 +131,17 @@ public class LogicalTree implements Tree {
 
         @Override
         public RecordID getIdentifier() {
-            return function.map(Record::getIdentifier).get();
+            return sample.map(Record::getIdentifier).get();
         }
 
         @Override
         public Optional<Record> getDragDropObject() {
-            return function;
+            return sample;
         }
 
         @Override
         public Optional<MenuItems> getContextMenu() {
-            return function.map(ff -> menus.getFunctionContextMenu(ff));
+            return sample.map(ff -> menus.getFunctionContextMenu(ff));
         }
     }
 
@@ -160,11 +165,14 @@ public class LogicalTree implements Tree {
         Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
 
         Map<RecordID, Record> parentFunctions;
+        String orphanLabel;
         if (systemOfInterest.isPresent()) {
             parentFunctions = Function.findOwnedFunctions(baselines.getParent(), systemOfInterest.get())
                     .collect(Collectors.toMap(Identifiable::getIdentifier, t -> t));
+            orphanLabel = "Untraced Functions";
         } else {
             parentFunctions = Collections.emptyMap();
+            orphanLabel = "Top Level Functions";
         }
 
         Map<Optional<Record>, Map<RecordID, Record>> childFunctions
@@ -182,7 +190,7 @@ public class LogicalTree implements Tree {
                             .entrySet().stream()
                             .collect(Collectors.toMap(
                                     childEntry -> childEntry.getValue().getLongName(),
-                                    childEntry -> new LogicalTreeNode(Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
+                                    childEntry -> new LogicalTreeNode(orphanLabel, Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
                                     (u, v) -> {
                                         throw new IllegalStateException(String.format("Duplicate key %s", u));
                                     },
@@ -190,7 +198,7 @@ public class LogicalTree implements Tree {
                     return new Pair<>(
                             entry.getKey().get().getDescription(),
                             new LogicalTreeNode(
-                                    entry.getKey(),
+                                    orphanLabel, entry.getKey(),
                                     WhyHowPair.Selector.PARENT,
                                     children));
                 })
@@ -200,14 +208,14 @@ public class LogicalTree implements Tree {
                         },
                         TreeMap::new));
         this.orphans = new LogicalTreeNode(
-                Optional.empty(),
+                orphanLabel, Optional.empty(),
                 WhyHowPair.Selector.PARENT,
                 Optional.ofNullable(childFunctions.get(Optional.<Record>empty()))
                 .orElse(Collections.emptySortedMap())
                 .entrySet().stream()
                 .collect(Collectors.toMap(
                         childEntry -> childEntry.getValue().getLongName(),
-                        childEntry -> new LogicalTreeNode(Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
+                        childEntry -> new LogicalTreeNode(orphanLabel, Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
                         (u, v) -> {
                             throw new IllegalStateException(String.format("Duplicate key %s", u));
                         },
