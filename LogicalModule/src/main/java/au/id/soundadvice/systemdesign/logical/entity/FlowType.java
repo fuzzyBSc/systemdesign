@@ -118,7 +118,7 @@ public enum FlowType implements Table {
         if (parent.isPresent()) {
             Optional<Record> child = baselines.getChild().findByTrace(Optional.of(parent.get().getIdentifier())).findAny();
             if (child.isPresent()) {
-                HashMap<String, String> fields = new HashMap<>(parent.get().getAllFields());
+                HashMap<String, String> fields = new HashMap<>(parent.get().getFields());
                 fields.remove(Fields.trace.name());
                 Record newChild = child.get().asBuilder()
                         .putFields(fields)
@@ -144,7 +144,7 @@ public enum FlowType implements Table {
         Optional<Record> parent = record.getTrace()
                 .flatMap(trace -> baselines.getParent().get(trace, flowType));
         if (child.isPresent() && parent.isPresent()) {
-            HashMap<String, String> fields = new HashMap<>(child.get().getAllFields());
+            HashMap<String, String> fields = new HashMap<>(child.get().getFields());
             fields.remove(Fields.trace.name());
             Record newParent = parent.get().asBuilder()
                     .putFields(fields)
@@ -163,7 +163,7 @@ public enum FlowType implements Table {
     public Stream<Problem> getTraceProblems(WhyHowPair<Baseline> context, Record traceParent, Stream<Record> traceChildren) {
         // Duplicate children are handled elsewhere
         return traceChildren.flatMap(childType -> {
-            HashMap<String, String> parentFields = new HashMap<>(traceParent.getAllFields());
+            HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
             HashMap<String, String> childFields = new HashMap<>(childType.getFields());
             parentFields.remove(Fields.trace.name());
             childFields.remove(Fields.trace.name());

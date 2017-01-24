@@ -63,6 +63,7 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.entity.TableFactory;
 import au.id.soundadvice.systemdesign.storage.versioning.NullVersionControl;
 import au.id.soundadvice.systemdesign.storage.versioning.jgit.GitVersionControl;
+import java.util.SortedMap;
 
 /**
  *
@@ -174,7 +175,7 @@ public class CSVStorage implements FileStorage, IdentityValidator {
 
     private static void saveRecords(SaveTransaction transaction, Path csv, List<Record> records) throws IOException {
         String[] headers = records.stream()
-                .flatMap(record -> record.getAllFields().keySet().stream())
+                .flatMap(record -> record.getAllFieldNames())
                 .distinct().sorted()
                 .toArray(String[]::new);
         Path directory = csv.getParent();
@@ -185,9 +186,10 @@ public class CSVStorage implements FileStorage, IdentityValidator {
         records.stream()
                 .sorted((left, right) -> left.getIdentifier().compareTo(right.getIdentifier()))
                 .forEachOrdered(record -> {
+                    SortedMap<String, String> allFields = record.getAllFields();
                     writer.writeNext(
                             Stream.of(headers)
-                            .map(key -> record.get(key).orElse(""))
+                            .map(key -> allFields.getOrDefault(key, ""))
                             .toArray(String[]::new)
                     );
                 });

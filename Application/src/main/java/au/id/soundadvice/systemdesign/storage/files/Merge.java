@@ -31,7 +31,7 @@ import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
-import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import au.id.soundadvice.systemdesign.moduleapi.entity.References;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SortedMap;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -103,8 +104,20 @@ public class Merge {
         return record -> {
             if (record.isPresent()) {
                 List<String> result = new ArrayList<>(header.size());
+                SortedMap<String, String> meta = record.get().getMeta();
+                SortedMap<String, String> other = record.get().getFields();
                 for (int ii = 0; ii < header.size(); ++ii) {
-                    String cell = record.get().get(header.get(ii)).orElse("");
+                    String headerName = header.get(ii);
+                    String cell;
+                    if (headerName.startsWith(References.PREFIX)) {
+                        String headerSuffix = headerName.substring(References.PREFIX.length());
+                        cell = record.get().getRef(headerSuffix).toString();
+                    } else {
+                        cell = meta.get(headerName);
+                        if (cell == null) {
+                            cell = other.getOrDefault(headerName, "");
+                        }
+                    }
                     result.add(cell);
                 }
                 writer.writeNext(result.toArray(new String[0]));
@@ -116,8 +129,7 @@ public class Merge {
 
     public static void threeWayCSV(
             RecordReader ancestorReader, RecordReader leftReader, RecordReader rightReader,
-            CSVWriter out) throws IOException {
-        String now = ISO8601.now();
+            CSVWriter out, String now) throws IOException {
         Function<Triplet<Optional<Record>>, Optional<Record>> boundRecordMerger
                 = triplet -> mergeRecord(triplet, now);
 

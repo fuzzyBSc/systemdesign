@@ -51,6 +51,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 
 /**
  *
@@ -107,6 +108,7 @@ public class SystemDesign extends Application {
                     Path tmpFile = Files.createTempFile("merge", "");
                     Path outputFile = leftFile;
                     Table dummyType = new Table.Default("");
+                    String now = ISO8601.now();
                     try (
                             BufferedReader ancestor = Files.newBufferedReader(ancestorFile);
                             BufferedReader left = Files.newBufferedReader(leftFile);
@@ -119,7 +121,7 @@ public class SystemDesign extends Application {
                             RecordReader rightReader = new RecordReader(dummyType, rightCSVReader);
                             CSVWriter out = new CSVWriter(Files.newBufferedWriter(
                                     tmpFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
-                        Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out);
+                        Merge.threeWayCSV(ancestorReader, leftReader, rightReader, out, now);
                         // Close to flush
                         out.close();
                         // Now we are supposed to overwrite left with the result of our merge

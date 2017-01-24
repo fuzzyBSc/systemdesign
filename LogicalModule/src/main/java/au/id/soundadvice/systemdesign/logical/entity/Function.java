@@ -149,7 +149,7 @@ public enum Function implements Table {
             Optional<Record> existing = externalParentFunction.flatMap(
                     func -> baselines.getChild().findByTrace(Optional.of(func.getIdentifier())).findAny());
             if (existing.isPresent()) {
-                Map<String, String> fields = new HashMap<>(externalParentFunction.get().getAllFields());
+                Map<String, String> fields = new HashMap<>(externalParentFunction.get().getFields());
                 Record updated = existing.get().asBuilder()
                         .putFields(fields)
                         .setTrace(externalParentFunction)
@@ -188,7 +188,7 @@ public enum Function implements Table {
                 .flatMap(trace -> baselines.getParent().get(trace, Item.item));
         if (externalParentFunction.isPresent() && externalParentItem.isPresent()
                 && externalChildFunction.isPresent() && externalChildItem.isPresent()) {
-            Map<String, String> fields = new HashMap<>(externalChildFunction.get().getAllFields());
+            Map<String, String> fields = new HashMap<>(externalChildFunction.get().getFields());
             fields.remove(Fields.trace.name());
             fields.remove(Fields.external.name());
             Record updated = externalParentFunction.get().asBuilder()
@@ -256,7 +256,7 @@ public enum Function implements Table {
         return traceChildren
                 .filter(Record::isExternal)
                 .flatMap(externalChildFunction -> {
-                    HashMap<String, String> parentFields = new HashMap<>(traceParent.getAllFields());
+                    HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
                     HashMap<String, String> childFields = new HashMap<>(externalChildFunction.getFields());
                     parentFields.remove(Fields.trace.name());
                     childFields.remove(Fields.trace.name());

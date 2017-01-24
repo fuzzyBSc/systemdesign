@@ -27,6 +27,7 @@
 package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -37,8 +38,10 @@ import java.util.stream.Stream;
 import javafx.scene.paint.Color;
 import javax.annotation.CheckReturnValue;
 import javafx.geometry.Point2D;
-import static au.id.soundadvice.systemdesign.moduleapi.util.ToBoolean.toBoolean;
+import java.util.Objects;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import static au.id.soundadvice.systemdesign.moduleapi.util.ToBoolean.toBoolean;
 
 /**
  * An immutable identifiable fundamental unit of storage and modeling.
@@ -47,13 +50,56 @@ import javax.annotation.Nullable;
  */
 public class Record implements Identifiable {
 
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 79 * hash + Objects.hashCode(this.type);
+        hash = 79 * hash + Objects.hashCode(this.meta);
+        hash = 79 * hash + Objects.hashCode(this.fields);
+        hash = 79 * hash + Objects.hashCode(this.refs);
+        hash = 79 * hash + Objects.hashCode(this.identifier);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Record other = (Record) obj;
+        if (!Objects.equals(this.type, other.type)) {
+            return false;
+        }
+        if (!Objects.equals(this.meta, other.meta)) {
+            return false;
+        }
+        if (!Objects.equals(this.fields, other.fields)) {
+            return false;
+        }
+        if (!Objects.equals(this.refs, other.refs)) {
+            return false;
+        }
+        if (!Objects.equals(this.identifier, other.identifier)) {
+            return false;
+        }
+        return true;
+    }
+
     private final Table type;
-    private final RecordID identifier;
+    private final SortedMap<String, String> meta;
     private final SortedMap<String, String> fields;
     private final SortedMap<String, RecordID> refs;
 
+    private final RecordID identifier;
+
     public boolean is(Record other) {
-        return identifier.equals(other.identifier);
+        return Objects.equals(getIdentifier(), other.getIdentifier());
     }
 
     public static class Builder {
@@ -61,17 +107,14 @@ public class Record implements Identifiable {
         private Builder(Optional<Record> was, Table type) {
             this.was = was;
             this.type = type;
-            this.identifier = was
-                    .map(Record::getIdentifier)
-                    .orElseGet(RecordID::create);
+            this.meta = Optional.empty();
             this.fields = Optional.empty();
             this.refs = Optional.empty();
         }
 
         @CheckReturnValue
         public Builder setIdentifier(RecordID value) {
-            this.identifier = value;
-            return this;
+            return put(MetaFields.identifier, value.toString());
         }
 
         @CheckReturnValue
@@ -90,12 +133,12 @@ public class Record implements Identifiable {
 
         @CheckReturnValue
         public Builder setTrace(Record parent) {
-            return put(Fields.trace.name(), parent.getIdentifier().toString());
+            return put(Fields.trace, parent.getIdentifier().toString());
         }
 
         @CheckReturnValue
         public Builder removeTrace() {
-            return put(Fields.trace.name(), null);
+            return put(Fields.trace, null);
         }
 
         @CheckReturnValue
@@ -106,153 +149,177 @@ public class Record implements Identifiable {
 
         @CheckReturnValue
         public Builder setShortName(String value) {
-            return put(Fields.shortName.name(), value);
+            return put(Fields.shortName, value);
         }
 
         @CheckReturnValue
         public Builder setLongName(String value) {
-            return put(Fields.longName.name(), value);
+            return put(Fields.longName, value);
         }
 
         @CheckReturnValue
         public Builder setDescription(String value) {
-            return put(Fields.desc.name(), value);
+            return put(Fields.desc, value);
         }
 
         @CheckReturnValue
         public Builder setConnectionScope(RecordConnectionScope value) {
-            return putRef(References.left.name(), value.getLeft().getIdentifier())
-                    .putRef(References.right.name(), value.getRight().getIdentifier())
-                    .put(Fields.direction.name(), value.getDirection().name());
+            return put(References.left, value.getLeft().getIdentifier())
+                    .put(References.right, value.getRight().getIdentifier())
+                    .put(Fields.direction, value.getDirection().name());
         }
 
         public Builder setViewOf(Record value) {
-            return putRef(References.viewOf.name(), value.getIdentifier());
+            return put(References.viewOf, value.getIdentifier());
         }
 
         public Builder setContainer(Record value) {
-            return putRef(References.container.name(), value.getIdentifier());
+            return put(References.container, value.getIdentifier());
         }
 
         public Builder setSubtype(Record value) {
-            return putRef(References.subtype.name(), value.getIdentifier());
+            return put(References.subtype, value.getIdentifier());
         }
 
         @CheckReturnValue
         public Builder setExternal(boolean value) {
-            return put(Fields.external.name(), Boolean.toString(value));
+            return put(Fields.external, Boolean.toString(value));
         }
 
         public Builder setOrigin(Point2D origin) {
-            return put(Fields.originX.name(), Integer.toString((int) origin.getX()))
-                    .put(Fields.originY.name(), Integer.toString((int) origin.getY()));
+            return put(Fields.originX, Integer.toString((int) origin.getX()))
+                    .put(Fields.originY, Integer.toString((int) origin.getY()));
         }
 
         @CheckReturnValue
         public Builder setColor(Color value) {
-            return put(Fields.color.name(), value.toString());
+            return put(Fields.color, value.toString());
         }
 
         @CheckReturnValue
-        public Builder put(String key, @Nullable String value) {
-            SortedMap<String, String> currentMap;
-            if (fields.isPresent()) {
-                currentMap = fields.get();
-            } else if (was.isPresent()) {
-                currentMap = was.get().fields;
+        public Builder put(Fields key, @Nullable String value) {
+            return putField(key.name(), value);
+        }
+
+        @CheckReturnValue
+        public Builder putField(String key, String value) {
+            putToMap(
+                    was.map(Record::getFields), fields, map -> fields = map,
+                    key, value);
+            return this;
+        }
+
+        @CheckReturnValue
+        public Builder put(MetaFields key, @Nullable String value) {
+            putToMap(
+                    was.map(Record::getMeta), meta, map -> meta = map,
+                    key.name(), value);
+            return this;
+        }
+
+        @CheckReturnValue
+        public Builder put(References key, @Nullable RecordID value) {
+            putToMap(
+                    was.map(Record::getReferences), refs, map -> refs = map,
+                    key.name(), value);
+            return this;
+        }
+
+        private <V> SortedMap<String, V> initMap(
+                Optional<SortedMap<String, V>> wasMap,
+                Optional<SortedMap<String, V>> isMap,
+                Consumer<Optional<SortedMap<String, V>>> setter) {
+            SortedMap<String, V> result;
+            if (isMap.isPresent()) {
+                result = isMap.get();
+            } else if (wasMap.isPresent()) {
+                result = new TreeMap<>(wasMap.get());
+                setter.accept(Optional.of(result));
+            } else {
+                result = new TreeMap<>();
+                setter.accept(Optional.of(result));
+            }
+            return result;
+        }
+
+        private <V> void putToMap(
+                Optional<SortedMap<String, V>> wasMap,
+                Optional<SortedMap<String, V>> isMap,
+                Consumer<Optional<SortedMap<String, V>>> setter,
+                String key, @Nullable V value) {
+            SortedMap<String, V> currentMap;
+            if (isMap.isPresent()) {
+                currentMap = isMap.get();
+            } else if (wasMap.isPresent()) {
+                currentMap = wasMap.get();
             } else {
                 currentMap = Collections.emptySortedMap();
             }
             @Nullable
-            String oldValue = currentMap.get(key);
+            V oldValue = currentMap.get(key);
             if (value == null) {
                 if (oldValue != null) {
-                    initFields();
-                    fields.get().remove(key);
+                    currentMap = initMap(wasMap, isMap, setter);
+                    currentMap.remove(key);
                 }
             } else if (!value.equals(oldValue)) {
-                initFields();
-                fields.get().put(key, value);
+                currentMap = initMap(wasMap, isMap, setter);
+                currentMap.put(key, value);
             }
-            return this;
+        }
+
+        private SortedMap<String, String> initMeta() {
+            return initMap(was.map(Record::getMeta), meta, map -> meta = map);
         }
 
         @CheckReturnValue
         public Builder putFields(Map<String, String> value) {
-            initFields();
-            fields.get().putAll(value);
+            initFields().putAll(value);
             return this;
         }
 
-        private void initFields() {
-            if (!fields.isPresent()) {
-                if (was.isPresent()) {
-                    fields = Optional.of(new TreeMap<>(was.get().fields));
-                } else {
-                    fields = Optional.of(new TreeMap<>());
-                }
-            }
-        }
-
-        @CheckReturnValue
-        public Builder putRef(String key, RecordID value) {
-            SortedMap<String, RecordID> currentMap;
-            if (refs.isPresent()) {
-                currentMap = refs.get();
-            } else if (was.isPresent()) {
-                currentMap = was.get().refs;
-            } else {
-                currentMap = Collections.emptySortedMap();
-            }
-            @Nullable
-            RecordID oldValue = currentMap.get(key);
-            if (value == null) {
-                if (oldValue != null) {
-                    initFields();
-                    refs.get().remove(key);
-                }
-            } else if (!value.equals(oldValue)) {
-                initFields();
-                refs.get().put(key, value);
-            }
-            return this;
+        private SortedMap<String, String> initFields() {
+            return initMap(was.map(Record::getFields), fields, map -> fields = map);
         }
 
         @CheckReturnValue
         public Builder putReferences(Map<String, RecordID> value) {
-            initRefs();
-            refs.get().putAll(value);
+            initRefs().putAll(value);
             return this;
         }
 
-        private void initRefs() {
-            if (!refs.isPresent()) {
-                if (was.isPresent()) {
-                    refs = Optional.of(new TreeMap<>(was.get().refs));
-                } else {
-                    refs = Optional.of(new TreeMap<>());
-                }
-            }
+        private SortedMap<String, RecordID> initRefs() {
+            return initMap(was.map(Record::getReferences), refs, map -> refs = map);
         }
 
         @CheckReturnValue
         public Builder redirectReferences(RecordID toIdentifier, RecordID fromIdentifier) {
             initRefs();
-            for (Map.Entry<String, RecordID> entry : refs.get().entrySet()) {
-                if (fromIdentifier.equals(entry.getValue())) {
-                    entry.setValue(toIdentifier);
-                }
-            }
+            refs.get().entrySet().stream()
+                    .filter(entry -> fromIdentifier.equals(entry.getValue()))
+                    .forEach(entry -> entry.setValue(toIdentifier));
             return this;
+        }
+
+        private static void fillMeta(SortedMap<String, String> map, String now, boolean newVersion) {
+            if (map.get(MetaFields.identifier.name()) == null) {
+                map.put(MetaFields.identifier.name(), RecordID.create().toString());
+            }
+            if (newVersion) {
+                map.put(MetaFields.lastChange.name(), now);
+            } else {
+                map.putIfAbsent(MetaFields.lastChange.name(), now);
+            }
         }
 
         @CheckReturnValue
         public Record build(String now) {
-            if (was.isPresent() && identifier.equals(was.get().identifier) && !fields.isPresent() && !refs.isPresent()) {
+            if (was.isPresent() && !meta.isPresent() && !fields.isPresent() && !refs.isPresent()) {
                 // Nothing changed
                 return was.get();
             } else {
-                put(Fields.lastChange.name(), now);
+                initMeta();
+                fillMeta(meta.get(), now, true);
                 SortedMap<String, String> newFields;
                 if (fields.isPresent()) {
                     newFields = Collections.unmodifiableSortedMap(fields.get());
@@ -262,7 +329,7 @@ public class Record implements Identifiable {
                     newFields = Collections.emptySortedMap();
                 }
                 SortedMap<String, RecordID> newRefs;
-                if (fields.isPresent()) {
+                if (refs.isPresent()) {
                     newRefs = Collections.unmodifiableSortedMap(refs.get());
                 } else if (was.isPresent()) {
                     newRefs = was.get().refs;
@@ -270,7 +337,8 @@ public class Record implements Identifiable {
                     newRefs = Collections.emptySortedMap();
                 }
                 Record result = new Record(
-                        type, identifier, newFields, newRefs);
+                        type, meta.get(), newFields, newRefs);
+                meta = Optional.empty();
                 fields = Optional.empty();
                 refs = Optional.empty();
                 return result;
@@ -278,7 +346,7 @@ public class Record implements Identifiable {
         }
         private final Optional<Record> was;
         private final Table type;
-        private RecordID identifier;
+        private Optional<SortedMap<String, String>> meta;
         private Optional<SortedMap<String, String>> fields;
         private Optional<SortedMap<String, RecordID>> refs;
     }
@@ -289,11 +357,11 @@ public class Record implements Identifiable {
     }
 
     public String getLastChange() {
-        return get(Fields.lastChange.name()).get();
+        return get(MetaFields.lastChange).orElse(ISO8601.EPOCH);
     }
 
     public Optional<RecordID> getTrace() {
-        return get(Fields.trace.name()).flatMap(RecordID::load);
+        return get(Fields.trace).flatMap(RecordID::load);
     }
 
     public Table getType() {
@@ -301,11 +369,11 @@ public class Record implements Identifiable {
     }
 
     public String getShortName() {
-        return get(Fields.shortName.name()).orElse("");
+        return get(Fields.shortName).orElse("");
     }
 
     public String getLongName() {
-        return get(Fields.longName.name()).orElse("");
+        return get(Fields.longName).orElse("");
     }
 
     @Override
@@ -326,38 +394,38 @@ public class Record implements Identifiable {
     }
 
     public String getDescription() {
-        return get(Fields.desc.name()).orElse("");
+        return get(Fields.desc).orElse("");
     }
 
     public ConnectionScope getConnectionScope() {
-        RecordID left = getRef(References.left.name()).get();
-        RecordID right = getRef(References.right.name()).get();
-        String direction = get(Fields.direction.name()).orElse(Direction.None.name());
+        RecordID left = get(References.left).get();
+        RecordID right = get(References.right).get();
+        String direction = get(Fields.direction).orElse(Direction.None.name());
         return new ConnectionScope(
                 left, right, Direction.valueOf(direction));
     }
 
     public Optional<RecordID> getViewOf() {
-        return getRef(References.viewOf.name());
+        return get(References.viewOf);
     }
 
     public Optional<RecordID> getContainer() {
-        return getRef(References.container.name());
+        return get(References.container);
     }
 
     public Optional<RecordID> getSubtype() {
-        return getRef(References.subtype.name());
+        return get(References.subtype);
     }
 
     public boolean isExternal() {
-        return toBoolean(get(Fields.external.name()));
+        return toBoolean(get(Fields.external));
     }
 
     public Point2D getOrigin() {
         try {
             return new Point2D(
-                    Integer.valueOf(get(Fields.originX.name()).orElse("0")),
-                    Integer.valueOf(get(Fields.originY.name()).orElse("0"))
+                    Integer.valueOf(get(Fields.originX).orElse("0")),
+                    Integer.valueOf(get(Fields.originY).orElse("0"))
             );
         } catch (NumberFormatException ex) {
             return Point2D.ZERO;
@@ -366,18 +434,38 @@ public class Record implements Identifiable {
 
     public Color getColor() {
         try {
-            return Color.valueOf(get(Fields.color.name()).orElse(""));
+            return Color.valueOf(get(Fields.color).orElse(""));
         } catch (IllegalArgumentException ex) {
             return Color.LIGHTYELLOW;
         }
     }
 
-    public Optional<String> get(String key) {
+    public Optional<String> get(MetaFields key) {
+        return getMetaField(key.name());
+    }
+
+    public Optional<String> get(Fields key) {
+        return getField(key.name());
+    }
+
+    public Optional<RecordID> get(References key) {
+        return getRef(key.name());
+    }
+
+    public Optional<String> getMetaField(String key) {
+        return Optional.ofNullable(meta.get(key));
+    }
+
+    public Optional<String> getField(String key) {
         return Optional.ofNullable(fields.get(key));
     }
 
     public Optional<RecordID> getRef(String key) {
         return Optional.ofNullable(refs.get(key));
+    }
+
+    public SortedMap<String, String> getMeta() {
+        return meta;
     }
 
     public SortedMap<String, String> getFields() {
@@ -390,12 +478,21 @@ public class Record implements Identifiable {
 
     public SortedMap<String, String> getAllFields() {
         SortedMap<String, String> result = new TreeMap<>();
+        result.putAll(meta);
         result.putAll(fields);
         for (Map.Entry<String, RecordID> entry : refs.entrySet()) {
             result.put(References.PREFIX + entry.getKey(), entry.getValue().toString());
         }
         result.put(Identifiable.IDENTIFIER, identifier.toString());
         return result;
+    }
+
+    public Stream<String> getAllFieldNames() {
+        return Stream.concat(Stream.concat(
+                meta.keySet().stream(),
+                fields.keySet().stream()),
+                refs.keySet().stream().map(ss -> References.PREFIX + ss))
+                .sorted().distinct();
     }
 
     public static Builder create(Table type) {
@@ -407,7 +504,7 @@ public class Record implements Identifiable {
     }
 
     public static Record newerOf(Record left, Record right) {
-        if (left.getLastChange().compareTo(right.getLastChange()) < 0) {
+        if (left.getLastChange().compareTo(right.getLastChange()) > 0) {
             return left;
         } else {
             return right;
@@ -415,24 +512,29 @@ public class Record implements Identifiable {
     }
 
     public static Record load(Table type, Map<String, String> allFields) {
-        Optional<RecordID> newIdentifier = Optional.empty();
+        SortedMap<String, String> newMetaFields = new TreeMap<>();
         SortedMap<String, String> newFields = new TreeMap<>();
         SortedMap<String, RecordID> newRefs = new TreeMap<>();
         for (Map.Entry<String, String> entry : allFields.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            if (key.equals(Identifiable.IDENTIFIER)) {
-                newIdentifier = RecordID.load(value);
-            } else if (key.startsWith(References.PREFIX)) {
+            if (key.startsWith(References.PREFIX)) {
                 Optional<RecordID> foreignKey = RecordID.load(value);
                 if (foreignKey.isPresent()) {
                     newRefs.put(key, foreignKey.get());
                 }
             } else if (!value.isEmpty()) {
-                newFields.put(key, value);
+                try {
+                    // Throws if key is not meta
+                    MetaFields.valueOf(key);
+                    newMetaFields.put(key, value);
+                } catch (RuntimeException ex) {
+                    newFields.put(key, value);
+                }
             }
         }
-        return new Record(type, newIdentifier.orElseGet(RecordID::create),
+        Builder.fillMeta(newMetaFields, ISO8601.EPOCH, false);
+        return new Record(type, Collections.unmodifiableSortedMap(newMetaFields),
                 Collections.unmodifiableSortedMap(newFields),
                 Collections.unmodifiableSortedMap(newRefs));
     }
@@ -450,12 +552,15 @@ public class Record implements Identifiable {
     }
 
     private Record(
-            Table type, RecordID identifier,
+            Table type,
+            SortedMap<String, String> unmodifiableMeta,
             SortedMap<String, String> unmodifiableFields,
             SortedMap<String, RecordID> unmodifiableRefs) {
         this.type = type;
-        this.identifier = identifier;
+        this.meta = unmodifiableMeta;
         this.fields = unmodifiableFields;
         this.refs = unmodifiableRefs;
+
+        this.identifier = RecordID.load(meta.get(MetaFields.identifier.name())).get();
     }
 }

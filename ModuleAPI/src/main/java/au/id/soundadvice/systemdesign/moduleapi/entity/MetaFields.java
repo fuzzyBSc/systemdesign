@@ -24,35 +24,21 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-package au.id.soundadvice.systemdesign.moduleapi.util;
-
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+package au.id.soundadvice.systemdesign.moduleapi.entity;
 
 /**
+ * Some vocabulary here is intentionally similar to ReqIF concepts, with the
+ * intention that interchange mechanisms may be added in the future.
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public class ISO8601 {
-
-    public static String EPOCH = "1970-01-01T00:00:00Z";
-
-    public static String of(long millis) {
-        return of(new Date(millis));
-    }
-
-    public static String of(Date date) {
-        // Source: http://stackoverflow.com/questions/3914404/how-to-get-current-moment-in-iso-8601-format
-        TimeZone tz = TimeZone.getTimeZone("UTC");
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        df.setTimeZone(tz);
-        return df.format(date);
-    }
-
-    public static String now() {
-        return of(new Date());
-    }
-
+public enum MetaFields {
+    /**
+     * A unique identifier for the record over all space and time
+     */
+    identifier,
+    /**
+     * The date and time this record was last modified (iso8601 format).
+     */
+    lastChange,
 }

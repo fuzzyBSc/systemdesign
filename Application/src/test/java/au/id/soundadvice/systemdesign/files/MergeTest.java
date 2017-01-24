@@ -30,12 +30,16 @@ package au.id.soundadvice.systemdesign.files;
 import au.com.bytecode.opencsv.CSVReader;
 import au.id.soundadvice.systemdesign.storage.files.Merge;
 import au.com.bytecode.opencsv.CSVWriter;
+import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.storage.files.RecordReader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Optional;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import org.junit.Test;
 
 /**
@@ -47,208 +51,291 @@ public class MergeTest {
     @Test
     public void testEmpty() throws Exception {
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader("")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader("")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader("")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("", result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            assertFalse(entry.isPresent());
         }
     }
 
     @Test
     public void testEmptyWithHeaders() throws Exception {
         Table unknownType = new Table.Default("unknown");
-        try (RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
-                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
-                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,uuid,z")));
+        String resultString;
+        try (RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,identifier,z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,identifier,z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader("a,b,identifier,z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator(), result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            assertFalse(entry.isPresent());
         }
     }
 
     @Test
     public void allEqual() throws Exception {
-        RecordID uuid = RecordID.create();
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"A\",\"B\",\"" + uuid + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "A")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
     public void allEqualDistinct() throws Exception {
-        RecordID uuid1 = RecordID.create();
-        RecordID uuid2 = RecordID.create();
-        RecordID uuid3 = RecordID.create();
-        if (uuid2.compareTo(uuid3) > 0) {
-            // Make uuid2 order less than uuid3 for stable test results
-            RecordID tmp = uuid3;
-            uuid3 = uuid2;
-            uuid2 = tmp;
+        RecordID identifier1 = RecordID.create();
+        RecordID identifier2 = RecordID.create();
+        RecordID identifier3 = RecordID.create();
+        if (identifier2.compareTo(identifier3) > 0) {
+            // Make identifier2 order less than identifier3 for stable test results
+            RecordID tmp = identifier3;
+            identifier3 = identifier2;
+            identifier2 = tmp;
         }
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid1 + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier1 + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid2 + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier2 + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid3 + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier3 + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"A\",\"B\",\"" + uuid2 + "\",\"Z\"" + System.lineSeparator()
-                    + "\"A\",\"B\",\"" + uuid3 + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier2)
+                    .putField("a", "A")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            entry = result.read();
+            expected = Record.create(unknownType)
+                    .setIdentifier(identifier3)
+                    .putField("a", "A")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
     public void leftChanged() throws Exception {
-        RecordID uuid = RecordID.create();
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "AAA,B," + identifier + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"AAA\",\"B\",\"" + uuid + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "AAA")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
     public void rightChanged() throws Exception {
-        RecordID uuid = RecordID.create();
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,BBB," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,BBB," + identifier + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"A\",\"BBB\",\"" + uuid + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "A")
+                    .putField("b", "BBB")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
     public void bothChangedDifferentCells() throws Exception {
-        RecordID uuid = RecordID.create();
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,B," + identifier + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "AAA,B," + identifier + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,BBB," + uuid + ",Z")));
+                        "a,b,identifier,z" + System.lineSeparator()
+                        + "A,BBB," + identifier + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"AAA\",\"BBB\",\"" + uuid + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.EPOCH);
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "AAA")
+                    .putField("b", "BBB")
+                    .putField("z", "Z")
+                    .build(ISO8601.EPOCH);
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
-    public void bothChangedSameCell() throws Exception {
-        RecordID uuid = RecordID.create();
+    public void bothChangedSameCellLeft() throws Exception {
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        long now = System.currentTimeMillis();
+        long ancestorTime = now - 3000;
+        long leftTime = now - 1000;
+        long rightTime = now - 2000;
+        String resultString;
         try (
                 RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "A,B," + uuid + ",Z")));
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "A,B," + identifier + "," + ISO8601.of(ancestorTime) + ",Z")));
                 RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "AAA,B," + uuid + ",Z")));
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "AAA,B," + identifier + "," + ISO8601.of(leftTime) + ",Z")));
                 RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
-                        "a,b,uuid,z" + System.lineSeparator()
-                        + "BBB,B," + uuid + ",Z")));
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "BBB,B," + identifier + "," + ISO8601.of(rightTime) + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals("\"a\",\"b\",\"uuid\",\"z\"" + System.lineSeparator()
-                    + "\"AAA\",\"B\",\"" + uuid + "\",\"Z\"" + System.lineSeparator(),
-                    result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.of(now));
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "AAA")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.of(now));
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
 
     @Test
-    public void functionsTest() throws Exception {
-        String O = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
-                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
-                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
-                + "\"Report Inconsistency (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistency\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
-                + "\"Store Models (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Models\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
-        String A = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
-                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
-                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
-                + "\"Report Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistencies\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
-                + "\"Store Models (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Models\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
-        String B = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
-                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
-                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
-                + "\"Report Inconsistency (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistency\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
-                + "\"Store Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Inconsistencies\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
-        String P = "\"description\",\"external\",\"item\",\"name\",\"trace\",\"uuid\"\n"
-                + "\"Approve Changes (3 Control Board)\",\"false\",\"1a53ad8d-5a23-4ab9-87a2-e4ca344182b3\",\"Approve Changes\",\"\",\"a2ef8fb3-dae7-44b5-acf9-232190762242\"" + System.lineSeparator()
-                + "\"Develop Systems (2 Engineering Team)\",\"false\",\"d674806d-db60-4c2d-afbf-725f7108a2d3\",\"Develop Systems\",\"\",\"31a28a71-41c2-4a99-a763-d51dfb7c3883\"" + System.lineSeparator()
-                + "\"Report Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Report Inconsistencies\",\"\",\"4902c502-bc8d-4a45-b912-bbc8c10c7598\"" + System.lineSeparator()
-                + "\"Store Inconsistencies (1 System Modelling System)\",\"false\",\"30cb1e53-de6d-4f1b-99e0-d685ca866af3\",\"Store Inconsistencies\",\"\",\"7a9ae517-1122-4e21-9acd-4fee178a108a\"" + System.lineSeparator();
+    public void bothChangedSameCellRight() throws Exception {
+        RecordID identifier = RecordID.create();
         Table unknownType = new Table.Default("unknown");
+        long now = System.currentTimeMillis();
+        long ancestorTime = now - 3000;
+        long leftTime = now - 2000;
+        long rightTime = now - 1000;
+        String resultString;
         try (
-                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(O)));
-                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(A)));
-                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(B)));
+                RecordReader ancestor = new RecordReader(unknownType, new CSVReader(new StringReader(
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "A,B," + identifier + "," + ISO8601.of(ancestorTime) + ",Z")));
+                RecordReader left = new RecordReader(unknownType, new CSVReader(new StringReader(
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "AAA,B," + identifier + "," + ISO8601.of(leftTime) + ",Z")));
+                RecordReader right = new RecordReader(unknownType, new CSVReader(new StringReader(
+                        "a,b,identifier,lastChange,z" + System.lineSeparator()
+                        + "BBB,B," + identifier + "," + ISO8601.of(rightTime) + ",Z")));
                 StringWriter result = new StringWriter();
                 CSVWriter out = new CSVWriter(result)) {
-            Merge.threeWayCSV(ancestor, left, right, out);
-            assertEquals(P, result.toString());
+            Merge.threeWayCSV(ancestor, left, right, out, ISO8601.of(now));
+            resultString = result.toString();
+        }
+        try (RecordReader result = new RecordReader(unknownType, new CSVReader(new StringReader(resultString)))) {
+            Optional<Record> entry = result.read();
+            Record expected = Record.create(unknownType)
+                    .setIdentifier(identifier)
+                    .putField("a", "BBB")
+                    .putField("b", "B")
+                    .putField("z", "Z")
+                    .build(ISO8601.of(now));
+            assertEquals(Optional.of(expected), entry);
+            assertEquals(Optional.empty(), result.read());
         }
     }
-
 }

@@ -34,10 +34,6 @@ package au.id.soundadvice.systemdesign.moduleapi.entity;
  */
 public enum Fields {
     /**
-     * The date and time this record was last modified (iso8601 format).
-     */
-    lastChange,
-    /**
      * The identifier of this record's trace (optional). This field identifies
      * record in the parent baseline that defines the "why" of this record's
      * existence. If no parent baseline exists this field will be blank.
