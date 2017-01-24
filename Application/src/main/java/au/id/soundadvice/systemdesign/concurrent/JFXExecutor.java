@@ -38,11 +38,11 @@ public class JFXExecutor implements Executor {
 
     private static class Singleton {
 
-        private static final JFXExecutor instance = new JFXExecutor();
+        private static final JFXExecutor INSTANCE = new JFXExecutor();
     }
 
     public static JFXExecutor instance() {
-        return Singleton.instance;
+        return Singleton.INSTANCE;
     }
 
     @Override

@@ -85,7 +85,11 @@ public class RecordStore implements Baseline {
     }
 
     private static Stream<ConnectionScope> extractScope(Record record) {
-        return record.getConnectionScope().enumerateDirections(true);
+        if (record.isConnectionScope()) {
+            return record.getConnectionScope().enumerateDirections(true);
+        } else {
+            return Stream.empty();
+        }
     }
 
     private static Stream<String> extractLongName(Record record) {

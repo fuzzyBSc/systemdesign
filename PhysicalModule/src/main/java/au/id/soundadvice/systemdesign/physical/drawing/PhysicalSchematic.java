@@ -33,6 +33,8 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
@@ -60,7 +62,6 @@ import java.util.stream.Stream;
  */
 public class PhysicalSchematic implements Drawing {
 
-    private final PhysicalInteractions interactions;
     private final PhysicalContextMenus menus;
     private final Record identity;
     private final List<DrawingEntity> entities;
@@ -70,7 +71,6 @@ public class PhysicalSchematic implements Drawing {
             PhysicalInteractions interactions,
             PhysicalContextMenus menus,
             DiffPair<Baseline> baselines) {
-        this.interactions = interactions;
         this.menus = menus;
         this.identity = Identity.get(baselines.getSample());
 
@@ -108,6 +108,11 @@ public class PhysicalSchematic implements Drawing {
     @Override
     public Optional<Record> getDragDropObject() {
         return Optional.empty();
+    }
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        return Optional.of(menus.getPhysicalBackgroundMenu());
     }
 
 }

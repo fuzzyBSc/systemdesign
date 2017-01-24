@@ -83,11 +83,11 @@ public enum Identity implements Table {
         return baseline.findByType(identity);
     }
 
-    public static Record create(String now) {
-        return Record.create(identity).build(now);
+    public static Record create(String name, String now) {
+        return Record.create(identity).setLongName(name).build(now);
     }
 
-    public static Record create(String now, Record parentIdentity, Record parentItem) {
+    public static Record create(Record parentIdentity, Record parentItem, String now) {
         return itemToIdentity(now, parentIdentity, parentItem);
     }
 

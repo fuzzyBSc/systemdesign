@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.scene.Group;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -64,7 +65,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
                 deletedEntitiesGroup,
                 otherConnectorsGroup,
                 otherEntitiesGroup);
-        ScrollPane scrollPane = new ScrollPane(pane);
+        this.scrollPane = new ScrollPane(pane);
         scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
             pane.setMinWidth(bounds.getWidth());
             pane.setMinHeight(bounds.getHeight());
@@ -99,6 +100,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
     private final TabPane tabs;
     private final Tab tab;
     private final AnchorPane pane;
+    private final ScrollPane scrollPane;
     private final Group deletedEntitiesGroup = new Group();
     private final Group otherEntitiesGroup = new Group();
     private final Group deletedConnectorsGroup = new Group();
@@ -106,6 +108,12 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
 
     @Override
     public void setState(Drawing state) {
+        tab.setText(state.getTitle());
+        Optional<ContextMenu> menu = state.getContextMenu(context).map(
+                menuItems -> menus.getMenu(menuItems));
+        if (menu.isPresent()) {
+            scrollPane.setContextMenu(menu.get());
+        }
         updateElements(state.getEntities(), currentNodes, entity -> {
             Group parent = entity.isDeleted()
                     ? deletedEntitiesGroup

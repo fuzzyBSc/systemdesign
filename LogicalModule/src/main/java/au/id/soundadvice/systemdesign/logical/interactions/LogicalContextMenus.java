@@ -79,7 +79,7 @@ public class LogicalContextMenus {
         return new FlowContextMenu(flow);
     }
 
-    public MenuItems getLogicalTreeBackgroundMenu() {
+    public MenuItems getLogicalBackgroundMenu() {
         return new LogicalTreeBackgroundMenu();
     }
 

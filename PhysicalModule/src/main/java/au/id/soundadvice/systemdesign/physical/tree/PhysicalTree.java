@@ -78,7 +78,7 @@ public class PhysicalTree implements Tree {
 
     @Override
     public Optional<MenuItems> getContextMenu() {
-        return Optional.of(menus.getItemTreeBackgroundMenu());
+        return Optional.of(menus.getPhysicalBackgroundMenu());
     }
 
     private class PhysicalTreeNode implements TreeNode {

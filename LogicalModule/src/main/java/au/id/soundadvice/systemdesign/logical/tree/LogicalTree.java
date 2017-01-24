@@ -64,7 +64,7 @@ public class LogicalTree implements Tree {
 
     @Override
     public Optional<MenuItems> getContextMenu() {
-        return Optional.of(menus.getLogicalTreeBackgroundMenu());
+        return Optional.of(menus.getLogicalBackgroundMenu());
     }
 
     public final class LogicalTreeNode implements TreeNode {

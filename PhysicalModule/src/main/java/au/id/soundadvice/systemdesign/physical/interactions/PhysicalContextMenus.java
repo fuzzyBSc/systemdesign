@@ -61,8 +61,8 @@ public class PhysicalContextMenus {
         return new InterfaceContextMenu(iface);
     }
 
-    public MenuItems getItemTreeBackgroundMenu() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public MenuItems getPhysicalBackgroundMenu() {
+        return new ItemBackgroundContextMenu();
     }
 
     class ItemBackgroundContextMenu implements MenuItems {

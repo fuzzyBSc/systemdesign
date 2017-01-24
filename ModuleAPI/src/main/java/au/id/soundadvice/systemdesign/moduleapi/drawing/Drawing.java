@@ -28,6 +28,8 @@ package au.id.soundadvice.systemdesign.moduleapi.drawing;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -44,4 +46,6 @@ public interface Drawing extends Identifiable {
     public Stream<DrawingConnector> getConnectors();
 
     public Optional<Record> getDragDropObject();
+
+    public Optional<MenuItems> getContextMenu(InteractionContext context);
 }

@@ -85,23 +85,28 @@ public class EditState {
         return executor;
     }
 
-    private static final WhyHowPair<Baseline> EMPTY_BASELINE = new WhyHowPair<>(RecordStore.empty(), RecordStore.empty());
+    private static WhyHowPair<Baseline> newBaseline(String now) {
+        RecordStore parent = RecordStore.empty();
+        RecordStore child = RecordStore.empty();
+        child = child.add(Identity.create("System Context", now));
+        return new WhyHowPair<>(parent, child);
+    }
     private static final WhyHowPair<Optional<RecordStorage>> EMPTY_STORAGE = new WhyHowPair<>(Optional.empty(), Optional.empty());
 
-    public static EditState init(Executor executor) {
+    public static EditState init(Executor executor, String now) {
         EditState result = new EditState(
                 executor,
                 EMPTY_STORAGE,
-                EMPTY_BASELINE,
+                newBaseline(now),
                 true);
         result.subscribe(() -> result.updateState(
                 baselines -> AutoFix.onChange(baselines, ISO8601.now())));
         return result;
     }
 
-    public void clear() {
+    public void clear(String now) {
         try (Inhibit xact = this.changed.inhibit()) {
-            WhyHowPair<Baseline> state = EMPTY_BASELINE;
+            WhyHowPair<Baseline> state = newBaseline(now);
             this.setStorage(EMPTY_STORAGE);
             loadVersionControl(Optional.empty());
             this.lastChildIdentity.clear();
@@ -178,7 +183,7 @@ public class EditState {
                     .setParent(state.getChild())
                     .setChild(RecordStore.empty());
             Record parentIdentity = Identity.get(state.getParent());
-            Record childIdentity = Identity.create(now, parentIdentity, systemOfInterest);
+            Record childIdentity = Identity.create(parentIdentity, systemOfInterest, now);
             if (newStorage.getChild().isPresent()) {
                 // Try loading
                 state = state

@@ -397,6 +397,10 @@ public class Record implements Identifiable {
         return get(Fields.desc).orElse("");
     }
 
+    public boolean isConnectionScope() {
+        return get(References.left).isPresent() && get(References.right).isPresent();
+    }
+
     public ConnectionScope getConnectionScope() {
         RecordID left = get(References.left).get();
         RecordID right = get(References.right).get();
@@ -519,9 +523,10 @@ public class Record implements Identifiable {
             String key = entry.getKey();
             String value = entry.getValue();
             if (key.startsWith(References.PREFIX)) {
+                String suffix = key.substring(References.PREFIX.length());
                 Optional<RecordID> foreignKey = RecordID.load(value);
                 if (foreignKey.isPresent()) {
-                    newRefs.put(key, foreignKey.get());
+                    newRefs.put(suffix, foreignKey.get());
                 }
             } else if (!value.isEmpty()) {
                 try {

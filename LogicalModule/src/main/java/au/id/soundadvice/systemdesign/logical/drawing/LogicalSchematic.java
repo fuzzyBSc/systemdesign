@@ -37,6 +37,8 @@ import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +51,7 @@ import java.util.stream.Stream;
  */
 public class LogicalSchematic implements Drawing {
 
+    private final LogicalContextMenus menus;
     private final Record drawing;
     private final Optional<RecordID> parentFunctionIdentifier;
     private final List<DrawingEntity> entities;
@@ -57,6 +60,7 @@ public class LogicalSchematic implements Drawing {
     public LogicalSchematic(
             LogicalContextMenus menus,
             DiffPair<Baseline> baselines, Record drawing) {
+        this.menus = menus;
         this.drawing = drawing;
         this.parentFunctionIdentifier = drawing.getTrace();
         Map<RecordID, DiffPair<Record>> functionIdentifierToFunctionView
@@ -107,6 +111,11 @@ public class LogicalSchematic implements Drawing {
     @Override
     public Optional<Record> getDragDropObject() {
         return Optional.of(drawing);
+    }
+
+    @Override
+    public Optional<MenuItems> getContextMenu(InteractionContext context) {
+        return Optional.of(menus.getLogicalBackgroundMenu());
     }
 
 }

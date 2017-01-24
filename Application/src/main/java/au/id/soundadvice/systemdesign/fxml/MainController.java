@@ -160,7 +160,8 @@ public class MainController implements Initializable {
 
         newMenuItem.setOnAction(event -> {
             if (interactions.checkSave("Save before closing?")) {
-                edit.clear();
+                String now = ISO8601.now();
+                edit.clear(now);
             }
             event.consume();
         });

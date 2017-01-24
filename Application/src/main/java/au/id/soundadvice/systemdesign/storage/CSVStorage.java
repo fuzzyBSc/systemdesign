@@ -159,13 +159,17 @@ public class CSVStorage implements FileStorage, IdentityValidator {
                         String typename = file;
                         if (typename.endsWith(EXT)) {
                             typename = typename.substring(0, typename.length() - EXT.length());
-                        }
-                        try (
-                                BufferedReader reader = vcs.getBufferedReader(this, file, label);
-                                CSVReader csv = new CSVReader(reader)) {
-                            return loadRecords(factory.apply(typename), csv);
-                        } catch (IOException ex) {
-                            throw new UncheckedIOException(ex);
+                            try (
+                                    BufferedReader reader = vcs.getBufferedReader(this, file, label);
+                                    CSVReader csv = new CSVReader(reader)) {
+                                // Collect and re-stream before try-with-resources exits
+                                List<Record> list = loadRecords(factory.apply(typename), csv).collect(Collectors.toList());
+                                return list.stream();
+                            } catch (IOException ex) {
+                                throw new UncheckedIOException(ex);
+                            }
+                        } else {
+                            return Stream.empty();
                         }
                     }));
         } catch (UncheckedIOException ex) {
@@ -181,18 +185,19 @@ public class CSVStorage implements FileStorage, IdentityValidator {
         Path directory = csv.getParent();
         Path tempFile = Files.createTempFile(directory, null, null);
         transaction.addJob(csv, tempFile);
-        CSVWriter writer = new CSVWriter(Files.newBufferedWriter(tempFile));
-        writer.writeNext(headers);
-        records.stream()
-                .sorted((left, right) -> left.getIdentifier().compareTo(right.getIdentifier()))
-                .forEachOrdered(record -> {
-                    SortedMap<String, String> allFields = record.getAllFields();
-                    writer.writeNext(
-                            Stream.of(headers)
-                            .map(key -> allFields.getOrDefault(key, ""))
-                            .toArray(String[]::new)
-                    );
-                });
+        try (CSVWriter writer = new CSVWriter(Files.newBufferedWriter(tempFile))) {
+            writer.writeNext(headers);
+            records.stream()
+                    .sorted((left, right) -> left.getIdentifier().compareTo(right.getIdentifier()))
+                    .forEachOrdered(record -> {
+                        SortedMap<String, String> allFields = record.getAllFields();
+                        writer.writeNext(
+                                Stream.of(headers)
+                                .map(key -> allFields.getOrDefault(key, ""))
+                                .toArray(String[]::new)
+                        );
+                    });
+        }
     }
 
     @Override

@@ -64,7 +64,9 @@ public class SystemDesign extends Application {
         Image icon = new Image(SystemDesign.class.getResource("/systemdesign.png").toString());
         stage.getIcons().add(icon);
 
-        EditState edit = EditState.init(Executors.newCachedThreadPool());
+        String now = ISO8601.now();
+
+        EditState edit = EditState.init(Executors.newCachedThreadPool(), now);
         Interactions interactions = new Interactions(stage, edit);
         ContextMenus menus = new ContextMenus(interactions);
 
