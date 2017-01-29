@@ -27,6 +27,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.collection;
 
+import au.id.soundadvice.systemdesign.moduleapi.entity.Identifiable;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import java.util.Objects;
@@ -35,6 +36,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import java.util.Collections;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -145,10 +149,11 @@ public class DiffPair<T> implements DiffInfo {
     }
 
     public <O> DiffPair<O> map(BiFunction<Baseline, ? super T, ? extends O> mapper) {
-        Function<T, O> wasMapper = t -> mapper.apply(wasBaseline.get(), t);
-        Function<T, O> isMapper = t -> mapper.apply(isBaseline, t);
-        return new DiffPair(wasBaseline, wasInstance.map(wasMapper),
-                isBaseline, isInstance.map(isMapper));
+        return new DiffPair(
+                wasBaseline,
+                wasInstance.map(t -> mapper.apply(wasBaseline.get(), t)),
+                isBaseline,
+                isInstance.map(t -> mapper.apply(isBaseline, t)));
     }
 
     public <O> DiffPair<O> flatMap(BiFunction<Baseline, ? super T, Optional<O>> mapper) {
@@ -156,6 +161,24 @@ public class DiffPair<T> implements DiffInfo {
         Function<T, Optional<O>> isMapper = t -> mapper.apply(isBaseline, t);
         return new DiffPair(wasBaseline, wasInstance.flatMap(wasMapper),
                 isBaseline, isInstance.flatMap(isMapper));
+    }
+
+    public <O extends Identifiable> Stream<DiffPair<O>> flatMapStream(BiFunction<Baseline, ? super T, Stream<O>> mapper) {
+        Map<RecordID, O> was = wasInstance.map(
+                instance -> mapper.apply(wasBaseline.get(), instance)
+                .collect(Collectors.toMap(Identifiable::getIdentifier, Function.identity())))
+                .orElse(Collections.emptyMap());
+        Map<RecordID, O> is = isInstance.map(
+                instance -> mapper.apply(isBaseline, instance)
+                .collect(Collectors.toMap(Identifiable::getIdentifier, Function.identity())))
+                .orElse(Collections.emptyMap());
+        return Stream.concat(was.keySet().stream(), is.keySet().stream())
+                .distinct()
+                .map(recordID -> {
+                    return new DiffPair<O>(
+                            wasBaseline, Optional.ofNullable(was.get(recordID)),
+                            isBaseline, Optional.ofNullable(is.get(recordID)));
+                });
     }
 
     public Stream<T> stream() {

@@ -26,6 +26,7 @@
  */
 package au.id.soundadvice.systemdesign.moduleapi.interaction;
 
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -42,9 +43,14 @@ public interface MenuItems {
         public Stream<MenuItem> getChildren();
     }
 
-    class SingleMenuItem implements MenuItem, Runnable {
+    class SingleMenuItem implements MenuItem, Consumer<MenuHints> {
 
-        public SingleMenuItem(String text, Runnable action) {
+        public SingleMenuItem(String text, Runnable runnable) {
+            this.text = text;
+            this.action = hints -> runnable.run();
+        }
+
+        public SingleMenuItem(String text, Consumer<MenuHints> action) {
             this.text = text;
             this.action = action;
         }
@@ -55,16 +61,16 @@ public interface MenuItems {
         }
 
         private final String text;
-        private final Runnable action;
-
-        @Override
-        public void run() {
-            action.run();
-        }
+        private final Consumer<MenuHints> action;
 
         @Override
         public Stream<MenuItem> getChildren() {
             return Stream.empty();
+        }
+
+        @Override
+        public void accept(MenuHints t) {
+            action.accept(t);
         }
     }
 

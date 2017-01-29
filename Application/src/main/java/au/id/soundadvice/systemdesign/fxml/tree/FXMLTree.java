@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.fxml.drag.DragSource;
 import au.id.soundadvice.systemdesign.fxml.drag.DragTarget;
 import au.id.soundadvice.systemdesign.fxml.drawing.DrawingOf;
 import au.id.soundadvice.systemdesign.fxml.drag.EntityDropHandler;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuHints;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
@@ -81,7 +82,7 @@ public class FXMLTree implements DrawingOf<Tree> {
     private void addContextMenu(Tree tree) {
         Optional<MenuItems> menu = tree.getContextMenu();
         if (menu.isPresent()) {
-            view.setContextMenu(menus.getMenu(menu.get()));
+            view.setContextMenu(menus.getMenu(menu.get(), MenuHints::empty));
         } else {
             view.setContextMenu(null);
         }
@@ -186,7 +187,7 @@ public class FXMLTree implements DrawingOf<Tree> {
         private void addContextMenu(TreeNode node) {
             Optional<MenuItems> menu = node.getContextMenu();
             if (menu.isPresent()) {
-                setContextMenu(menus.getMenu(menu.get()));
+                setContextMenu(menus.getMenu(menu.get(), MenuHints::empty));
             } else {
                 setContextMenu(null);
             }

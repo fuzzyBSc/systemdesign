@@ -167,8 +167,8 @@ public enum Interface implements Table {
     }
 
     private String getShortName(Baseline baseline, RecordConnectionScope scope) {
-        String leftShortName = scope.getLeft().getShortName();
-        String rightShortName = scope.getRight().getShortName();
+        String leftShortName = Item.item.getIdPath(baseline, scope.getLeft()).toString();
+        String rightShortName = Item.item.getIdPath(baseline, scope.getRight()).toString();
         if (leftShortName.compareTo(rightShortName) > 0) {
             // Reverse
             String tmp = leftShortName;
@@ -234,7 +234,7 @@ public enum Interface implements Table {
                             if (!otherEndChildItem.isPresent()) {
                                 // The other end does not exist in the child baseline as an external item
                                 return Stream.of(Problem.flowProblem(
-                                        otherEndItem.getLongName() + "is missing",
+                                        otherEndItem.getLongName() + " is missing",
                                         Optional.of((baselines, now) -> Item.item.flowDownExternal(baselines, now, otherEndItem)),
                                         Optional.of((baselines, now) -> baselines.setParent(disconnect(baselines.getChild(), scope)))));
                             }

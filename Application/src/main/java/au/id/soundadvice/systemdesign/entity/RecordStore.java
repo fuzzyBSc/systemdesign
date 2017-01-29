@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckReturnValue;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
+import java.util.Set;
 
 /**
  * An immutable store of records, suitable for use within an undo buffer.
@@ -253,7 +254,7 @@ public class RecordStore implements Baseline {
 
     @CheckReturnValue
     public RecordStore removeAll(Stream<RecordID> seed) {
-        HashSet<RecordID> toDelete = seed.parallel()
+        Set<RecordID> toDelete = seed.parallel()
                 .filter(key -> byIdentifier.get(key).isPresent())
                 .collect(Collectors.toCollection(HashSet::new));
         if (toDelete.isEmpty()) {

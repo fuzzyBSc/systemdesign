@@ -133,18 +133,23 @@ class PhysicalSchematicInterface implements DrawingConnector {
     }
 
     private final PhysicalContextMenus menus;
+    // The actual interface, a connection between items
     private final DiffPair<Record> iface;
+    // The scope of this drawing element, a connection between item views
+    private final DiffPair<RecordConnectionScope> itemViews;
 
     public PhysicalSchematicInterface(
             PhysicalContextMenus menus,
-            DiffPair<Record> iface) {
+            DiffPair<Record> iface,
+            DiffPair<RecordConnectionScope> itemViews) {
         this.menus = menus;
         this.iface = iface;
+        this.itemViews = itemViews;
     }
 
     @Override
     public ConnectionScope getScope() {
-        return iface.getSample().getConnectionScope();
+        return itemViews.getSample().getScope();
     }
 
     @Override

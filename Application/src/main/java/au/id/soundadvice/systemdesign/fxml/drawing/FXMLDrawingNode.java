@@ -37,6 +37,7 @@ import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuHints;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -173,7 +174,9 @@ class FXMLDrawingNode implements DrawingOf<DrawingEntity> {
         nodeGroup.setLayoutY(entity.getOrigin().getY());
 
         Optional<ContextMenu> menu = entity.getContextMenu(context).map(
-                menuItems -> menus.getMenu(menuItems));
+                menuItems -> menus.getMenu(
+                        menuItems,
+                        () -> new MenuHints(Optional.of(entity.getOrigin()))));
         if (menu.isPresent()) {
             label.setContextMenu(menu.get());
         }

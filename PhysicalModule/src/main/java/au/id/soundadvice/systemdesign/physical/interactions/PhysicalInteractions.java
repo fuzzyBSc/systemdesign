@@ -38,8 +38,12 @@ import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.moduleapi.util.UniqueName;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
 import static au.id.soundadvice.systemdesign.physical.entity.Item.item;
+import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
 import javafx.util.Pair;
@@ -50,20 +54,35 @@ import javafx.util.Pair;
  */
 public class PhysicalInteractions {
 
+    private String getUniqueShortName(Baseline baseline) {
+        Set<String> usedNames = Item.find(baseline)
+                .filter(item -> !item.isExternal())
+                .map(Record::getShortName)
+                .collect(Collectors.toSet());
+        return IntStream.range(1, Integer.MAX_VALUE)
+                .mapToObj(Integer::toString)
+                .filter(candidate -> !usedNames.contains(candidate))
+                .findFirst()
+                .get();
+    }
+
     public Optional<Record> createItem(InteractionContext context, Point2D origin) {
         AtomicReference<Record> result = new AtomicReference<>();
         String defaultName = Item.find(context.getChild()).parallel()
                 .filter(item -> !item.isExternal())
                 .map(Record::getLongName)
                 .collect(new UniqueName("New Item"));
-        Optional<String> name = context.textInput("New Item", "Enter name for item", defaultName);
-        if (name.isPresent()) {
+        Optional<String> longName = context.textInput("New Item", "Enter name for item", defaultName);
+        if (longName.isPresent()) {
             String now = ISO8601.now();
             context.updateState(state -> {
-                Pair<WhyHowPair<Baseline>, Record> createResult = Item.create(
-                        state, now, name.get());
-                result.set(createResult.getValue());
-                return state.setChild(createResult.getKey().getChild());
+                String shortName = getUniqueShortName(state.getChild());
+                Pair<WhyHowPair<Baseline>, Record> itemResult = Item.create(
+                        state, now, shortName, longName.get());
+                result.set(itemResult.getValue());
+                Pair<Baseline, Record> viewResult = ItemView.create(
+                        itemResult.getKey().getChild(), now, itemResult.getValue(), origin);
+                return itemResult.getKey().setChild(viewResult.getKey());
             });
         }
         return Optional.ofNullable(result.get());

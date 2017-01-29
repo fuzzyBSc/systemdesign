@@ -42,7 +42,7 @@ import java.util.Comparator;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public enum LogicalDrawingRecord implements Table {
+public enum LogicalDrawing implements Table {
     logicalDrawing;
 
     @Override
@@ -138,7 +138,11 @@ public enum LogicalDrawingRecord implements Table {
         }
         Iterator<Optional<Record>> it = expectedDrawingTraces
                 .filter(trace -> {
+                    // Any drawing traced to the nominated parent function
+                    // (including the Optional.empty parent function)
+                    //is a match
                     return !baselines.getChild().findByTrace(trace.map(Record::getIdentifier))
+                            .filter(record -> LogicalDrawing.logicalDrawing.equals(record.getType()))
                             .findAny().isPresent();
                 }).iterator();
         WhyHowPair<Baseline> result = baselines;

@@ -94,11 +94,15 @@ public enum Identity implements Table {
     }
 
     public static Record create(Record parentIdentity, Record parentItem, String now) {
-        return itemToIdentity(now, parentIdentity, parentItem);
+        return itemToIdentity(parentIdentity, parentItem, now);
     }
 
     public static IDPath getIdPath(Record record) {
         return IDPath.valueOfDotted(record.getShortName());
+    }
+
+    public String getDisplayName(Record record) {
+        return record.getShortName() + " " + record.getLongName();
     }
 
     /**
@@ -126,38 +130,43 @@ public enum Identity implements Table {
 
     @Override
     public Stream<Problem> getTraceProblems(WhyHowPair<Baseline> context, Record traceParent, Stream<Record> traceChild) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return Stream.empty();
     }
 
     @Override
-    public Stream<Problem> getUntracedParentProblems(WhyHowPair<Baseline> context, Stream<Record> untracedParents) {
+    public Stream<Problem> getUntracedParentProblems(
+            WhyHowPair<Baseline> context, Stream<Record> untracedParents) {
         // It's correct for the identity in the parent baseline to be untraced.
         // The child identity traces to an Item, not an Identity.
         return Stream.empty();
     }
 
     @Override
-    public Stream<Problem> getUntracedChildProblems(WhyHowPair<Baseline> context, Stream<Record> untracedChildren) {
-        if (Identity.findAll(context.getParent()).findAny().isPresent()) {
+    public Stream<Problem> getUntracedChildProblems(
+            WhyHowPair<Baseline> state, Stream<Record> untracedChildren) {
+        if (Identity.findAll(state.getParent()).findAny().isPresent()) {
             // We only care about untraced identities if this is the top level
             // of the model
             return untracedChildren
-                    .map(record -> Problem.flowProblem(
-                            "Item " + record.getLongName() + " is missing from the parent baseline",
-                            Optional.of((baselines, now) -> addItemToParentBaseline(baselines, now, record)),
-                            Optional.empty()));
+                    .map(identity -> {
+                        return Problem.flowProblem(
+                                "Item " + identity.getLongName() + " is missing from the parent baseline",
+                                Optional.empty(),
+                                Optional.of((baselines, now) -> addItemToParentBaseline(baselines, now, identity)));
+                    });
         } else {
             return Stream.empty();
         }
     }
 
-    private static Record itemToIdentity(String now, Record parentIdentity, Record parentItem) {
+    private static Record itemToIdentity(Record parentIdentity, Record parentItem, String now) {
         IDPath parentPath = getIdPath(parentIdentity);
         IDPath itemShortPath = IDPath.valueOfDotted(parentItem.getShortName());
         IDPath childPath = parentPath.resolve(itemShortPath);
         return Record.create(identity)
                 .putFields(parentItem.getFields())
                 .setShortName(childPath.toString())
+                .setTrace(parentItem)
                 .build(now);
     }
 
@@ -176,6 +185,7 @@ public enum Identity implements Table {
         //resolve 
         Map<String, String> fields = new HashMap<>(childIdentity.getAllFields());
         fields.put(Fields.shortName.name(), itemShortPath.toString());
+        fields.remove(Fields.trace.name());
         return Record.load(Item.item, fields);
     }
 
@@ -183,14 +193,19 @@ public enum Identity implements Table {
         Optional<Record> childIdentity = baselines.getChild().get(record);
         Optional<Record> parentIdentity = findAll(baselines.getParent()).findAny();
         Optional<RecordID> optionalTrace = childIdentity.flatMap(Record::getTrace);
-        Optional<Record> optionalItem = optionalTrace.flatMap(trace -> baselines.getParent().get(trace, Item.item));
-        if (optionalTrace.isPresent() && parentIdentity.isPresent() && !optionalItem.isPresent()) {
-            // Preconditions are met
+        Baseline unmodifiedParent = baselines.getParent();
+        Optional<Record> optionalItem = optionalTrace.flatMap(trace -> unmodifiedParent.get(trace, Item.item));
+        if (childIdentity.isPresent() && parentIdentity.isPresent() && !optionalItem.isPresent()) {
+            // Preconditions are met - Add item to parent
             Record item = identityToItem(baselines.getParent(), childIdentity.get());
-            return baselines.setParent(baselines.getParent().add(item));
-        } else {
-            return baselines;
+            baselines = baselines.setParent(baselines.getParent().add(item));
+            // Trace to the new item
+            Record newIdentity = childIdentity.get().asBuilder()
+                    .setTrace(parentIdentity)
+                    .build(now);
+            baselines = baselines.setChild(baselines.getChild().add(newIdentity));
         }
+        return baselines;
     }
 
     @Override

@@ -100,35 +100,41 @@ public enum Item implements Table {
                 });
     }
 
+    private Stream<Problem> getTraceProblemsForChild(WhyHowPair<Baseline> context, Record traceParent, Record childItem) {
+        if (childItem.isExternal()) {
+            Map<String, String> parentFields = new HashMap<>(traceParent.getFields());
+            Map<String, String> childFields = new HashMap<>(childItem.getFields());
+            parentFields.remove(Fields.trace.name());
+            childFields.remove(Fields.trace.name());
+            if (!traceParent.isExternal()) {
+                Record parentIdentity = Identity.get(context.getParent());
+                IDPath parentPath = Identity.getIdPath(parentIdentity);
+                IDPath fullPath = parentPath.resolve(
+                        IDPath.valueOfSegment(parentFields.getOrDefault(Fields.shortName.name(), "")));
+                parentFields.put(Fields.shortName.name(), fullPath.toString());
+                parentFields.put(Fields.external.name(), Boolean.toString(true));
+            }
+            if (!parentFields.equals(childFields)) // Refresh child external item fields from parent
+            {
+                return Stream.of(Problem.flowProblem(childItem.getLongName() + " does not match parent",
+                        Optional.of((baselines, now) -> flowDownExternal(baselines, now, traceParent)),
+                        Optional.of((baselines, now) -> flowUpExternal(baselines, now, childItem))));
+            }
+        } else {
+            // Make sure internal items trace to the system of interest
+            return Stream.of(Problem.onLoadAutofixProblem(
+                    (baselines, now) -> setInternalItemTrace(baselines, now, childItem)));
+        }
+        return Stream.empty();
+    }
+
     @Override
     public Stream<Problem> getTraceProblems(WhyHowPair<Baseline> context, Record traceParent, Stream<Record> traceChildren) {
         // Internal child items trace to parent items which indicates that the parent
         // is composed of the children, but there is nothing in particular that
         // should be consistent between the two
         // However, external items should be consistent.
-        return traceChildren.flatMap(childItem -> {
-            if (childItem.isExternal()) {
-                HashMap<String, String> parentFields = new HashMap<>(traceParent.getFields());
-                HashMap<String, String> childFields = new HashMap<>(childItem.getFields());
-                parentFields.remove(Fields.trace.name());
-                childFields.remove(Fields.trace.name());
-                if (!traceParent.isExternal()) {
-                    parentFields.remove(Fields.shortName.name());
-                    childFields.remove(Fields.shortName.name());
-                }
-                if (!parentFields.equals(childFields)) // Refresh child external item fields from parent
-                {
-                    return Stream.of(Problem.flowProblem(childItem.getLongName() + " does not match parent",
-                            Optional.of((baselines, now) -> flowDownExternal(baselines, now, traceParent)),
-                            Optional.of((baselines, now) -> flowUpExternal(baselines, now, childItem))));
-                }
-            } else {
-                // Make sure internal items trace to the system of interest
-                return Stream.of(Problem.onLoadAutofixProblem(
-                        (baselines, now) -> setInternalItemTrace(baselines, now, childItem)));
-            }
-            return Stream.empty();
-        });
+        return traceChildren.flatMap(childItem -> getTraceProblemsForChild(context, traceParent, childItem));
     }
 
     public Optional<Record> getTrace(WhyHowPair<Baseline> context, Record childItem) {
@@ -196,14 +202,21 @@ public enum Item implements Table {
         return IDPath.valueOfSegment(Integer.toString(nextId));
     }
 
+    private static double randomUpDown() {
+        return Math.random() * 2.0 - 1.0;
+    }
+
+    private static double randomUpDown(double min, double max) {
+        return randomUpDown() * (max - min) + min;
+    }
+
     public static Color shiftColor(Color color) {
         // Shift color
-        // Adjust hue by +/- 128 out of the 256 range
-        double hueShift = Math.random() * 128 - 64;
-        // Adjust saturation by +/- 30%
-        double saturationMultiplier = Math.random() * .6 + .7;
-        // Adjust brightness by +/- 20%
-        double brightnessMultiplier = Math.random() * .4 + .8;
+        // Adjust hue by at least 30 and at most 90 degrees in any direction
+        double hueShift = randomUpDown(30, 120);
+        // Adjust saturation and brightnes by +/- 30%ish
+        double saturationMultiplier = Math.random() * .3 + .85;
+        double brightnessMultiplier = Math.random() * .3 + .85;
         double opacityMultiplier = 1;
         return color.deriveColor(
                 hueShift,
@@ -217,17 +230,19 @@ public enum Item implements Table {
      *
      * @param baselines The context of the creation
      * @param now The current time in 8601 format
-     * @param name The name of the item
+     * @param shortName The human-readable identifier of the item
+     * @param longName The name of the item
      * @return The updated baseline
      */
     @CheckReturnValue
     public static Pair<WhyHowPair<Baseline>, Record> create(
-            WhyHowPair<Baseline> baselines, String now, String name) {
+            WhyHowPair<Baseline> baselines, String now, String shortName, String longName) {
         Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
         Color traceColor = systemOfInterest.map(Record::getColor).orElse(Color.LIGHTYELLOW);
         Color itemColor = shiftColor(traceColor);
         Record record = Record.create(item)
-                .setLongName(name)
+                .setShortName(shortName)
+                .setLongName(longName)
                 .setExternal(false)
                 .setTrace(systemOfInterest)
                 .setColor(itemColor)
@@ -374,8 +389,17 @@ public enum Item implements Table {
         return Record.newerOf(left, right);
     }
 
+    public String getExternalDisplayName(IDPath identityPath, Record item) {
+        if (item.isExternal()) {
+            return getDisplayName(item);
+        } else {
+            IDPath itemPath = identityPath.resolve(IDPath.valueOfSegment(item.getShortName()));
+            return itemPath + " " + item.getLongName();
+        }
+    }
+
     public String getDisplayName(Record item) {
-        return item.getLongName();
+        return item.getShortName() + " " + item.getLongName();
     }
 
     public Baseline setDisplayName(Baseline baseline, String now, Record item, String value) {

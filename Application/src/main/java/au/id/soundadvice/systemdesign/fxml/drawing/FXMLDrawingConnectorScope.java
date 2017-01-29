@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuHints;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -154,6 +155,10 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
             case Both:
                 // Leave both visible
                 break;
+            case None:
+                normalArrow.setVisible(false);
+                reverseArrow.setVisible(false);
+                break;
             default:
                 throw new AssertionError(direction.name());
 
@@ -183,7 +188,12 @@ class FXMLDrawingConnectorScope implements DrawingOf<List<DrawingConnector>> {
         });
 
         Optional<ContextMenu> menu = connector.getContextMenu(context).map(
-                menuItems -> menus.getMenu(menuItems));
+                menuItems -> menus.getMenu(
+                        menuItems,
+                        () -> new MenuHints(
+                                Optional.of(
+                                        new Point2D(
+                                                label.getLayoutX(), label.getLayoutY())))));
         if (menu.isPresent()) {
             label.setContextMenu(menu.get());
         }

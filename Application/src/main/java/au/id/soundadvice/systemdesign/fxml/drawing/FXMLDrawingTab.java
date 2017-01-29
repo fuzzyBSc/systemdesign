@@ -37,22 +37,31 @@ import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuHints;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
+import javax.annotation.Nullable;
 
 /**
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class FXMLDrawingTab implements DrawingOf<Drawing> {
+
+    private final AtomicReference<ContextMenu> contextMenu = new AtomicReference<>();
+    private final AtomicReference<ContextMenuEvent> lastContextMenuClick = new AtomicReference<>();
 
     public FXMLDrawingTab(InteractionContext context, ContextMenus menus, TabPane tabs) {
         this.context = context;
@@ -71,6 +80,22 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
             pane.setMinHeight(bounds.getHeight());
         });
         this.tab.setContent(scrollPane);
+        pane.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
+            lastContextMenuClick.set(event);
+            @Nullable
+            ContextMenu menu = contextMenu.get();
+            if (menu != null) {
+                menu.show(pane, event.getScreenX(), event.getScreenY());
+            }
+            event.consume();
+        });
+        pane.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            @Nullable
+            ContextMenu menu = contextMenu.get();
+            if (menu != null) {
+                menu.hide();
+            }
+        });
     }
 
     public void select() {
@@ -106,12 +131,22 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
     private final Group deletedConnectorsGroup = new Group();
     private final Group otherConnectorsGroup = new Group();
 
+    private MenuHints getHints() {
+        Optional<ContextMenuEvent> event = Optional.ofNullable(lastContextMenuClick.get());
+        return new MenuHints(event.map(e -> new Point2D(e.getX(), e.getY())));
+    }
+
     @Override
     public void setState(Drawing state) {
         tab.setText(state.getTitle());
-        Optional<ContextMenu> menu = state.getContextMenu(context).map(
-                menuItems -> menus.getMenu(menuItems));
+        Optional<ContextMenu> menu = state.getContextMenu(context).map(menuItems -> menus.getMenu(menuItems, () -> getHints()));
         if (menu.isPresent()) {
+            ContextMenu newMenu = menu.get();
+            @Nullable
+            ContextMenu old = contextMenu.getAndSet(newMenu);
+            if (old != null) {
+                old.hide();
+            }
             scrollPane.setContextMenu(menu.get());
         }
         updateElements(state.getEntities(), currentNodes, entity -> {

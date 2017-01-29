@@ -31,12 +31,14 @@ import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Interface;
+import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
@@ -81,13 +83,19 @@ public class PhysicalSchematic implements Drawing {
                 baseline -> Interface.find(baseline)
                 .filter(iface -> !iface.getConnectionScope().isSelfConnection()),
                 Interface.iface)
-                .map(iface -> new PhysicalSchematicInterface(menus, iface))
+                .map(iface -> {
+                    DiffPair<RecordConnectionScope> items = iface
+                            .map((baseline, record) -> Interface.iface.getItems(baseline, record));
+                    DiffPair<RecordConnectionScope> itemViews = items.map(
+                            (baseline, itemScope) -> itemScope.map(record -> Item.item.getView(baseline, record)));
+                    return new PhysicalSchematicInterface(menus, iface, itemViews);
+                })
                 .collect(Collectors.toList());
     }
 
     @Override
     public String getTitle() {
-        return identity.getLongName();
+        return Identity.identity.getDisplayName(identity);
     }
 
     @Override

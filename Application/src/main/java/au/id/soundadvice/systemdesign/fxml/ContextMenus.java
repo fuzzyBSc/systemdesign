@@ -26,10 +26,12 @@
  */
 package au.id.soundadvice.systemdesign.fxml;
 
+import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuHints;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,16 +52,15 @@ public class ContextMenus {
 
     private final Interactions interactions;
 
-    public ContextMenu getMenu(MenuItems target) {
+    public ContextMenu getMenu(MenuItems target, Supplier<MenuHints> hintSupplier) {
         ContextMenu result = new ContextMenu();
-        fillMenu(result.getItems(), target.items(interactions));
+        fillMenu(result.getItems(), target.items(interactions), hintSupplier);
         return result;
     }
 
-    private void fillMenu(List<MenuItem> result, Stream<MenuItems.MenuItem> target) {
+    private void fillMenu(List<MenuItem> result, Stream<MenuItems.MenuItem> target, Supplier<MenuHints> hintSupplier) {
         result.clear();
-        result.addAll(
-                target
+        result.addAll(target
                 .map((MenuItems.MenuItem ourMenuItem) -> {
                     MenuItem fxmlMenuItem;
                     if (ourMenuItem instanceof MenuItems.Submenu) {
@@ -69,7 +70,7 @@ public class ContextMenus {
                         fxmlSubmenu.getItems().add(dummy);
                         fxmlSubmenu.setOnShowing(showEvent -> {
                             // Populate the menu
-                            fillMenu(fxmlSubmenu.getItems(), ourMenuItem.getChildren());
+                            fillMenu(fxmlSubmenu.getItems(), ourMenuItem.getChildren(), hintSupplier);
                             if (fxmlSubmenu.getItems().isEmpty()) {
                                 MenuItem noItems = new MenuItem("None Found");
                                 noItems.setDisable(true);
@@ -78,10 +79,10 @@ public class ContextMenus {
                             showEvent.consume();
                         });
                         fxmlMenuItem = fxmlSubmenu;
-                    } else if (ourMenuItem instanceof Runnable) {
+                    } else if (ourMenuItem instanceof Consumer) {
                         fxmlMenuItem = new MenuItem(ourMenuItem.getText());
                         fxmlMenuItem.setOnAction(e -> {
-                            ((Runnable) ourMenuItem).run();
+                            ((Consumer<MenuHints>) ourMenuItem).accept(hintSupplier.get());
                             e.consume();
                         });
                     } else {

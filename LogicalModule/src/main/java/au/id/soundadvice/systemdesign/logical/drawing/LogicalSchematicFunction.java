@@ -118,7 +118,7 @@ public class LogicalSchematicFunction implements DrawingEntity {
 
     public LogicalSchematicFunction(
             LogicalContextMenus menus,
-            Record drawing, DiffPair<Record> view) {
+            DiffPair<Record> drawing, DiffPair<Record> view) {
         this.menus = menus;
         this.drawing = drawing;
         this.view = view;
@@ -127,7 +127,7 @@ public class LogicalSchematicFunction implements DrawingEntity {
     }
 
     private final LogicalContextMenus menus;
-    private final Record drawing;
+    private final DiffPair<Record> drawing;
     private final DiffPair<Record> view;
     private final DiffPair<Record> function;
     private final DiffPair<Record> item;
@@ -174,7 +174,7 @@ public class LogicalSchematicFunction implements DrawingEntity {
         // If the function is not traced to the drawing's trace then it is
         // an external view for this diagram.
         return !function.getSample().getTrace().equals(
-                drawing.getTrace());
+                drawing.getSample().getTrace());
     }
 
     @Override

@@ -33,6 +33,7 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.MenuItems;
 import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
+import au.id.soundadvice.systemdesign.physical.entity.IDPath;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalContextMenus;
@@ -64,13 +65,15 @@ public class PhysicalTree implements Tree {
         this.children = Item.find(state.getChild())
                 .filter(item -> !item.isExternal())
                 .sorted()
-                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.CHILD, sample, Collections.emptyList()))
+                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.CHILD, Optional.empty(), sample, Collections.emptyList()))
                 .collect(Collectors.toList());
 
         Optional<Record> systemOfInterestSample = Identity.getSystemOfInterest(state);
         this.systemOfInterestIdentifier = systemOfInterestSample.map(Record::getIdentifier);
+        Optional<Record> parentIdentity = Identity.findAll(state.getParent()).findAny();
         this.systemOfInterest = Identity.getSystemOfInterest(state)
-                .<TreeNode>map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.PARENT, sample, children))
+                .<TreeNode>map(sample -> new PhysicalTreeNode(
+                        WhyHowPair.Selector.PARENT, parentIdentity, sample, children))
                 .<TreeNode>orElseGet(() -> new DummySystemOfInterestNode(Identity.get(state.getChild())));
         Map<RecordID, Record> tmpConnectedSystems;
         if (systemOfInterestSample.isPresent()) {
@@ -86,9 +89,10 @@ public class PhysicalTree implements Tree {
                         .sorted(),
                         Item.find(state.getParent())
                         .filter(item -> !tmpConnectedSystems.containsKey(item.getIdentifier()))
+                        .filter(item -> !systemOfInterestIdentifier.equals(Optional.of(item.getIdentifier())))
                         .sorted()
                 )
-                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.CHILD, sample, Collections.emptyList()))
+                .map(sample -> new PhysicalTreeNode(WhyHowPair.Selector.PARENT, parentIdentity, sample, Collections.emptyList()))
                 .collect(Collectors.toList());
     }
 
@@ -110,18 +114,23 @@ public class PhysicalTree implements Tree {
     private class DummySystemOfInterestNode implements TreeNode {
 
         public DummySystemOfInterestNode(Record identity) {
-            this.identity = identity;
+            this.sample = identity;
         }
-        private final Record identity;
+        private final Record sample;
 
         @Override
         public String toString() {
-            return identity.getLongName();
+            return sample.getLongName();
         }
 
         @Override
         public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value) {
-            return baselines;
+            Baseline child = baselines.getChild();
+            Record identity = Identity.get(child);
+            return baselines.setChild(child.add(
+                    identity.asBuilder()
+                    .setLongName(value)
+                    .build(now)));
         }
 
         @Override
@@ -154,13 +163,16 @@ public class PhysicalTree implements Tree {
     private class PhysicalTreeNode implements TreeNode {
 
         private final WhyHowPair.Selector selector;
+        private final Optional<Record> parentIdentitySample;
         private final Record sample;
         private final List<TreeNode> children;
 
         private PhysicalTreeNode(
                 WhyHowPair.Selector selector,
+                Optional<Record> parentIdentitySample,
                 Record sample, List<TreeNode> children) {
             this.selector = selector;
+            this.parentIdentitySample = parentIdentitySample;
             this.sample = sample;
             this.children = children;
         }
@@ -185,7 +197,13 @@ public class PhysicalTree implements Tree {
 
         @Override
         public String toString() {
-            return Item.item.getDisplayName(sample);
+            if (selector == WhyHowPair.Selector.PARENT) {
+                // Display all parent-level items as if they were external
+                IDPath parentPath = Identity.getIdPath(parentIdentitySample.get());
+                return Item.item.getExternalDisplayName(parentPath, sample);
+            } else {
+                return Item.item.getDisplayName(sample);
+            }
         }
 
         @Override

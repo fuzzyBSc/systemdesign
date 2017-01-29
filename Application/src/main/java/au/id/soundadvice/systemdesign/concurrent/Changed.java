@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.annotation.CheckReturnValue;
 
 /**
@@ -37,6 +39,8 @@ import javax.annotation.CheckReturnValue;
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
 public class Changed implements ChangeSubscribable {
+
+    private static final Logger LOG = Logger.getLogger(Changed.class.getName());
 
     public class Inhibit implements AutoCloseable {
 
@@ -123,7 +127,11 @@ public class Changed implements ChangeSubscribable {
                 for (;;) {
                     changePending.set(0);
                     notifyNeeded.set(1);
-                    subscribers.parallelStream().forEach(f -> f.run());
+                    try {
+                        subscribers.parallelStream().forEach(f -> f.run());
+                    } catch (RuntimeException ex) {
+                        LOG.log(Level.SEVERE, null, ex);
+                    }
                     if (notifyNeeded.decrementAndGet() == 0) {
                         return;
                     }

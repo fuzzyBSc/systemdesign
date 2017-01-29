@@ -71,8 +71,10 @@ public class PhysicalContextMenus {
         public Stream<MenuItems.MenuItem> items(InteractionContext context) {
             return Stream.of(new MenuItems.SingleMenuItem(
                     "New Item",
-                    () -> {
-                        physicalInteractions.createItem(context, ItemView.DEFAULT_ORIGIN);
+                    hints -> {
+                        physicalInteractions.createItem(
+                                context,
+                                hints.getLocationHint().orElse(ItemView.DEFAULT_ORIGIN));
                     }));
         }
     }
@@ -95,11 +97,11 @@ public class PhysicalContextMenus {
                         }));
             } else {
                 return Stream.of(
-//                        new MenuItems.SingleMenuItem(
-//                                "Add Function",
-//                                () -> {
-//                                    // context.updateChild(child -> child.remove(item.getIdentifier()));
-//                                }),
+                        //                        new MenuItems.SingleMenuItem(
+                        //                                "Add Function",
+                        //                                () -> {
+                        //                                    // context.updateChild(child -> child.remove(item.getIdentifier()));
+                        //                                }),
                         new MenuItems.SingleMenuItem(
                                 "Rename Item",
                                 () -> {

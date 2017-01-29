@@ -40,7 +40,6 @@ import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 import java.util.Optional;
-import java.util.function.Supplier;
 import javafx.geometry.Point2D;
 
 /**
@@ -289,25 +288,23 @@ public class LogicalContextMenus {
     class LogicalTreeBackgroundMenu implements MenuItems {
 
         private final AddFunctionSubmenu addFunctionMenu = new AddFunctionSubmenu(
-                Optional.empty(), () -> FunctionView.DEFAULT_ORIGIN);
+                Optional.empty(), FunctionView.DEFAULT_ORIGIN);
 
         @Override
         public Stream<MenuItems.MenuItem> items(InteractionContext context) {
-            return Stream.of(MenuItems.Submenu.of(
-                    "Add Function to...",
-                    () -> addFunctionMenu.items(context)));
+            return addFunctionMenu.items(context);
         }
     }
 
     class AddFunctionSubmenu implements MenuItems {
 
-        public AddFunctionSubmenu(Optional<Record> traceFunction, Supplier<Point2D> originSupplier) {
+        public AddFunctionSubmenu(Optional<Record> traceFunction, Point2D defaultOrigin) {
             this.traceFunction = traceFunction;
-            this.originSupplier = originSupplier;
+            this.defaultOrigin = defaultOrigin;
         }
 
         private final Optional<Record> traceFunction;
-        private final Supplier<Point2D> originSupplier;
+        private final Point2D defaultOrigin;
 
         @Override
         public Stream<MenuItems.MenuItem> items(InteractionContext context) {
@@ -320,19 +317,21 @@ public class LogicalContextMenus {
                         .map(item -> {
                             return new MenuItems.SingleMenuItem(
                                     Item.item.getDisplayName(item),
-                                    () -> {
+                                    hints -> {
                                         logicalInteractions.addFunctionToItem(
-                                                context, item, traceFunction, originSupplier.get());
+                                                context, item, traceFunction,
+                                                hints.getLocationHint().orElse(defaultOrigin));
                                     }
                             );
                         });
                         Stream<MenuItems.MenuItem> staticItems = Stream.of(new MenuItems.SingleMenuItem(
                                 "New Item",
-                                () -> {
+                                hints -> {
                                     Optional<Record> item = physicalInteractions.createItem(context, ItemView.DEFAULT_ORIGIN);
                                     if (item.isPresent()) {
                                         logicalInteractions.addFunctionToItem(
-                                                context, item.get(), traceFunction, originSupplier.get());
+                                                context, item.get(), traceFunction,
+                                                hints.getLocationHint().orElse(defaultOrigin));
                                     }
                                 }
                         ));

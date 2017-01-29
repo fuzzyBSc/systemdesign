@@ -119,33 +119,34 @@ public enum FunctionView implements Table {
     }
 
     @CheckReturnValue
-    public WhyHowPair<Baseline> createNeededViews(WhyHowPair<Baseline> baselines, String now) {
-        Iterator<Record> drawings = baselines.getChild().findByType(this).iterator();
-        WhyHowPair<Baseline> result = baselines;
+    public WhyHowPair<Baseline> createNeededViews(WhyHowPair<Baseline> state, String now) {
+        Iterator<Record> drawings = state.getChild().findByType(LogicalDrawing.logicalDrawing).iterator();
+        WhyHowPair<Baseline> result = state;
         while (drawings.hasNext()) {
             Record drawing = drawings.next();
             Map<RecordID, Record> functionsWithExistingViews
-                    = FunctionView.findForDrawing(baselines.getChild(), drawing)
-                    .map(view -> FunctionView.functionView.getFunction(baselines.getChild(), view))
+                    = FunctionView.findForDrawing(state.getChild(), drawing)
+                    .map(view -> FunctionView.functionView.getFunction(state.getChild(), view))
                     .collect(Collectors.toMap(Record::getIdentifier, o -> o));
             Stream<Record> functionsForDiagram;
             Optional<RecordID> trace = drawing.getTrace();
             if (trace.isPresent()) {
-                functionsForDiagram = baselines.getChild()
+                functionsForDiagram = state.getChild()
                         .findByTrace(trace)
+                        .filter(function -> Function.function.equals(function.getType()))
                         .flatMap(function -> {
                             // Find related
-                            Stream<Record> related = Flow.findForFunction(baselines.getChild(), function)
+                            Stream<Record> related = Flow.findForFunction(state.getChild(), function)
                                     .map(Record::getConnectionScope)
                                     .map(scope -> scope.otherEnd(function.getIdentifier()))
-                                    .flatMap(otherEndIdentifier -> baselines.getChild().get(otherEndIdentifier, Function.function)
+                                    .flatMap(otherEndIdentifier -> state.getChild().get(otherEndIdentifier, Function.function)
                                             .map(Stream::of).orElse(Stream.empty()));
                             return Stream.concat(Stream.of(function), related);
                         })
                         .distinct();
             } else {
                 // All child functions should be on the context diagram
-                functionsForDiagram = Function.find(baselines.getChild());
+                functionsForDiagram = Function.find(state.getChild());
             }
             Iterator<Record> functionsToAdd = functionsForDiagram
                     .filter(function -> !functionsWithExistingViews.containsKey(function.getIdentifier()))
@@ -164,7 +165,7 @@ public enum FunctionView implements Table {
     }
 
     public Record getDrawing(Baseline baseline, Record view) {
-        return baseline.get(view.getContainer().get(), LogicalDrawingRecord.logicalDrawing).get();
+        return baseline.get(view.getContainer().get(), LogicalDrawing.logicalDrawing).get();
     }
 
     @Override

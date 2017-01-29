@@ -37,6 +37,7 @@ import au.id.soundadvice.systemdesign.moduleapi.storage.RecordStorage;
 import au.id.soundadvice.systemdesign.preferences.RecentFiles;
 import au.id.soundadvice.systemdesign.moduleapi.storage.VersionInfo;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
+import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.storage.CSVStorage;
 import au.id.soundadvice.systemdesign.storage.FileStorage;
@@ -49,10 +50,12 @@ import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
@@ -86,7 +89,15 @@ public class Interactions implements InteractionContext {
         dialog.setTitle(action);
         dialog.setHeaderText(question);
         ColorPicker picker = new ColorPicker(_default);
-        dialog.getDialogPane().setContent(picker);
+        Button randomiser = new Button("Mix");
+        randomiser.setOnAction(e -> {
+            Color current = picker.getValue();
+            Color shifted = Item.shiftColor(current);
+            picker.setValue(shifted);
+        });
+        HBox box = new HBox();
+        box.getChildren().addAll(picker, randomiser);
+        dialog.getDialogPane().setContent(box);
 
         dialog.getDialogPane().getButtonTypes().addAll(
                 ButtonType.OK, ButtonType.CANCEL);
@@ -102,13 +113,16 @@ public class Interactions implements InteractionContext {
     }
 
     public void navigateUp() {
-        try {
-            if (checkSave("Save before navigating?")) {
-                String now = ISO8601.now();
-                edit.loadParent(now);
+        Optional<Record> systemOfInterest = Identity.getSystemOfInterest(edit.getState());
+        if (systemOfInterest.isPresent()) {
+            try {
+                if (checkSave("Save before navigating?")) {
+                    String now = ISO8601.now();
+                    edit.loadParent(now);
+                }
+            } catch (IOException ex) {
+                LOG.log(Level.SEVERE, null, ex);
             }
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, null, ex);
         }
     }
 

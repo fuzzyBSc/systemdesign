@@ -73,9 +73,9 @@ public class CSVStorage implements FileStorage, IdentityValidator {
 
     private static final Logger LOG = Logger.getLogger(CSVStorage.class.getName());
 
-    private static final String IDENTITY_FILE = "identity.sysrec";
-
     private static final String EXT = ".sysrec";
+
+    private static final String IDENTITY_FILE = Identity.identity.name() + EXT;
 
     private final VersionControl vcs;
     private final Path path;
@@ -155,12 +155,12 @@ public class CSVStorage implements FileStorage, IdentityValidator {
         try {
             return RecordStore.valueOf(
                     vcs.listFiles(this, label)
-                    .<Record>flatMap(file -> {
-                        String typename = file;
-                        if (typename.endsWith(EXT)) {
-                            typename = typename.substring(0, typename.length() - EXT.length());
+                    .<Record>flatMap(filename -> {
+                        if (filename.endsWith(EXT)) {
+                            String typename = filename.substring(
+                                    0, filename.length() - EXT.length());
                             try (
-                                    BufferedReader reader = vcs.getBufferedReader(this, file, label);
+                                    BufferedReader reader = vcs.getBufferedReader(this, filename, label);
                                     CSVReader csv = new CSVReader(reader)) {
                                 // Collect and re-stream before try-with-resources exits
                                 List<Record> list = loadRecords(factory.apply(typename), csv).collect(Collectors.toList());
@@ -205,18 +205,36 @@ public class CSVStorage implements FileStorage, IdentityValidator {
         if (baseline.size() > 1 || Files.isDirectory(path)) {
             Files.createDirectories(path);
             try (SaveTransaction transaction = new SaveTransaction(vcs)) {
-                baseline.stream()
+                Map<String, List<Record>> types = baseline.stream()
                         // Collect for saving
-                        .collect(Collectors.groupingBy(Record::getType))
-                        // Save each type
-                        .entrySet().stream().forEach(entry -> {
-                            Path csv = path.resolve(entry.getKey().getTableName() + EXT);
-                            try {
-                                saveRecords(transaction, csv, entry.getValue());
-                            } catch (IOException ex) {
-                                throw new UncheckedIOException(ex);
+                        .collect(Collectors.groupingBy(
+                                record -> record.getType().getTableName()));
+                // Save each type
+                types.entrySet().stream().forEach(entry -> {
+                    Path csv = path.resolve(entry.getKey() + EXT);
+                    try {
+                        saveRecords(transaction, csv, entry.getValue());
+                    } catch (IOException ex) {
+                        throw new UncheckedIOException(ex);
+                    }
+                });
+                // Delete files for unpopulated types
+                vcs.listFiles(this, Optional.empty())
+                        .forEach((String filename) -> {
+                            if (filename.endsWith(EXT)) {
+                                String typename = filename.substring(
+                                        0, filename.length() - EXT.length());
+                                if (!types.containsKey(typename)) {
+                                    try {
+                                        Path tempFile = Files.createTempFile(path, null, null);
+                                        transaction.addJob(path.resolve(filename), tempFile);
+                                    } catch (IOException ex) {
+                                        throw new UncheckedIOException(ex);
+                                    }
+                                }
                             }
                         });
+
                 transaction.commit();
             } catch (UncheckedIOException ex) {
                 throw ex.getCause();
@@ -238,7 +256,8 @@ public class CSVStorage implements FileStorage, IdentityValidator {
                     .filter(childPath -> {
                         if (Files.isDirectory(childPath)) {
                             Optional<Record> identity = getIdentity(childPath);
-                            return identity.isPresent() && identifier.equals(identity.get().getIdentifier());
+                            Optional<RecordID> trace = identity.flatMap(Record::getTrace);
+                            return trace.isPresent() && identifier.equals(trace.get());
                         } else {
                             return false;
                         }
@@ -328,7 +347,12 @@ public class CSVStorage implements FileStorage, IdentityValidator {
 
     @Override
     public RecordStorage createChild(Record identityRecord) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        Optional<RecordStorage> result = getChild(identityRecord.getIdentifier());
+        return result.orElseGet(() -> {
+            Path childPath = path.resolve(identityRecord.getLongName());
+            VersionControl childvcs = VersionControl.forPath(childPath);
+            return new CSVStorage(childvcs, childPath);
+        });
     }
 
     @Override

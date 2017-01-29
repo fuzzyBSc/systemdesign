@@ -139,7 +139,7 @@ public class EditState {
             try (Inhibit xact = this.changed.inhibit()) {
                 WhyHowPair<Baseline> state = undo.get();
                 WhyHowPair<Baseline> newSaved = savedState.get();
-                RecordID childIdentifier = Identity.get(state.getChild()).getIdentifier();
+                Optional<Record> systemOfInterestId = Identity.getSystemOfInterest(state);
                 newStorage = newStorage
                         .setChild(newChildDir)
                         .setParent(newChildDir.get().getParent());
@@ -156,12 +156,14 @@ public class EditState {
                         .setChild(newSaved.getParent())
                         .setParent(state.getParent());
                 setStorage(newStorage);
-                this.undo.set(state);
+                this.undo.reset(state);
                 // Perform onLoad fixes in a separate undo buffer update so that
                 // they can be undone
                 this.undo.update(ss -> AutoFix.onLoad(ss, now));
                 this.savedState.set(newSaved);
-                lastChildIdentity.push(childIdentifier);
+                if (systemOfInterestId.isPresent()) {
+                    lastChildIdentity.push(systemOfInterestId.get().getIdentifier());
+                }
                 this.loadVersionControl(newChildDir);
                 xact.changed();
             } catch (UncheckedIOException ex) {
@@ -207,7 +209,7 @@ public class EditState {
                     .setParent(newSaved.getChild())
                     .setChild(state.getChild());
             setStorage(newStorage);
-            this.undo.set(state);
+            this.undo.reset(state);
             // Perform onLoad fixes in a separate undo buffer update so that
             // they can be undone
             this.undo.update(ss -> AutoFix.onLoad(ss, now));
@@ -243,7 +245,7 @@ public class EditState {
                 }
             });
             setStorage(newStorage);
-            this.undo.set(state);
+            this.undo.reset(state);
             // Perform onLoad fixes in a separate undo buffer update so that
             // they can be undone
             this.undo.update(ss -> AutoFix.onLoad(ss, now));

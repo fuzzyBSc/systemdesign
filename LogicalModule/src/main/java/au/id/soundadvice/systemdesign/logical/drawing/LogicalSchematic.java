@@ -33,7 +33,6 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
-import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
@@ -52,29 +51,26 @@ import java.util.stream.Stream;
 public class LogicalSchematic implements Drawing {
 
     private final LogicalContextMenus menus;
-    private final Record drawing;
-    private final Optional<RecordID> parentFunctionIdentifier;
+    private final DiffPair<Record> drawing;
+    private final DiffPair<Optional<RecordID>> parentFunctionIdentifier;
     private final List<DrawingEntity> entities;
     private final List<DrawingConnector> connectors;
 
     public LogicalSchematic(
             LogicalContextMenus menus,
-            DiffPair<Baseline> baselines, Record drawing) {
+            DiffPair<Record> drawing) {
         this.menus = menus;
         this.drawing = drawing;
-        this.parentFunctionIdentifier = drawing.getTrace();
+        this.parentFunctionIdentifier = drawing.map(Record::getTrace);
         Map<RecordID, DiffPair<Record>> functionIdentifierToFunctionView
-                = DiffPair.find(
-                        baselines,
-                        baseline -> FunctionView.findForDrawing(baseline, drawing),
-                        FunctionView.functionView)
+                = drawing.flatMapStream(FunctionView::findForDrawing)
                 .collect(Collectors.toMap(
                         view -> view.getSample().getViewOf().get(),
                         view -> view));
         this.entities = functionIdentifierToFunctionView.values().stream()
                 .map(view -> new LogicalSchematicFunction(menus, drawing, view))
                 .collect(Collectors.toList());
-        this.connectors = DiffPair.find(baselines, Flow::find, Flow.flow)
+        this.connectors = DiffPair.find(drawing, Flow::find, Flow.flow)
                 .flatMap(flowDiff -> {
                     ConnectionScope scope = flowDiff.getSample().getConnectionScope();
                     Record leftView = functionIdentifierToFunctionView.get(scope.getLeft()).getSample();
@@ -89,7 +85,7 @@ public class LogicalSchematic implements Drawing {
 
     @Override
     public String getTitle() {
-        return drawing.getLongName();
+        return drawing.getSample().getLongName();
     }
 
     @Override
@@ -104,13 +100,13 @@ public class LogicalSchematic implements Drawing {
 
     @Override
     public RecordID getIdentifier() {
-        return parentFunctionIdentifier.orElseGet(
+        return parentFunctionIdentifier.getSample().orElseGet(
                 () -> RecordID.of(this.getClass()));
     }
 
     @Override
     public Optional<Record> getDragDropObject() {
-        return Optional.of(drawing);
+        return drawing.getIsInstance();
     }
 
     @Override

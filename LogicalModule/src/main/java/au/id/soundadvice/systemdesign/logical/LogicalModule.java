@@ -27,7 +27,7 @@
 package au.id.soundadvice.systemdesign.logical;
 
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
-import au.id.soundadvice.systemdesign.logical.entity.LogicalDrawingRecord;
+import au.id.soundadvice.systemdesign.logical.entity.LogicalDrawing;
 import au.id.soundadvice.systemdesign.logical.entity.FlowType;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
 import au.id.soundadvice.systemdesign.logical.entity.Function;
@@ -104,8 +104,8 @@ public class LogicalModule implements Module {
             RecordConnectionScope scope = RecordConnectionScope.resolve(functions.getKey(), functions.getValue(), Direction.Forward);
             return Flow.addWithGuessedType(baselines, ISO8601.now(), scope).getKey();
         });
-        EventDispatcher.INSTANCE.setMoveOperation(Function.function, LogicalDrawingRecord.logicalDrawing, (baselines, functionToDrawing) -> {
-            Optional<Record> traceFunction = LogicalDrawingRecord.logicalDrawing.getTrace(
+        EventDispatcher.INSTANCE.setMoveOperation(Function.function, LogicalDrawing.logicalDrawing, (baselines, functionToDrawing) -> {
+            Optional<Record> traceFunction = LogicalDrawing.logicalDrawing.getTrace(
                     baselines, functionToDrawing.getValue());
             if (traceFunction.isPresent()) {
                 String now = ISO8601.now();
@@ -121,8 +121,8 @@ public class LogicalModule implements Module {
                 return baselines;
             }
         });
-        EventDispatcher.INSTANCE.setCopyOperation(Function.function, LogicalDrawingRecord.logicalDrawing, (baselines, functionToDrawing) -> {
-            Optional<Record> traceFunction = LogicalDrawingRecord.logicalDrawing.getTrace(
+        EventDispatcher.INSTANCE.setCopyOperation(Function.function, LogicalDrawing.logicalDrawing, (baselines, functionToDrawing) -> {
+            Optional<Record> traceFunction = LogicalDrawing.logicalDrawing.getTrace(
                     baselines, functionToDrawing.getValue());
             if (traceFunction.isPresent()) {
                 String now = ISO8601.now();
@@ -181,7 +181,7 @@ public class LogicalModule implements Module {
 
     @Override
     public WhyHowPair<Baseline> onLoadAutoFix(WhyHowPair<Baseline> baselines, String now) {
-        baselines = LogicalDrawingRecord.logicalDrawing.createNeededDrawings(baselines, now);
+        baselines = LogicalDrawing.logicalDrawing.createNeededDrawings(baselines, now);
         baselines = FunctionView.functionView.createNeededViews(baselines, now);
         return baselines;
     }
@@ -194,17 +194,20 @@ public class LogicalModule implements Module {
 
     @Override
     public Stream<Table> getTables() {
-        return Stream.of(
-                Function.function,
+        return Stream.of(Function.function,
                 FunctionView.functionView,
                 FlowType.flowType,
-                Flow.flow);
+                Flow.flow,
+                LogicalDrawing.logicalDrawing);
     }
 
     @Override
     public Stream<Drawing> getDrawings(DiffPair<Baseline> baselines) {
-        return baselines.getIsBaseline().findByType(LogicalDrawingRecord.logicalDrawing)
-                .map(entity -> new LogicalSchematic(menus, baselines, entity));
+        return DiffPair.find(
+                baselines,
+                baseline -> baseline.findByType(LogicalDrawing.logicalDrawing),
+                LogicalDrawing.logicalDrawing)
+                .map(diffPair -> new LogicalSchematic(menus, diffPair));
     }
 
     @Override
