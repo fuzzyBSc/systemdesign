@@ -130,7 +130,7 @@ public enum LogicalDrawing implements Table {
         Optional<Record> systemOfInterest = Identity.getSystemOfInterest(baselines);
         Stream<Optional<Record>> expectedDrawingTraces;
         if (systemOfInterest.isPresent()) {
-            expectedDrawingTraces = baselines.getParent().findByType(Function.function)
+            expectedDrawingTraces = Function.findOwnedFunctions(baselines.getParent(), systemOfInterest.get())
                     .map(Optional::of);
         } else {
             // Expect a single untraced drawing

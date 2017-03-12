@@ -95,23 +95,31 @@ public enum FunctionView implements Table {
 
     @CheckReturnValue
     public static Pair<Baseline, Record> create(
-            Baseline baseline, String now, Record function, Record drawing) {
+            Baseline baseline, String now, Record function, Record drawing, Optional<Point2D> origin) {
         Optional<Record> existingView = get(baseline, function, drawing);
         if (existingView.isPresent()) {
             return new Pair<>(baseline, existingView.get());
         } else {
-            Optional<Record> nearMatch = findForFunction(baseline, function).findAny();
             Record view;
-            if (nearMatch.isPresent()) {
-                view = nearMatch.get().asBuilder()
-                        .setContainer(drawing)
-                        .build(now);
-            } else {
+            if (origin.isPresent()) {
                 view = Record.create(functionView)
                         .setViewOf(function)
                         .setContainer(drawing)
-                        .setOrigin(DEFAULT_ORIGIN)
+                        .setOrigin(origin.get())
                         .build(now);
+            } else {
+                Optional<Record> nearMatch = findForFunction(baseline, function).findAny();
+                if (nearMatch.isPresent()) {
+                    view = nearMatch.get().asBuilder()
+                            .setContainer(drawing)
+                            .build(now);
+                } else {
+                    view = Record.create(functionView)
+                            .setViewOf(function)
+                            .setContainer(drawing)
+                            .setOrigin(DEFAULT_ORIGIN)
+                            .build(now);
+                }
             }
             baseline = baseline.add(view);
             return new Pair<>(baseline, view);
@@ -120,30 +128,41 @@ public enum FunctionView implements Table {
 
     @CheckReturnValue
     public WhyHowPair<Baseline> createNeededViews(WhyHowPair<Baseline> state, String now) {
-        Iterator<Record> drawings = state.getChild().findByType(LogicalDrawing.logicalDrawing).iterator();
+        Baseline parent = state.getParent();
+        Baseline child = state.getChild();
+        Iterator<Record> drawings = child.findByType(LogicalDrawing.logicalDrawing).iterator();
         WhyHowPair<Baseline> result = state;
         while (drawings.hasNext()) {
             Record drawing = drawings.next();
             Map<RecordID, Record> functionsWithExistingViews
-                    = FunctionView.findForDrawing(state.getChild(), drawing)
-                    .map(view -> FunctionView.functionView.getFunction(state.getChild(), view))
+                    = FunctionView.findForDrawing(child, drawing)
+                    .map(view -> FunctionView.functionView.getFunction(child, view))
                     .collect(Collectors.toMap(Record::getIdentifier, o -> o));
             Stream<Record> functionsForDiagram;
             Optional<RecordID> trace = drawing.getTrace();
             if (trace.isPresent()) {
-                functionsForDiagram = state.getChild()
+                // Functions that directly trace to the drawing owner
+                functionsForDiagram = child
                         .findByTrace(trace)
                         .filter(function -> Function.function.equals(function.getType()))
                         .flatMap(function -> {
                             // Find related
-                            Stream<Record> related = Flow.findForFunction(state.getChild(), function)
+                            Stream<Record> related = Flow.findForFunction(child, function)
                                     .map(Record::getConnectionScope)
                                     .map(scope -> scope.otherEnd(function.getIdentifier()))
-                                    .flatMap(otherEndIdentifier -> state.getChild().get(otherEndIdentifier, Function.function)
+                                    .flatMap(otherEndIdentifier -> child.get(otherEndIdentifier, Function.function)
                                             .map(Stream::of).orElse(Stream.empty()));
                             return Stream.concat(Stream.of(function), related);
-                        })
-                        .distinct();
+                        });
+                // External functions connected to the parent function
+                Optional<Record> optionalParentFunction
+                        = parent.get(trace.get(), Function.function);
+                if (optionalParentFunction.isPresent()) {
+                    functionsForDiagram = Stream.concat(functionsForDiagram,
+                            Function.findConnectedFunctions(parent, optionalParentFunction.get())
+                            .flatMap(parentFunction -> child.findByTrace(Optional.of(parentFunction.getIdentifier()))));
+                }
+                functionsForDiagram = functionsForDiagram.distinct();
             } else {
                 // All child functions should be on the context diagram
                 functionsForDiagram = Function.find(state.getChild());
@@ -153,7 +172,7 @@ public enum FunctionView implements Table {
                     .iterator();
             while (functionsToAdd.hasNext()) {
                 Record functionToAdd = functionsToAdd.next();
-                result = result.setChild(FunctionView.create(result.getChild(), now, functionToAdd, drawing)
+                result = result.setChild(FunctionView.create(result.getChild(), now, functionToAdd, drawing, Optional.empty())
                         .getKey());
             }
         }

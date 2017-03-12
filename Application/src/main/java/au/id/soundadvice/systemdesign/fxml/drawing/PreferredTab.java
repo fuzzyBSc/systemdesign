@@ -44,7 +44,11 @@ public class PreferredTab {
         PREFERRED.set(Optional.of(drawing));
     }
 
-    public static Optional<RecordID> getAndClear() {
-        return PREFERRED.getAndSet(Optional.empty());
+    public static Optional<RecordID> get() {
+        return PREFERRED.get();
+    }
+
+    public static void clear() {
+        PREFERRED.set(Optional.empty());
     }
 }

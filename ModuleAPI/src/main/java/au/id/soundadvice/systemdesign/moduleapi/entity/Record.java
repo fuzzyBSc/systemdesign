@@ -191,6 +191,11 @@ public class Record implements Identifiable, Comparable<Record> {
             return put(Fields.external, Boolean.toString(value));
         }
 
+        @CheckReturnValue
+        public Builder setPlaceholder(boolean value) {
+            return put(Fields.placeholder, Boolean.toString(value));
+        }
+
         public Builder setOrigin(Point2D origin) {
             return put(Fields.originX, Integer.toString((int) origin.getX()))
                     .put(Fields.originY, Integer.toString((int) origin.getY()));
@@ -385,16 +390,13 @@ public class Record implements Identifiable, Comparable<Record> {
     public String toString() {
         String shortName = getShortName();
         String longName = getLongName();
-        if (shortName.isEmpty()) {
-            if (longName.isEmpty()) {
-                return identifier.toString();
-            } else {
-                return longName;
-            }
-        } else if (longName.isEmpty()) {
-            return shortName;
+        String result = Stream.of(shortName, longName)
+                .filter(string -> !string.isEmpty())
+                .collect(Collectors.joining(" "));
+        if (result.isEmpty()) {
+            return identifier.toString();
         } else {
-            return longName + " " + shortName;
+            return result;
         }
     }
 
@@ -428,6 +430,10 @@ public class Record implements Identifiable, Comparable<Record> {
 
     public boolean isExternal() {
         return toBoolean(get(Fields.external));
+    }
+
+    public boolean isPlaceholder() {
+        return toBoolean(get(Fields.placeholder));
     }
 
     public Point2D getOrigin() {

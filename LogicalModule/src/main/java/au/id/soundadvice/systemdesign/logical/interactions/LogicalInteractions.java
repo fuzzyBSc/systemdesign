@@ -29,6 +29,7 @@ package au.id.soundadvice.systemdesign.logical.interactions;
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
 import au.id.soundadvice.systemdesign.logical.entity.FlowType;
 import au.id.soundadvice.systemdesign.logical.entity.Function;
+import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
 import au.id.soundadvice.systemdesign.moduleapi.util.UniqueName;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.moduleapi.collection.RecordConnectionScope;
@@ -49,7 +50,7 @@ import javafx.util.Pair;
 public class LogicalInteractions {
 
     public Optional<Record> addFunctionToItem(
-            InteractionContext context, Record item, Optional<Record> traceFunction, Point2D origin) {
+            InteractionContext context, Record item, Optional<Record> traceFunction, Optional<Record> drawing, Point2D origin) {
         AtomicReference<Record> result = new AtomicReference<>();
         String defaultName = Function.find(context.getChild()).parallel()
                 .filter(func -> !func.isExternal())
@@ -61,8 +62,14 @@ public class LogicalInteractions {
             context.updateState(state -> {
                 Pair<WhyHowPair<Baseline>, Record> createResult = Function.create(
                         state, now, item, traceFunction, name.get());
-                result.set(createResult.getValue());
-                return state.setChild(createResult.getKey().getChild());
+                state = createResult.getKey();
+                if (drawing.isPresent()) {
+                    Pair<Baseline, Record> viewCreateResult = FunctionView.create(
+                            state.getChild(), now, createResult.getValue(), drawing.get(),
+                            Optional.of(origin));
+                    state = state.setChild(viewCreateResult.getKey());
+                }
+                return state;
             });
         }
         return Optional.ofNullable(result.get());
@@ -118,8 +125,14 @@ public class LogicalInteractions {
         }
 
         Baseline sampleChild = context.getChild();
-        String sampleFlowName = flowSample.getSubtype()
-                .flatMap(id -> sampleChild.get(id, FlowType.flowType))
+        Optional<Record> sampleFlowType = flowSample.getSubtype()
+                .flatMap(id -> sampleChild.get(id, FlowType.flowType));
+        if (sampleFlowType.isPresent() && sampleFlowType.get().isPlaceholder()) {
+            // Don't create a new type to replace a placeholder. Rename the placeholder.
+            this.renameFlowType(context, flowSample);
+            return;
+        }
+        String sampleFlowName = sampleFlowType
                 .map(Record::getLongName)
                 .orElse("New Flow");
         Optional<String> result = context.textInput("Flow Type", "Enter new type for " + flowSample.getLongName(), sampleFlowName);
@@ -141,7 +154,7 @@ public class LogicalInteractions {
                                     .build(now)));
                 } else {
                     // Define type and point to it simultaneously
-                    Pair<WhyHowPair<Baseline>, Record> newFlowType = FlowType.define(state, now, name);
+                    Pair<WhyHowPair<Baseline>, Record> newFlowType = FlowType.define(state, now, name, false);
                     return newFlowType.getKey().setChild(
                             newFlowType.getKey().getChild().add(
                                     flow.get().asBuilder()
@@ -150,6 +163,51 @@ public class LogicalInteractions {
                 }
             }
             );
+        }
+    }
+
+    public void createType(InteractionContext context) {
+        String sampleFlowName = "New Flow";
+        Optional<String> result = context.textInput("Flow Type", "Enter new type name", sampleFlowName);
+        if (result.isPresent()) {
+            String now = ISO8601.now();
+            String name = result.get();
+            context.updateState(state -> {
+                // Define type
+                Pair<WhyHowPair<Baseline>, Record> newFlowType = FlowType.define(state, now, name, false);
+                return newFlowType.getKey();
+            }
+            );
+        }
+    }
+
+    public void renameFlowType(InteractionContext context, Record flowSample) {
+        Baseline sampleChild = context.getChild();
+        Optional<Record> newFlowSample = sampleChild.get(flowSample);
+        Optional<Record> typeSample = newFlowSample.map(
+                record -> Flow.flow.getType(sampleChild, record));
+        if (typeSample.isPresent()) {
+            renameType(context, typeSample.get());
+        }
+    }
+
+    public void renameType(InteractionContext context, Record typeSample) {
+        String sampleFlowName = FlowType.flowType.getDisplayName(typeSample);
+        Optional<String> result = context.textInput("Flow Type", "Enter new name for " + sampleFlowName, sampleFlowName);
+        if (result.isPresent()) {
+            String now = ISO8601.now();
+            String name = result.get();
+            context.updateChild(child -> {
+                Optional<Record> flowType = child.get(typeSample);
+                if (!flowType.isPresent()) {
+                    return child;
+                }
+                return child.add(
+                        flowType.get().asBuilder()
+                        .setLongName(name)
+                        .setPlaceholder(false)
+                        .build(now));
+            });
         }
     }
 }

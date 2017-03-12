@@ -61,6 +61,10 @@ public class SystemDesign extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        startMe(stage);
+    }
+
+    public static void startMe(Stage stage) throws IOException {
         Image icon = new Image(SystemDesign.class.getResource("/systemdesign.png").toString());
         stage.getIcons().add(icon);
 
@@ -83,7 +87,7 @@ public class SystemDesign extends Application {
         };
 
         Parent root = FXMLLoader.load(
-                getClass().getResource("/fxml/Main.fxml"),
+                SystemDesign.class.getResource("/fxml/Main.fxml"),
                 null, null, controllerFactory);
 
         stage.setOnCloseRequest(event -> {

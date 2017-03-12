@@ -35,6 +35,7 @@ import au.id.soundadvice.systemdesign.logical.drawing.LogicalSchematic;
 import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
 import au.id.soundadvice.systemdesign.logical.interactions.LogicalInteractions;
 import au.id.soundadvice.systemdesign.logical.tree.LogicalTree;
+import au.id.soundadvice.systemdesign.logical.tree.TypeTree;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
 import au.id.soundadvice.systemdesign.moduleapi.Module;
@@ -113,7 +114,8 @@ public class LogicalModule implements Module {
                 Record drawing = functionToDrawing.getValue();
                 {
                     // Make sure a view is present in the nominated drawing
-                    Pair<Baseline, Record> tmp = FunctionView.create(baselines.getChild(), now, function, drawing);
+                    Pair<Baseline, Record> tmp = FunctionView.create(
+                            baselines.getChild(), now, function, drawing, Optional.empty());
                     baselines = baselines.setChild(tmp.getKey());
                 }
                 return Function.function.setTrace(baselines, now, function, traceFunction.get()).getKey();
@@ -130,7 +132,8 @@ public class LogicalModule implements Module {
                 Record drawing = functionToDrawing.getValue();
                 {
                     // Make sure a view is present in the nominated drawing
-                    Pair<Baseline, Record> tmp = FunctionView.create(baselines.getChild(), now, function, drawing);
+                    Pair<Baseline, Record> tmp = FunctionView.create(
+                            baselines.getChild(), now, function, drawing, Optional.empty());
                     baselines = baselines.setChild(tmp.getKey());
                 }
                 return baselines;
@@ -212,6 +215,6 @@ public class LogicalModule implements Module {
 
     @Override
     public Stream<Tree> getTrees(WhyHowPair<Baseline> baselines) {
-        return Stream.of(new LogicalTree(menus, baselines));
+        return Stream.of(new LogicalTree(menus, baselines), new TypeTree(menus, baselines));
     }
 }

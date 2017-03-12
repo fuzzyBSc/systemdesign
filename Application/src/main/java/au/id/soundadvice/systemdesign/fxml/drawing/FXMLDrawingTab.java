@@ -47,6 +47,7 @@ import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SingleSelectionModel;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.ContextMenuEvent;
@@ -74,6 +75,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
                 deletedEntitiesGroup,
                 otherConnectorsGroup,
                 otherEntitiesGroup);
+        pane.getStyleClass().add("drawingArea");
         this.scrollPane = new ScrollPane(pane);
         scrollPane.viewportBoundsProperty().addListener((info, old, bounds) -> {
             pane.setMinWidth(bounds.getWidth());
@@ -138,6 +140,7 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
 
     @Override
     public void setState(Drawing state) {
+        pane.getStyleClass().add(state.getClass().getSimpleName());
         tab.setText(state.getTitle());
         Optional<ContextMenu> menu = state.getContextMenu(context).map(menuItems -> menus.getMenu(menuItems, () -> getHints()));
         if (menu.isPresent()) {
@@ -167,6 +170,13 @@ public class FXMLDrawingTab implements DrawingOf<Drawing> {
         if (dragObject.isPresent()) {
             //    DragSource.bind(node, dragObject.get(), true);
             DragTarget.bind(context, pane, dragObject.get(), new EntityDropHandler(context));
+        }
+
+        Optional<RecordID> preferredTab = PreferredTab.get();
+        if (preferredTab.isPresent() && state.getIdentifier().equals(preferredTab.get())) {
+            SingleSelectionModel<Tab> selectionModel = tabs.getSelectionModel();
+            selectionModel.select(tab);
+            PreferredTab.clear();
         }
     }
 }

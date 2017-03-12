@@ -43,6 +43,13 @@ public interface MenuItems {
         public Stream<MenuItem> getChildren();
     }
 
+    static final MenuItems EMPTY = new MenuItems() {
+        @Override
+        public Stream<MenuItem> items(InteractionContext context) {
+            return Stream.empty();
+        }
+    };
+
     class SingleMenuItem implements MenuItem, Consumer<MenuHints> {
 
         public SingleMenuItem(String text, Runnable runnable) {

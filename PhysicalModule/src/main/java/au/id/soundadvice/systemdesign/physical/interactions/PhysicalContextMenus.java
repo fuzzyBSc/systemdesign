@@ -70,7 +70,7 @@ public class PhysicalContextMenus {
         @Override
         public Stream<MenuItems.MenuItem> items(InteractionContext context) {
             return Stream.of(new MenuItems.SingleMenuItem(
-                    "New Item",
+                    "New Item...",
                     hints -> {
                         physicalInteractions.createItem(
                                 context,
@@ -103,12 +103,12 @@ public class PhysicalContextMenus {
                         //                                    // context.updateChild(child -> child.remove(item.getIdentifier()));
                         //                                }),
                         new MenuItems.SingleMenuItem(
-                                "Rename Item",
+                                "Rename Item...",
                                 () -> {
                                     physicalInteractions.setItemName(context, item);
                                 }),
                         new MenuItems.SingleMenuItem(
-                                "Set Color",
+                                "Set Color...",
                                 () -> {
                                     physicalInteractions.setItemColor(context, item);
                                 }),

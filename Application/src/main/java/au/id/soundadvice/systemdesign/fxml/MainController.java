@@ -29,7 +29,6 @@ package au.id.soundadvice.systemdesign.fxml;
 import au.id.soundadvice.systemdesign.state.EditState;
 import au.id.soundadvice.systemdesign.concurrent.JFXExecutor;
 import au.id.soundadvice.systemdesign.concurrent.SingleRunnable;
-import au.id.soundadvice.systemdesign.consistency.AllSuggestions;
 import au.id.soundadvice.systemdesign.fxml.drawing.FXMLAllDrawings;
 import au.id.soundadvice.systemdesign.fxml.tree.FXMLAllTrees;
 import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;

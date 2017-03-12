@@ -63,7 +63,8 @@ public enum Flow implements Table {
     }
 
     public static Pair<WhyHowPair<Baseline>, Record> addWithGuessedType(WhyHowPair<Baseline> baselines, String now, RecordConnectionScope scope) {
-        Pair<WhyHowPair<Baseline>, Record> tmp = FlowType.define(baselines, now, guessTypeName(baselines, scope));
+        Pair<WhyHowPair<Baseline>, Record> tmp
+                = FlowType.define(baselines, now, guessTypeName(baselines, scope), true);
         baselines = tmp.getKey();
         Record flowType = tmp.getValue();
         return add(baselines, now, scope, flowType);
@@ -244,6 +245,7 @@ public enum Flow implements Table {
                     .setSubtype(flowType)
                     .setContainer(iface)
                     .setExternal(external)
+                    .setConnectionScope(scope)
                     .build(now);
             result = result.setChild(result.getChild().add(created));
             return result.and(created);

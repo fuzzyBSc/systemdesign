@@ -89,7 +89,7 @@ public enum FlowType implements Table {
 
     @CheckReturnValue
     public static Pair<WhyHowPair<Baseline>, Record> define(
-            WhyHowPair<Baseline> baselines, String now, String longName) {
+            WhyHowPair<Baseline> baselines, String now, String longName, boolean isPlaceholder) {
         Optional<Record> existing = get(baselines.getChild(), longName);
         if (existing.isPresent()) {
             return new Pair<>(baselines, existing.get());
@@ -101,6 +101,7 @@ public enum FlowType implements Table {
             } else {
                 Record created = Record.create(flowType)
                         .setLongName(longName)
+                        .setPlaceholder(isPlaceholder)
                         .build(now);
                 baselines = baselines.setChild(baselines.getChild().add(created));
                 baselines = EventDispatcher.INSTANCE.dispatchCreateEvent(baselines, now, created);

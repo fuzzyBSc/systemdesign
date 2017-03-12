@@ -38,11 +38,12 @@ import java.util.stream.Stream;
  *
  * @author Benjamin Carlyle <benjamincarlyle@soundadvice.id.au>
  */
-public interface TreeNode extends Identifiable {
+public interface TreeNode extends Identifiable, Comparable<TreeNode> {
 
     /**
      * Implementations must include a toString method
      */
+    @Override
     public String toString();
 
     public WhyHowPair<Baseline> setLabel(WhyHowPair<Baseline> baselines, String now, String value);
@@ -54,4 +55,10 @@ public interface TreeNode extends Identifiable {
     public Optional<Record> getDragDropObject();
 
     public Optional<MenuItems> getContextMenu();
+
+    @Override
+    default public int compareTo(TreeNode o) {
+        return toString().compareTo(o.toString());
+    }
+
 }

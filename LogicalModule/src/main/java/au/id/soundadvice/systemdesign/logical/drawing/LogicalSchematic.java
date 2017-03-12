@@ -28,12 +28,15 @@ package au.id.soundadvice.systemdesign.logical.drawing;
 
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
+import au.id.soundadvice.systemdesign.logical.entity.LogicalDrawing;
 import au.id.soundadvice.systemdesign.logical.interactions.LogicalContextMenus;
+import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
 import au.id.soundadvice.systemdesign.moduleapi.entity.ConnectionScope;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.Drawing;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingConnector;
 import au.id.soundadvice.systemdesign.moduleapi.drawing.DrawingEntity;
 import au.id.soundadvice.systemdesign.moduleapi.collection.DiffPair;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
@@ -43,6 +46,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 /**
  *
@@ -73,14 +77,24 @@ public class LogicalSchematic implements Drawing {
         this.connectors = DiffPair.find(drawing, Flow::find, Flow.flow)
                 .flatMap(flowDiff -> {
                     ConnectionScope scope = flowDiff.getSample().getConnectionScope();
-                    Record leftView = functionIdentifierToFunctionView.get(scope.getLeft()).getSample();
-                    Record rightView = functionIdentifierToFunctionView.get(scope.getRight()).getSample();
+                    @Nullable
+                    DiffPair<Record> leftView = functionIdentifierToFunctionView.get(scope.getLeft());
+                    @Nullable
+                    DiffPair<Record> rightView = functionIdentifierToFunctionView.get(scope.getRight());
                     if (leftView != null && rightView != null) {
-                        return Stream.of(new LogicalSchematicFlow(menus, flowDiff, leftView, rightView));
+                        return Stream.of(new LogicalSchematicFlow(menus, flowDiff, leftView.getSample(), rightView.getSample()));
                     }
                     return Stream.empty();
                 })
                 .collect(Collectors.toList());
+    }
+
+    public Optional<Record> getTraceFunction(WhyHowPair<Baseline> state) {
+        return LogicalDrawing.logicalDrawing.getTrace(state, drawing.getSample());
+    }
+
+    public Record getDrawingRecord() {
+        return drawing.getSample();
     }
 
     @Override
@@ -111,7 +125,7 @@ public class LogicalSchematic implements Drawing {
 
     @Override
     public Optional<MenuItems> getContextMenu(InteractionContext context) {
-        return Optional.of(menus.getLogicalBackgroundMenu());
+        return Optional.of(menus.getLogicalSchematicBackgroundMenu(this));
     }
 
 }

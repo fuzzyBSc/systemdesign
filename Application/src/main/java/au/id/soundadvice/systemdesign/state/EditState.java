@@ -89,7 +89,9 @@ public class EditState {
         RecordStore parent = RecordStore.empty();
         RecordStore child = RecordStore.empty();
         child = child.add(Identity.create("System Context", now));
-        return new WhyHowPair<>(parent, child);
+        WhyHowPair<Baseline> state = new WhyHowPair<>(parent, child);
+        state = AutoFix.onLoad(state, now);
+        return state;
     }
     private static final WhyHowPair<Optional<RecordStorage>> EMPTY_STORAGE = new WhyHowPair<>(Optional.empty(), Optional.empty());
 
@@ -152,20 +154,24 @@ public class EditState {
                                 throw new UncheckedIOException(ex);
                             }
                         }).orElse(RecordStore.empty()));
-                newSaved = newSaved
-                        .setChild(newSaved.getParent())
-                        .setParent(state.getParent());
-                setStorage(newStorage);
-                this.undo.reset(state);
-                // Perform onLoad fixes in a separate undo buffer update so that
-                // they can be undone
-                this.undo.update(ss -> AutoFix.onLoad(ss, now));
-                this.savedState.set(newSaved);
-                if (systemOfInterestId.isPresent()) {
-                    lastChildIdentity.push(systemOfInterestId.get().getIdentifier());
+                if (Identity.findAll(state.getChild()).findAny().isPresent()) {
+                    newSaved = newSaved
+                            .setChild(newSaved.getParent())
+                            .setParent(state.getParent());
+                    setStorage(newStorage);
+                    this.undo.reset(state);
+                    // Perform onLoad fixes in a separate undo buffer update so that
+                    // they can be undone
+                    this.undo.update(ss -> AutoFix.onLoad(ss, now));
+                    this.savedState.set(newSaved);
+                    if (systemOfInterestId.isPresent()) {
+                        lastChildIdentity.push(systemOfInterestId.get().getIdentifier());
+                    }
+                    this.loadVersionControl(newChildDir);
+                    xact.changed();
+                } else {
+                    throw new IOException("Cannot load from empty directory");
                 }
-                this.loadVersionControl(newChildDir);
-                xact.changed();
             } catch (UncheckedIOException ex) {
                 throw ex.getCause();
             }
@@ -244,15 +250,19 @@ public class EditState {
                     throw new UncheckedIOException(ex);
                 }
             });
-            setStorage(newStorage);
-            this.undo.reset(state);
-            // Perform onLoad fixes in a separate undo buffer update so that
-            // they can be undone
-            this.undo.update(ss -> AutoFix.onLoad(ss, now));
-            this.savedState.set(state);
-            lastChildIdentity.clear();
-            this.loadVersionControl(newStorage.getChild());
-            xact.changed();
+            if (Identity.findAll(state.getChild()).findAny().isPresent()) {
+                setStorage(newStorage);
+                this.undo.reset(state);
+                // Perform onLoad fixes in a separate undo buffer update so that
+                // they can be undone
+                this.undo.update(ss -> AutoFix.onLoad(ss, now));
+                this.savedState.set(state);
+                lastChildIdentity.clear();
+                this.loadVersionControl(newStorage.getChild());
+                xact.changed();
+            } else {
+                throw new IOException("Cannot load from empty directory");
+            }
         } catch (UncheckedIOException ex) {
             throw ex.getCause();
         }

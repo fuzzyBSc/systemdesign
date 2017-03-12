@@ -63,6 +63,10 @@ public enum Fields {
      */
     external,
     /**
+     * This entity has been created with a placeholder name.
+     */
+    placeholder,
+    /**
      * The intrinsic color of this entity.
      */
     color,

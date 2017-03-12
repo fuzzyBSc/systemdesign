@@ -38,13 +38,11 @@ import au.id.soundadvice.systemdesign.moduleapi.tree.Tree;
 import au.id.soundadvice.systemdesign.moduleapi.tree.TreeNode;
 import au.id.soundadvice.systemdesign.physical.entity.Identity;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javafx.util.Pair;
 
 /**
  *
@@ -64,7 +62,7 @@ public class LogicalTree implements Tree {
 
     @Override
     public Optional<MenuItems> getContextMenu() {
-        return Optional.of(menus.getLogicalBackgroundMenu());
+        return Optional.of(menus.getLogicalTreeBackgroundMenu());
     }
 
     public final class LogicalTreeNode implements TreeNode {
@@ -73,11 +71,11 @@ public class LogicalTree implements Tree {
 
         public LogicalTreeNode(
                 String orphanLabel, Optional<Record> sample,
-                WhyHowPair.Selector selector, SortedMap<String, TreeNode> children) {
+                WhyHowPair.Selector selector, Stream<TreeNode> children) {
             this.orphanLabel = orphanLabel;
             this.sample = sample;
             this.selector = selector;
-            this.children = children;
+            this.children = children.sorted().collect(Collectors.toList());
         }
 
         @Override
@@ -105,7 +103,7 @@ public class LogicalTree implements Tree {
 
         private final WhyHowPair.Selector selector;
         private final Optional<Record> sample;
-        private final SortedMap<String, TreeNode> children;
+        private final List<TreeNode> children;
 
         private boolean isEmpty() {
             return children.isEmpty();
@@ -126,7 +124,7 @@ public class LogicalTree implements Tree {
 
         @Override
         public Stream<TreeNode> getChildren() {
-            return children.values().stream();
+            return children.stream();
         }
 
         @Override
@@ -147,7 +145,7 @@ public class LogicalTree implements Tree {
 
     @Override
     public Stream<TreeNode> getChildren() {
-        Stream<TreeNode> result = allocation.values().stream();
+        Stream<TreeNode> result = allocation.stream();
         if (!orphans.isEmpty()) {
             result = Stream.concat(result, Stream.of(orphans));
         }
@@ -155,7 +153,7 @@ public class LogicalTree implements Tree {
     }
 
     private final LogicalContextMenus menus;
-    private final SortedMap<String, TreeNode> allocation;
+    private final List<TreeNode> allocation;
     private final LogicalTreeNode orphans;
 
     public LogicalTree(
@@ -185,41 +183,27 @@ public class LogicalTree implements Tree {
         this.allocation = childFunctions.entrySet().stream()
                 .filter(entry -> entry.getKey().isPresent())
                 .map(entry -> {
-                    SortedMap<String, TreeNode> children = Optional.ofNullable(childFunctions.get(entry.getKey()))
+                    Stream<TreeNode> children = Optional.ofNullable(childFunctions.get(entry.getKey()))
                             .orElse(Collections.emptySortedMap())
                             .entrySet().stream()
-                            .collect(Collectors.toMap(
-                                    childEntry -> childEntry.getValue().getLongName(),
-                                    childEntry -> new LogicalTreeNode(orphanLabel, Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
-                                    (u, v) -> {
-                                        throw new IllegalStateException(String.format("Duplicate key %s", u));
-                                    },
-                                    TreeMap::new));
-                    return new Pair<>(
-                            entry.getKey().get().getDescription(),
-                            new LogicalTreeNode(
-                                    orphanLabel, entry.getKey(),
-                                    WhyHowPair.Selector.PARENT,
-                                    children));
+                            .map(childEntry -> new LogicalTreeNode(
+                                    orphanLabel, Optional.of(childEntry.getValue()),
+                                    WhyHowPair.Selector.CHILD, Stream.empty()));
+                    return new LogicalTreeNode(
+                            orphanLabel, entry.getKey(),
+                            WhyHowPair.Selector.PARENT,
+                            children);
                 })
-                .collect(Collectors.toMap(Pair::getKey, Pair::getValue,
-                        (u, v) -> {
-                            throw new IllegalStateException(String.format("Duplicate key %s", u));
-                        },
-                        TreeMap::new));
+                .sorted()
+                .collect(Collectors.toList());
         this.orphans = new LogicalTreeNode(
                 orphanLabel, Optional.empty(),
                 WhyHowPair.Selector.PARENT,
                 Optional.ofNullable(childFunctions.get(Optional.<Record>empty()))
                 .orElse(Collections.emptySortedMap())
                 .entrySet().stream()
-                .collect(Collectors.toMap(
-                        childEntry -> childEntry.getValue().getLongName(),
-                        childEntry -> new LogicalTreeNode(orphanLabel, Optional.of(childEntry.getValue()), WhyHowPair.Selector.CHILD, Collections.emptySortedMap()),
-                        (u, v) -> {
-                            throw new IllegalStateException(String.format("Duplicate key %s", u));
-                        },
-                        TreeMap::new)));
+                .map(childEntry -> new LogicalTreeNode(
+                        orphanLabel, Optional.of(childEntry.getValue()),
+                        WhyHowPair.Selector.CHILD, Stream.empty())));
     }
-
 }

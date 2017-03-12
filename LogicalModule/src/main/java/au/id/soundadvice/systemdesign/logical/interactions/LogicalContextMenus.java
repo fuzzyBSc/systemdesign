@@ -26,11 +26,13 @@
  */
 package au.id.soundadvice.systemdesign.logical.interactions;
 
+import au.id.soundadvice.systemdesign.logical.drawing.LogicalSchematic;
 import au.id.soundadvice.systemdesign.logical.entity.Flow;
 import au.id.soundadvice.systemdesign.logical.entity.FlowType;
 import au.id.soundadvice.systemdesign.logical.entity.Function;
 import au.id.soundadvice.systemdesign.logical.entity.FunctionView;
 import au.id.soundadvice.systemdesign.moduleapi.collection.Baseline;
+import au.id.soundadvice.systemdesign.moduleapi.collection.WhyHowPair;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Record;
 import au.id.soundadvice.systemdesign.moduleapi.interaction.InteractionContext;
 import java.util.stream.Stream;
@@ -40,7 +42,6 @@ import au.id.soundadvice.systemdesign.physical.entity.Item;
 import au.id.soundadvice.systemdesign.physical.entity.ItemView;
 import au.id.soundadvice.systemdesign.physical.interactions.PhysicalInteractions;
 import java.util.Optional;
-import javafx.geometry.Point2D;
 
 /**
  *
@@ -78,8 +79,20 @@ public class LogicalContextMenus {
         return new FlowContextMenu(flow);
     }
 
-    public MenuItems getLogicalBackgroundMenu() {
-        return new LogicalTreeBackgroundMenu();
+    public MenuItems getLogicalSchematicBackgroundMenu(LogicalSchematic drawing) {
+        return new AddFunctionSubmenu(Optional.of(drawing));
+    }
+
+    public MenuItems getLogicalTreeBackgroundMenu() {
+        return new AddFunctionSubmenu(Optional.empty());
+    }
+
+    public MenuItems getTypeTreeBackgroundMenu() {
+        return new TypeContextMenu(Optional.empty());
+    }
+
+    public MenuItems getTypeContextMenu(Record sample) {
+        return new TypeContextMenu(Optional.of(sample));
     }
 
     class FunctionContextMenu implements MenuItems {
@@ -100,7 +113,7 @@ public class LogicalContextMenus {
                         }));
             } else {
                 return Stream.of(new MenuItems.SingleMenuItem(
-                        "Rename Function",
+                        "Rename Function...",
                         () -> {
                             logicalInteractions.setFunctionName(context, function);
                         }),
@@ -149,7 +162,7 @@ public class LogicalContextMenus {
                 // This view is foreign to the function's trace
                 // Deleting the view here merely deletes the view
                 return Stream.of(new MenuItems.SingleMenuItem(
-                        "Rename Function",
+                        "Rename Function...",
                         () -> {
                             logicalInteractions.setFunctionName(context, function);
                         }),
@@ -169,7 +182,7 @@ public class LogicalContextMenus {
                 // This drawing is the "home" of this function. Deleting the view
                 // here implies deleting the function.
                 return Stream.of(new MenuItems.SingleMenuItem(
-                        "Rename Function",
+                        "Rename Function...",
                         () -> {
                             logicalInteractions.setFunctionName(context, function);
                         }),
@@ -256,14 +269,18 @@ public class LogicalContextMenus {
                                                 return child;
                                             }
                                         });
-                                        logicalInteractions.createAndSetFlowType(context, flowTypeSample);
                                     }
                             );
                         });
-                        Stream<MenuItems.MenuItem> staticItems = Stream.of(new MenuItems.SingleMenuItem(
-                                "New Type",
-                                () -> logicalInteractions.createAndSetFlowType(context, flowSample)
-                        ));
+                        Stream<MenuItems.MenuItem> staticItems = Stream.of(
+                                new MenuItems.SingleMenuItem(
+                                        "Rename Type...",
+                                        () -> logicalInteractions.renameFlowType(context, flowSample)
+                                ),
+                                new MenuItems.SingleMenuItem(
+                                        "New Type...",
+                                        () -> logicalInteractions.createAndSetFlowType(context, flowSample)
+                                ));
                         return Stream.concat(dynamicItems, staticItems);
                     }));
         }
@@ -285,33 +302,25 @@ public class LogicalContextMenus {
         }
     }
 
-    class LogicalTreeBackgroundMenu implements MenuItems {
-
-        private final AddFunctionSubmenu addFunctionMenu = new AddFunctionSubmenu(
-                Optional.empty(), FunctionView.DEFAULT_ORIGIN);
-
-        @Override
-        public Stream<MenuItems.MenuItem> items(InteractionContext context) {
-            return addFunctionMenu.items(context);
-        }
-    }
-
     class AddFunctionSubmenu implements MenuItems {
 
-        public AddFunctionSubmenu(Optional<Record> traceFunction, Point2D defaultOrigin) {
-            this.traceFunction = traceFunction;
-            this.defaultOrigin = defaultOrigin;
+        public AddFunctionSubmenu(Optional<LogicalSchematic> drawing) {
+            this.drawing = drawing;
         }
 
-        private final Optional<Record> traceFunction;
-        private final Point2D defaultOrigin;
+        private final Optional<LogicalSchematic> drawing;
 
         @Override
         public Stream<MenuItems.MenuItem> items(InteractionContext context) {
             return Stream.of(MenuItems.Submenu.of(
                     "Add Function to...",
                     () -> {
-                        Stream<MenuItems.MenuItem> dynamicItems = Item.find(context.getChild())
+                        WhyHowPair<Baseline> state = context.getState();
+                        Optional<Record> trace = drawing.flatMap(
+                                schematic -> schematic.getTraceFunction(state));
+                        Optional<Record> drawingRecord = drawing.map(
+                                schematic -> schematic.getDrawingRecord());
+                        Stream<MenuItems.MenuItem> dynamicItems = Item.find(state.getChild())
                         .filter(item -> !item.isExternal())
                         .sorted()
                         .map(item -> {
@@ -319,8 +328,8 @@ public class LogicalContextMenus {
                                     Item.item.getDisplayName(item),
                                     hints -> {
                                         logicalInteractions.addFunctionToItem(
-                                                context, item, traceFunction,
-                                                hints.getLocationHint().orElse(defaultOrigin));
+                                                context, item, trace, drawingRecord,
+                                                hints.getLocationHint().orElse(FunctionView.DEFAULT_ORIGIN));
                                     }
                             );
                         });
@@ -330,13 +339,48 @@ public class LogicalContextMenus {
                                     Optional<Record> item = physicalInteractions.createItem(context, ItemView.DEFAULT_ORIGIN);
                                     if (item.isPresent()) {
                                         logicalInteractions.addFunctionToItem(
-                                                context, item.get(), traceFunction,
-                                                hints.getLocationHint().orElse(defaultOrigin));
+                                                context, item.get(), trace, drawingRecord,
+                                                hints.getLocationHint().orElse(FunctionView.DEFAULT_ORIGIN));
                                     }
                                 }
                         ));
                         return Stream.concat(dynamicItems, staticItems);
                     }));
+        }
+    }
+
+    class TypeContextMenu implements MenuItems {
+
+        public TypeContextMenu(Optional<Record> sample) {
+            this.sample = sample;
+        }
+
+        private final Optional<Record> sample;
+
+        @Override
+        public Stream<MenuItems.MenuItem> items(InteractionContext context) {
+            if (sample.isPresent()) {
+                return Stream.of(
+                        new MenuItems.SingleMenuItem(
+                                "Rename Type...",
+                                () -> {
+                                    logicalInteractions.renameType(context, sample.get());
+                                }),
+                        new MenuItems.SingleMenuItem(
+                                "Delete Type",
+                                () -> {
+                                    context.updateChild(child -> child.remove(sample.get().getIdentifier()));
+                                }));
+            } else {
+                return Stream.of(
+                        new MenuItems.SingleMenuItem(
+                                "New Type...",
+                                () -> {
+                                    logicalInteractions.createType(context);
+                                })
+                );
+            }
+
         }
     }
 
