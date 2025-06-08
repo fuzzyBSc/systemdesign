@@ -238,8 +238,7 @@ public class GitVersionControl implements VersionControl {
     private ObjectId findMatchingIdentity(
             IdentityValidator identityValidator,
             ObjectId tree) throws IOException {
-        TreeWalk treeWalk = new TreeWalk(repo.getRepository());
-        try {
+        try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
             treeWalk.setRecursive(false);
             treeWalk.addTree(tree);
 
@@ -265,8 +264,6 @@ public class GitVersionControl implements VersionControl {
                 }
             }
             return ObjectId.zeroId();
-        } finally {
-            treeWalk.release();
         }
     }
 
@@ -275,16 +272,13 @@ public class GitVersionControl implements VersionControl {
         if (!label.equals(diff.getKey())) {
             // Grab the id of the commit we are trying to diff against
             ObjectId id = ObjectId.fromString(label);
-            RevWalk revWalk = new RevWalk(repo.getRepository());
-            try {
+            try (RevWalk revWalk = new RevWalk(repo.getRepository())) {
                 // Read the commit
                 RevCommit commit = revWalk.parseCommit(id);
                 ObjectId matchedDirectory = findMatchingIdentity(
                         identityValidator, commit.getTree());
                 diff = new Pair<>(label, matchedDirectory);
                 diffCache.set(diff);
-            } finally {
-                revWalk.release();
             }
         }
         return diff;
@@ -301,8 +295,7 @@ public class GitVersionControl implements VersionControl {
                 return Stream.empty();
             } else {
                 // Find the file in this tree
-                TreeWalk treeWalk = new TreeWalk(repo.getRepository());
-                try {
+                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
                     treeWalk.setRecursive(false);
                     treeWalk.addTree(diff.getValue());
 
@@ -311,8 +304,6 @@ public class GitVersionControl implements VersionControl {
                         filenames.add(treeWalk.getNameString());
                     }
                     return filenames.stream();
-                } finally {
-                    treeWalk.release();
                 }
             }
         } else {
@@ -331,8 +322,7 @@ public class GitVersionControl implements VersionControl {
                 return false;
             } else {
                 // Find the file in this tree
-                TreeWalk treeWalk = new TreeWalk(repo.getRepository());
-                try {
+                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
                     treeWalk.setRecursive(false);
                     treeWalk.addTree(diff.getValue());
 
@@ -343,8 +333,6 @@ public class GitVersionControl implements VersionControl {
                     }
                     // No such file
                     return false;
-                } finally {
-                    treeWalk.release();
                 }
             }
         } else {
@@ -363,8 +351,7 @@ public class GitVersionControl implements VersionControl {
                 throw new FileNotFoundException(identityValidator.getPath() + " does not exist for label " + label.get());
             } else {
                 // Find the file in this tree
-                TreeWalk treeWalk = new TreeWalk(repo.getRepository());
-                try {
+                try (TreeWalk treeWalk = new TreeWalk(repo.getRepository())) {
                     treeWalk.setRecursive(false);
                     treeWalk.addTree(diff.getValue());
 
@@ -381,8 +368,6 @@ public class GitVersionControl implements VersionControl {
                     // No such file
                     throw new FileNotFoundException(filename + " does not exist for label " + label.get()
                     );
-                } finally {
-                    treeWalk.release();
                 }
             }
         } else {

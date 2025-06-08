@@ -22,10 +22,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>2.5.1</version>
+                        <version>3.13.0</version>
                         <configuration>
-                            <source>1.8</source>
-                            <target>1.8</target>
+                            <release>17</release>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -78,10 +77,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>2.5.1</version>
+                        <version>3.13.0</version>
                         <configuration>
-                            <source>1.8</source>
-                            <target>1.8</target>
+                            <release>17</release>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -167,11 +165,20 @@
             <version>4.0.5-alpha</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>17.0.12</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>17.0.13</version>
+        </dependency>
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
         <debian.hasPackageVersion>
         </debian.hasPackageVersion>
         <debian.originalVersion>0.6</debian.originalVersion>

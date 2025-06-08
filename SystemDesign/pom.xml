@@ -15,6 +15,7 @@
 	<modules>
 		<module>../ModuleAPI</module>
 		<module>../PhysicalModule</module>
+		<module>../LogicalModule</module>
 		<module>../Application</module>
 		<module>../BudgetModule</module>
 	</modules>

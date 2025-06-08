@@ -7,6 +7,11 @@
 	<packaging>jar</packaging>
 	<dependencies>
 		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics</artifactId>
+			<version>17.0.15</version>
+		</dependency>
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13.1</version>
@@ -25,8 +30,7 @@
 	</build>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.release>17</maven.compiler.release>
 		<debian.hasPackageVersion>
 		</debian.hasPackageVersion>
 		<debian.mavenRules>au.id.soundadvice SystemDesign jar s/.*/debian/ * *</debian.mavenRules>
