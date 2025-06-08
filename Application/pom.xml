@@ -123,11 +123,10 @@
     </profiles>
     <dependencies>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.1</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.9.1</version>
             <scope>test</scope>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>net.sf.opencsv</groupId>
@@ -161,8 +160,14 @@
         </dependency>
         <dependency>
             <groupId>org.testfx</groupId>
-            <artifactId>testfx-junit</artifactId>
-            <version>4.0.5-alpha</version>
+            <artifactId>testfx-core</artifactId>
+            <version>4.0.18</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>4.0.18</version>
             <scope>test</scope>
         </dependency>
         <dependency>

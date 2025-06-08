@@ -35,12 +35,14 @@ import au.id.soundadvice.systemdesign.moduleapi.entity.RecordID;
 import au.id.soundadvice.systemdesign.moduleapi.entity.Table;
 import au.id.soundadvice.systemdesign.moduleapi.util.ISO8601;
 import au.id.soundadvice.systemdesign.storage.files.RecordReader;
+import org.junit.jupiter.api.Test;
+
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Optional;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import org.junit.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  *

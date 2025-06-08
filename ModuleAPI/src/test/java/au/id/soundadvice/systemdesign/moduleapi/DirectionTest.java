@@ -28,10 +28,12 @@
 package au.id.soundadvice.systemdesign.moduleapi;
 
 import au.id.soundadvice.systemdesign.moduleapi.entity.Direction;
+import org.junit.jupiter.api.Test;
+
 import java.util.List;
 import java.util.stream.Collectors;
-import org.junit.Test;
-import static org.junit.Assert.*;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  *

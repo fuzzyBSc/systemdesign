@@ -36,9 +36,13 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import org.junit.Before;
-import org.junit.Test;
-import org.testfx.framework.junit.ApplicationTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.testfx.api.FxRobot;
+import org.testfx.framework.junit5.ApplicationExtension;
+import org.testfx.framework.junit5.Start;
+
 import static org.testfx.util.NodeQueryUtils.isVisible;
 import static org.testfx.api.FxAssert.verifyThat;
 import static org.testfx.matcher.base.NodeMatchers.isNull;
@@ -47,12 +51,13 @@ import static org.testfx.matcher.base.NodeMatchers.isNull;
  *
  * @author fuzzy
  */
-public class LogicalTest extends ApplicationTest {
+@ExtendWith(ApplicationExtension.class)
+public class LogicalTest {
 
-    @Before
-    public void awaitRunning() throws InterruptedException {
+    @BeforeEach
+    public void awaitRunning(FxRobot robot) throws InterruptedException {
         for (;;) {
-            Set<Node> drawingAreas = lookup(".drawingArea").queryAll();
+            Set<Node> drawingAreas = robot.lookup(".drawingArea").queryAll();
             if (drawingAreas.isEmpty()) {
                 Thread.sleep(100);
             } else {
@@ -66,62 +71,62 @@ public class LogicalTest extends ApplicationTest {
     }
 
     @Test
-    public void itCreatesFunctionsAndFlows() throws InterruptedException {
-        Supplier<Node> topItem = () -> lookup(hasText("1 Top Item")).query();
-        Supplier<Node> bottomItem = () -> lookup(hasText("2 Bottom Item")).query();
-        Supplier<Node> topFunction = () -> lookup(hasText("Top Function\n(1 Top Item)")).query();
-        Supplier<Node> bottomFunction = () -> lookup(hasText("Bottom Function\n(2 Bottom Item)")).query();
-        Supplier<Node> newFlow = () -> lookup(hasText("New\nFlow")).query();
-        Supplier<Node> renamedFlow = () -> lookup(hasText("Some\nData")).query();
+    public void itCreatesFunctionsAndFlows(FxRobot robot) throws InterruptedException {
+        Supplier<Node> topItem = () -> robot.lookup(hasText("1 Top Item")).query();
+        Supplier<Node> bottomItem = () -> robot.lookup(hasText("2 Bottom Item")).query();
+        Supplier<Node> topFunction = () -> robot.lookup(hasText("Top Function\n(1 Top Item)")).query();
+        Supplier<Node> bottomFunction = () -> robot.lookup(hasText("Bottom Function\n(2 Bottom Item)")).query();
+        Supplier<Node> newFlow = () -> robot.lookup(hasText("New\nFlow")).query();
+        Supplier<Node> renamedFlow = () -> robot.lookup(hasText("Some\nData")).query();
 
-        clickOn("Logical View");
-        Node logicalView = lookup(".drawingArea.LogicalSchematic").query();
+        robot.clickOn("Logical View");
+        Node logicalView = robot.lookup(".drawingArea.LogicalSchematic").query();
 
-        rightClickOn(logicalView).clickOn("Add Function to...").clickOn("New Item");
-        write("Top Item").clickOn("OK");
-        write("Top Function").clickOn("OK");
-        drag(topFunction.get(), MouseButton.PRIMARY).dropBy(-50, -100);
+        robot.rightClickOn(logicalView).clickOn("Add Function to...").clickOn("New Item");
+        robot.write("Top Item").clickOn("OK");
+        robot.write("Top Function").clickOn("OK");
+        robot.drag(topFunction.get(), MouseButton.PRIMARY).dropBy(-50, -100);
 
-        clickOn(" System Context");
-        drag(topItem.get(), MouseButton.PRIMARY).dropBy(-50, -100);
-        clickOn("Logical View");
+        robot.clickOn(" System Context");
+        robot.drag(topItem.get(), MouseButton.PRIMARY).dropBy(-50, -100);
+        robot.clickOn("Logical View");
 
-        rightClickOn(logicalView).clickOn("Add Function to...").clickOn("New Item");
-        write("Bottom Item").clickOn("OK");
-        write("Bottom Function").clickOn("OK");
-        drag(bottomFunction.get(), MouseButton.PRIMARY).dropBy(50, 100);
+        robot.rightClickOn(logicalView).clickOn("Add Function to...").clickOn("New Item");
+        robot.write("Bottom Item").clickOn("OK");
+        robot.write("Bottom Function").clickOn("OK");
+        robot.drag(bottomFunction.get(), MouseButton.PRIMARY).dropBy(50, 100);
 
-        clickOn(" System Context");
-        drag(bottomItem.get(), MouseButton.PRIMARY).dropBy(50, 100);
-        clickOn("Logical View");
+        robot.clickOn(" System Context");
+        robot.drag(bottomItem.get(), MouseButton.PRIMARY).dropBy(50, 100);
+        robot.clickOn("Logical View");
 
         // Create flow
-        press(KeyCode.CONTROL);
+        robot.press(KeyCode.CONTROL);
         try {
-            drag(topFunction.get(), MouseButton.PRIMARY).dropTo(bottomFunction.get());
+            robot.drag(topFunction.get(), MouseButton.PRIMARY).dropTo(bottomFunction.get());
         } finally {
-            release(KeyCode.CONTROL);
+            robot.release(KeyCode.CONTROL);
         }
         verifyThat(newFlow.get(), isVisible());
 
         // Rename flow
-        rightClickOn(newFlow.get()).clickOn("Set Type").moveBy(100, 0).clickOn("New Type...");
-        write("Some Data").clickOn("OK");
+        robot.rightClickOn(newFlow.get()).clickOn("Set Type").moveBy(100, 0).clickOn("New Type...");
+        robot.write("Some Data").clickOn("OK");
         verifyThat(newFlow.get(), isNull());
         verifyThat(renamedFlow.get(), isVisible());
 
         // Clean up functions
-        rightClickOn(topFunction.get()).clickOn("Delete Function");
+        robot.rightClickOn(topFunction.get()).clickOn("Delete Function");
         verifyThat(renamedFlow.get(), isNull());
-        rightClickOn(bottomFunction.get()).clickOn("Delete Function");
+        robot.rightClickOn(bottomFunction.get()).clickOn("Delete Function");
 
         // Clean up items
-        clickOn(" System Context");
-        rightClickOn(topItem.get()).clickOn("Delete Item");
-        rightClickOn(bottomItem.get()).clickOn("Delete Item");
+        robot.clickOn(" System Context");
+        robot.rightClickOn(topItem.get()).clickOn("Delete Item");
+        robot.rightClickOn(bottomItem.get()).clickOn("Delete Item");
     }
 
-    @Override
+    @Start
     public void start(Stage stage) throws IOException {
         SystemDesign.startMe(stage);
         stage.setMaximized(true);

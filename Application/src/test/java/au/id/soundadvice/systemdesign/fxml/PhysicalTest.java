@@ -36,9 +36,12 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import org.junit.Before;
-import org.junit.Test;
-import org.testfx.framework.junit.ApplicationTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.testfx.api.FxRobot;
+import org.testfx.framework.junit5.ApplicationExtension;
+import org.testfx.framework.junit5.Start;
 import static org.testfx.util.NodeQueryUtils.isVisible;
 import static org.testfx.api.FxAssert.verifyThat;
 import static org.testfx.matcher.base.NodeMatchers.isNull;
@@ -47,12 +50,13 @@ import static org.testfx.matcher.base.NodeMatchers.isNull;
  *
  * @author fuzzy
  */
-public class PhysicalTest extends ApplicationTest {
+@ExtendWith(ApplicationExtension.class)
+public class PhysicalTest {
 
-    @Before
-    public void awaitRunning() throws InterruptedException {
+    @BeforeEach
+    public void awaitRunning(FxRobot robot) throws InterruptedException {
         for (;;) {
-            Set<Node> drawingAreas = lookup(".drawingArea").queryAll();
+            Set<Node> drawingAreas = robot.lookup(".drawingArea").queryAll();
             if (drawingAreas.isEmpty()) {
                 Thread.sleep(100);
             } else {
@@ -66,36 +70,36 @@ public class PhysicalTest extends ApplicationTest {
     }
 
     @Test
-    public void itCreatesItemsAndInterfaces() throws InterruptedException {
-        Supplier<Node> topItem = () -> lookup(hasText("1 Top Item")).query();
-        Supplier<Node> bottomItem = () -> lookup(hasText("2 Bottom Item")).query();
-        Supplier<Node> iface = () -> lookup(hasText("1:2")).query();
+    public void itCreatesItemsAndInterfaces(FxRobot robot) throws InterruptedException {
+        Supplier<Node> topItem = () -> robot.lookup(hasText("1 Top Item")).query();
+        Supplier<Node> bottomItem = () -> robot.lookup(hasText("2 Bottom Item")).query();
+        Supplier<Node> iface = () -> robot.lookup(hasText("1:2")).query();
 
-        Node systemContext = lookup(".drawingArea.PhysicalSchematic").query();
-        rightClickOn(systemContext).clickOn("New Item...");
-        write("Top Item").clickOn("OK");
-        drag(topItem.get(), MouseButton.PRIMARY).dropBy(-50, -100);
+        Node systemContext = robot.lookup(".drawingArea.PhysicalSchematic").query();
+        robot.rightClickOn(systemContext).clickOn("New Item...");
+        robot.write("Top Item").clickOn("OK");
+        robot.drag(topItem.get(), MouseButton.PRIMARY).dropBy(-50, -100);
 
-        rightClickOn(systemContext).clickOn("New Item...");
-        write("Bottom Item").clickOn("OK");
-        drag(bottomItem.get(), MouseButton.PRIMARY).dropBy(50, 100);
+        robot.rightClickOn(systemContext).clickOn("New Item...");
+        robot.write("Bottom Item").clickOn("OK");
+        robot.drag(bottomItem.get(), MouseButton.PRIMARY).dropBy(50, 100);
 
         // Create interface
-        press(KeyCode.CONTROL);
+        robot.press(KeyCode.CONTROL);
         try {
-            drag(topItem.get(), MouseButton.PRIMARY).dropTo(bottomItem.get());
+            robot.drag(topItem.get(), MouseButton.PRIMARY).dropTo(bottomItem.get());
         } finally {
-            release(KeyCode.CONTROL);
+            robot.release(KeyCode.CONTROL);
         }
         verifyThat(iface.get(), isVisible());
 
         // Clean up
-        rightClickOn(topItem.get()).clickOn("Delete Item");
+        robot.rightClickOn(topItem.get()).clickOn("Delete Item");
         verifyThat(iface.get(), isNull());
-        rightClickOn(bottomItem.get()).clickOn("Delete Item");
+        robot.rightClickOn(bottomItem.get()).clickOn("Delete Item");
     }
 
-    @Override
+    @Start
     public void start(Stage stage) throws IOException {
         SystemDesign.startMe(stage);
         stage.setMaximized(true);
