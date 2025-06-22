@@ -66,8 +66,6 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <dateFormatTimeZone>${user.timezone}</dateFormatTimeZone>
-                            <!--<verbose>true</verbose>-->
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
                             <generateGitPropertiesFilename>${project.build.outputDirectory}/about.properties</generateGitPropertiesFilename>
                             <format>properties</format>
@@ -112,7 +110,7 @@
                                 <manifest>
                                     <addClasspath>true</addClasspath>
                                     <classpathPrefix>lib/</classpathPrefix>
-                                    <mainClass>au.id.soundadvice.systemdesign.SystemDesign</mainClass>
+                                    <mainClass>au.id.soundadvice.systemdesign.App</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
